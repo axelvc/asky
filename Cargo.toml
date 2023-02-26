@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.0"
-console = "0.15.5"
+crossterm = "0.26.0"
