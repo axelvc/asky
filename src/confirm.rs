@@ -1,173 +1,79 @@
 use std::io;
 
-use colored::Colorize;
 use crossterm::{
-    cursor,
-    event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
-    queue,
-    style::Print,
+    event::{read, Event, KeyCode, KeyEvent},
     terminal,
 };
 
-enum SelectedOption {
-    Yes,
-    No,
-}
+use crate::{renderer::Renderer, utils};
 
-impl SelectedOption {
-    fn to_string(&self) -> String {
-        const YES: &str = " Yes ";
-        const NO: &str = " No ";
-
-
-
-        let (yes, no) = match self {
-            SelectedOption::Yes => (
-                SelectedOption::focused_colors(YES),
-                SelectedOption::unfocused_colors(NO),
-            ),
-            SelectedOption::No => (
-                SelectedOption::unfocused_colors(YES),
-                SelectedOption::focused_colors(NO),
-            ),
-        };
-
-        format!("{yes}  {no}")
-    }
-
-    fn focused_colors(s: &str) -> String {
-        s.black().on_blue().to_string()
-    }
-
-    fn unfocused_colors(s: &str) -> String {
-        s.white().on_bright_black().to_string()
-    }
-}
-
-impl From<bool> for SelectedOption {
-    fn from(value: bool) -> Self {
-        match value {
-            true => SelectedOption::Yes,
-            false => SelectedOption::No,
-        }
-    }
-}
-
-pub struct Confirm<'a> {
-    message: &'a str,
+pub struct Confirm<'a, W: io::Write> {
+    submit: bool,
     value: bool,
-    first_draw: bool,
+    renderer: Renderer<'a, W>,
 }
 
-impl Confirm<'_> {
-    pub fn new(message: &str) -> Confirm {
-        Confirm {
-            message,
-            value: false,
-            first_draw: true,
-        }
-    }
-
+impl<W: io::Write> Confirm<'_, W> {
     pub fn initial(&mut self, value: bool) -> &mut Self {
         self.value = value;
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<bool> {
-        self.draw(&mut io::stdout())?;
-
-        match self.listen() {
-            Ok(_) => Ok(self.value),
-            Err(e) => {
-                terminal::disable_raw_mode()?;
-                Err(e)
-            },
-        }
-    }
-
-    fn draw<W: io::Write>(&mut self, out: &mut W) -> io::Result<()> {
-        let options = SelectedOption::from(self.value);
-
-        if !self.first_draw {
-            queue!(out, cursor::MoveToPreviousLine(2))?;
-        } else {
-            self.first_draw = false;
-        }
-
-        queue!(
-            out,
-            Print(self.message),
-            cursor::MoveToNextLine(1),
-            Print(options.to_string()),
-            cursor::MoveToNextLine(1),
-        )?;
-
-        out.flush()
-    }
-
-    fn listen(&mut self) -> io::Result<()> {
         terminal::enable_raw_mode()?;
+        self.renderer.draw_toggle(self.value)?;
 
-        loop {
+        while !self.submit {
             if let Event::Key(key) = read()? {
-                match key {
-                    // confirm focused/initial
-                    KeyEvent {
-                        code: KeyCode::Enter | KeyCode::Backspace,
-                        ..
-                    } => break,
-                    // yes
-                    KeyEvent {
-                        code: KeyCode::Char('y' | 'Y'),
-                        ..
-                    } => {
-                        self.update_value(true)?;
-                        break;
-                    }
-                    // no
-                    KeyEvent {
-                        code: KeyCode::Char('n' | 'N'),
-                        ..
-                    } => {
-                        self.update_value(false)?;
-                        break;
-                    }
-                    // focus yes
-                    KeyEvent {
-                        code: KeyCode::Left | KeyCode::Char('h' | 'H'),
-                        ..
-                    } => self.update_value(true)?,
-                    // focus no
-                    KeyEvent {
-                        code: KeyCode::Right | KeyCode::Char('l' | 'L'),
-                        ..
-                    } => self.update_value(false)?,
-                    // abort
-                    KeyEvent {
-                        code: KeyCode::Esc, ..
-                    }
-                    | KeyEvent {
-                        code: KeyCode::Char('c' | 'd'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    } => self.abort()?,
-                    _ => (),
+                if utils::is_abort(key) {
+                    utils::abort()?;
                 }
+
+                self.handle_key(key);
+                self.renderer.draw_toggle(self.value)?;
             }
         }
 
-        terminal::disable_raw_mode()
-    }
-
-    fn update_value(&mut self, value: bool) -> io::Result<()> {
-        self.value = value;
-        self.draw(&mut io::stdout())?;
-        Ok(())
-    }
-
-    fn abort(&self) -> io::Result<()> {
         terminal::disable_raw_mode()?;
-        std::process::exit(0);
+
+        Ok(self.value)
+    }
+
+    fn handle_key(&mut self, key: KeyEvent) {
+        let mut submit = false;
+
+        match key.code {
+            // yes
+            KeyCode::Char('y' | 'Y') => {
+                self.value = true;
+                submit = true
+            }
+            // no
+            KeyCode::Char('n' | 'N') => {
+                self.value = false;
+                submit = true
+            }
+            // focused/initial
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            // focus yes
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.value = true,
+            // focus no
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.value = false,
+
+            _ => (),
+        }
+
+        self.submit = submit
+    }
+}
+
+impl Confirm<'_, io::Stdout> {
+    pub fn new(message: &str) -> Confirm<io::Stdout> {
+        Confirm {
+            value: false,
+            submit: false,
+            renderer: Renderer::new(message),
+        }
     }
 }
 
@@ -177,35 +83,69 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut confirm = Confirm::new("");
+        let mut prompt = Confirm::new("");
 
-        assert!(!confirm.value);
-        confirm.initial(true);
-        assert!(confirm.value);
+        assert!(!prompt.value);
+        prompt.initial(true);
+        assert!(prompt.value);
     }
 
     #[test]
-    fn draw_right_colors() {
-        let msg = "Do you like pizza?";
+    fn sumit_focused() {
+        let events = [KeyCode::Enter, KeyCode::Backspace];
 
-        let mut confirim = Confirm::new(msg);
+        for event in events {
+            let mut prompt = Confirm::new("");
+            let simulated_key = KeyEvent::from(event);
 
-        // first render
-        let mut out = Vec::new();
-        confirim.draw(&mut out).unwrap();
+            prompt.initial(true);
 
-        let out = String::from_utf8(out).unwrap();
-        assert!(out.contains(msg));
-        assert!(out.contains(&SelectedOption::No.to_string()));
+            assert_eq!(prompt.submit, false);
 
-        // simulate update value
-        let mut out = Vec::new();
+            prompt.handle_key(simulated_key);
+            assert_eq!(prompt.value, true);
+            assert_eq!(prompt.submit, true);
+        }
+    }
 
-        confirim.value = true;
-        confirim.draw(&mut out).unwrap();
+    #[test]
+    fn update_and_submit() {
+        let events = [('y', true), ('Y', true), ('n', false), ('N', false)];
 
-        let out = String::from_utf8(out).unwrap();
-        assert!(out.contains(msg));
-        assert!(out.contains(&SelectedOption::Yes.to_string()));
+        for (char, expected) in events {
+            let mut prompt = Confirm::new("");
+            let simulated_key = KeyEvent::from(KeyCode::Char(char));
+
+            prompt.initial(!expected);
+
+            assert_eq!(prompt.submit, false);
+
+            prompt.handle_key(simulated_key);
+            assert_eq!(prompt.value, expected);
+            assert_eq!(prompt.submit, true);
+        }
+    }
+
+    #[test]
+    fn update_focused() {
+        let events = [
+            (KeyCode::Left, true),
+            (KeyCode::Char('h'), true),
+            (KeyCode::Char('H'), true),
+            (KeyCode::Right, false),
+            (KeyCode::Char('l'), false),
+            (KeyCode::Char('L'), false),
+        ];
+
+        for (key, expected) in events {
+            let mut prompt = Confirm::new("");
+            let simulated_key = KeyEvent::from(key);
+
+            prompt.initial(!expected);
+            prompt.handle_key(simulated_key);
+
+            assert_eq!(prompt.value, expected);
+            assert_eq!(prompt.submit, false);
+        }
     }
 }

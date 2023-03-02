@@ -1,32 +1,28 @@
-use std::io::{self, Write};
+use std::io;
 
-use colored::Colorize;
 use crossterm::{
-    cursor,
-    event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
-    queue,
-    style::Print,
+    event::{read, Event, KeyCode, KeyEvent},
     terminal,
 };
+
+use crate::{renderer::Renderer, utils};
 
 enum Position {
     Left,
     Right,
 }
 
-pub struct Text<'a, W: Write> {
-    message: &'a str,
-    out: W,
+pub struct Text<'a, W: io::Write> {
+    renderer: Renderer<'a, W>,
     value: String,
     default_value: String,
-    validator: Option<fn(&str) -> Result<(), &str>>,
+    validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
     validator_result: Result<(), String>,
     cursor_col: usize,
-    first_draw: bool,
-    last_render: bool,
+    submit: bool,
 }
 
-impl<'a, W: Write> Text<'a, W> {
+impl<W: io::Write> Text<'_, W> {
     pub fn default(&mut self, value: &str) -> &mut Self {
         self.default_value = String::from(value);
         self
@@ -38,29 +34,48 @@ impl<'a, W: Write> Text<'a, W> {
         self
     }
 
-    pub fn validate(&mut self, validator: fn(&str) -> Result<(), &str>) -> &mut Self {
-        self.validator = Some(validator);
+    pub fn validate<F>(&mut self, validator: F) -> &mut Self
+    where
+        F: Fn(&str) -> Result<(), &str> + 'static,
+    {
+        self.validator = Some(Box::new(validator));
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
+        terminal::enable_raw_mode()?;
         self.draw()?;
 
-        match self.listen() {
-            Ok(_) => {
-                let value = if self.value.is_empty() {
-                    &self.default_value
-                } else {
-                    &self.value
-                };
+        while !self.submit {
+            if let Event::Key(key) = read()? {
+                if utils::is_abort(key) {
+                    self.last_draw()?;
+                    utils::abort()?;
+                }
 
-                Ok(value.to_string())
-            }
-            Err(e) => {
-                terminal::disable_raw_mode()?;
-                Err(e)
+                self.handle_key(key);
+                self.draw()?;
             }
         }
+
+        self.last_draw()?;
+        terminal::disable_raw_mode()?;
+
+        Ok(self.get_value().to_owned())
+    }
+
+    fn last_draw(&mut self) -> io::Result<()> {
+        self.renderer.update_draw_time();
+        self.draw()
+    }
+
+    fn draw(&mut self) -> io::Result<()> {
+        self.renderer.draw_text(
+            &self.value,
+            &self.default_value,
+            &self.validator_result,
+            self.cursor_col as u16,
+        )
     }
 
     fn get_value(&self) -> &String {
@@ -71,187 +86,72 @@ impl<'a, W: Write> Text<'a, W> {
         }
     }
 
-    fn draw(&mut self) -> io::Result<()> {
-        // print message/question
-        if self.first_draw {
-            queue!(self.out, Print(&self.message), cursor::MoveToNextLine(1))?;
-            self.first_draw = false;
-        }
+    fn handle_key(&mut self, key: KeyEvent) {
+        let mut submit = false;
 
-        // print/clean validator error
-        if let Err(validator_error) = &self.validator_result {
-            queue!(
-                self.out,
-                cursor::MoveToNextLine(1),
-                Print(validator_error.bright_red()),
-                cursor::MoveToPreviousLine(1),
-            )?;
-        } else {
-            queue!(
-                self.out,
-                cursor::MoveToNextLine(1),
-                terminal::Clear(terminal::ClearType::CurrentLine),
-                cursor::MoveToPreviousLine(1),
-            )?;
-        }
-
-        // print response prefix
-        let prefix = if self.validator_result.is_ok() {
-            "› ".blue()
-        } else {
-            "› ".red()
+        match key.code {
+            // submit
+            KeyCode::Enter => submit = self.validate_to_submit(),
+            // type
+            KeyCode::Char(c) => self.update_value(c),
+            // remove delete
+            KeyCode::Backspace => self.backspace(),
+            KeyCode::Delete => self.delete(),
+            // move cursor
+            KeyCode::Left => self.move_cursor(Position::Left),
+            KeyCode::Right => self.move_cursor(Position::Right),
+            _ => (),
         };
 
-        queue!(
-            self.out,
-            cursor::MoveToColumn(0),
-            Print(prefix),
-            terminal::Clear(terminal::ClearType::UntilNewLine),
-        )?;
-
-        // print response or default value
-        let mut value = self.get_value().normal();
-
-        if self.value.is_empty() {
-            value = value.bright_black();
-        }
-
-        queue!(self.out, Print(value))?;
-
-        // set cursor position
-        if self.last_render {
-            queue!(self.out, cursor::MoveToNextLine(1))?;
-        } else {
-            queue!(self.out, cursor::MoveToColumn(2 + self.cursor_col as u16))?;
-        }
-
-        self.out.flush()
+        self.submit = submit;
     }
 
-    fn listen(&mut self) -> io::Result<()> {
-        terminal::enable_raw_mode()?;
-
-        loop {
-            if let Event::Key(key) = read()? {
-                match key {
-                    // submit
-                    KeyEvent {
-                        code: KeyCode::Enter,
-                        ..
-                    } => {
-                        let mut validator_result = Ok(());
-
-                        if let Some(validator) = &self.validator {
-                            if let Err(e) = validator(self.get_value()) {
-                                validator_result = Err(e.to_string());
-                            }
-                        }
-
-                        if let Err(e) = validator_result {
-                            self.validator_result = Err(e.to_string());
-                            self.draw()?;
-                            self.validator_result = Ok(());
-                        } else {
-                            self.last_render = true;
-                            self.draw()?;
-
-                            break;
-                        }
-                    }
-                    // delete
-                    KeyEvent {
-                        code: KeyCode::Backspace,
-                        ..
-                    } => self.backspace()?,
-                    KeyEvent {
-                        code: KeyCode::Delete,
-                        ..
-                    } => self.delete()?,
-                    // move cursor
-                    KeyEvent {
-                        code: KeyCode::Left,
-                        ..
-                    } => self.move_cursor(Position::Left)?,
-                    KeyEvent {
-                        code: KeyCode::Right,
-                        ..
-                    } => self.move_cursor(Position::Right)?,
-                    // abort
-                    KeyEvent {
-                        code: KeyCode::Esc, ..
-                    }
-                    | KeyEvent {
-                        code: KeyCode::Char('c' | 'd'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    } => self.abort()?,
-                    // type
-                    KeyEvent {
-                        code: KeyCode::Char(c),
-                        ..
-                    } => self.update_value(c)?,
-                    _ => (),
-                }
-            }
-        }
-
-        terminal::disable_raw_mode()
-    }
-
-    fn update_value(&mut self, char: char) -> io::Result<()> {
+    fn update_value(&mut self, char: char) {
         self.value.insert(self.cursor_col, char);
         self.cursor_col += 1;
-
-        self.draw()
     }
 
-    fn backspace(&mut self) -> io::Result<()> {
+    fn validate_to_submit(&mut self) -> bool {
+        let validator_result = match &self.validator {
+            Some(validator) => validator(self.get_value()).map_err(|e| e.to_string()),
+            None => Ok(()),
+        };
+
+        self.validator_result = validator_result;
+        self.validator_result.is_ok()
+    }
+
+    fn backspace(&mut self) {
         if !self.value.is_empty() && self.cursor_col > 0 {
             self.cursor_col -= 1;
             self.value.remove(self.cursor_col);
         }
-
-        self.draw()
     }
 
-    fn delete(&mut self) -> io::Result<()> {
-        if !self.value.is_empty() {
+    fn delete(&mut self) {
+        if !self.value.is_empty() && self.cursor_col < self.value.len() {
             self.value.remove(self.cursor_col);
         }
-
-        self.draw()
     }
 
-    fn move_cursor(&mut self, position: Position) -> io::Result<()> {
+    fn move_cursor(&mut self, position: Position) {
         self.cursor_col = match position {
             Position::Left => self.cursor_col.saturating_sub(1),
             Position::Right => (self.cursor_col + 1).min(self.value.len()),
-        };
-
-        self.draw()
-    }
-
-    fn abort(&mut self) -> io::Result<()> {
-        queue!(self.out, cursor::MoveToNextLine(1))?;
-        self.out.flush()?;
-
-        terminal::disable_raw_mode()?;
-        std::process::exit(0)
+        }
     }
 }
 
-impl<'a> Text<'a, io::Stdout> {
+impl Text<'_, io::Stdout> {
     pub fn new(message: &str) -> Text<'_, io::Stdout> {
         Text {
-            message,
-            out: io::stdout(),
+            renderer: Renderer::new(message),
             value: String::new(),
             default_value: String::new(),
             cursor_col: 0,
             validator: None,
             validator_result: Ok(()),
-            first_draw: true,
-            last_render: false,
+            submit: false,
         }
     }
 }
@@ -270,10 +170,72 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut text = Text::new("foo");
-        text.initial("bar");
+        let mut prompt = Text::new("");
 
-        assert_eq!(text.value, "bar");
-        assert_eq!(text.cursor_col, 3);
+        prompt.initial("bar");
+        assert_eq!(prompt.value, "bar");
+        assert_eq!(prompt.cursor_col, 3);
+    }
+
+    #[test]
+    fn update_value() {
+        let mut prompt = Text::new("");
+
+        // simulate typing
+        let text = "foo";
+
+        for char in text.chars() {
+            prompt.handle_key(KeyEvent::from(KeyCode::Char(char)));
+        }
+
+        assert_eq!(prompt.value, "foo");
+        assert_eq!(prompt.cursor_col, 3);
+
+        // removing
+        let keys = [(KeyCode::Backspace, "fo"), (KeyCode::Delete, "f")];
+        prompt.cursor_col = 2;
+
+        for (key, expected) in keys {
+            prompt.handle_key(KeyEvent::from(key));
+
+            assert_eq!(prompt.value, expected);
+            assert_eq!(prompt.cursor_col, 1);
+        }
+    }
+
+    #[test]
+    fn update_cursor_position() {
+        let mut prompt = Text::new("");
+        prompt.value = "foo".to_string();
+        prompt.cursor_col = 2;
+
+        let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
+
+        for (key, expected) in keys {
+            prompt.handle_key(KeyEvent::from(key));
+
+            assert_eq!(prompt.cursor_col, expected);
+        }
+    }
+
+    #[test]
+    fn submit_value() {
+        let mut prompt = Text::new("");
+        let err_str = "Please enter an input";
+
+        prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
+
+        // invalid value
+        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(prompt.submit, false);
+        assert_eq!(prompt.validator_result, Err(err_str.to_string()));
+
+        // valid value
+        prompt.value = "foo".to_string();
+        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(prompt.submit, true);
+        assert_eq!(prompt.validator_result, Ok(()));
     }
 }
