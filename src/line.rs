@@ -5,14 +5,24 @@ use crossterm::{
     terminal,
 };
 
-use crate::{renderer::Renderer, utils};
+use crate::{
+    renderer::{DrawTime, Renderer},
+    utils,
+};
 
 enum Position {
     Left,
     Right,
 }
 
-pub struct Text<'a, W: io::Write> {
+enum LinePromptKind {
+    Text,
+    Password,
+    Hidden,
+}
+
+pub struct Line<'a, W: io::Write> {
+    kind: LinePromptKind,
     renderer: Renderer<'a, W>,
     value: String,
     default_value: String,
@@ -22,7 +32,7 @@ pub struct Text<'a, W: io::Write> {
     submit: bool,
 }
 
-impl<W: io::Write> Text<'_, W> {
+impl<W: io::Write> Line<'_, W> {
     pub fn default(&mut self, value: &str) -> &mut Self {
         self.default_value = String::from(value);
         self
@@ -70,12 +80,29 @@ impl<W: io::Write> Text<'_, W> {
     }
 
     fn draw(&mut self) -> io::Result<()> {
-        self.renderer.draw_text(
-            &self.value,
-            &self.default_value,
-            &self.validator_result,
-            self.cursor_col as u16,
-        )
+        match self.kind {
+            LinePromptKind::Text => self.renderer.draw_text(
+                &self.value,
+                &self.default_value,
+                &self.validator_result,
+                self.cursor_col as u16,
+            ),
+            LinePromptKind::Password => self.renderer.draw_password(
+                &self.value,
+                &self.default_value,
+                &self.validator_result,
+                self.cursor_col as u16,
+            ),
+            LinePromptKind::Hidden => match self.renderer.draw_time {
+                DrawTime::First => self.renderer.draw_password(
+                    &self.value,
+                    &self.default_value,
+                    &self.validator_result,
+                    self.cursor_col as u16,
+                ),
+                _ => Ok(()),
+            },
+        }
     }
 
     fn get_value(&self) -> &String {
@@ -142,9 +169,10 @@ impl<W: io::Write> Text<'_, W> {
     }
 }
 
-impl Text<'_, io::Stdout> {
-    pub fn new(message: &str) -> Text<'_, io::Stdout> {
-        Text {
+impl Line<'_, io::Stdout> {
+    fn new(message: &str, kind: LinePromptKind) -> Line<'_, io::Stdout> {
+        Line {
+            kind,
             renderer: Renderer::new(message),
             value: String::new(),
             default_value: String::new(),
@@ -154,6 +182,18 @@ impl Text<'_, io::Stdout> {
             submit: false,
         }
     }
+
+    pub fn new_text(message: &str) -> Line<'_, io::Stdout> {
+        Line::new(message, LinePromptKind::Text)
+    }
+
+    pub fn new_password(message: &str) -> Line<'_, io::Stdout> {
+        Line::new(message, LinePromptKind::Password)
+    }
+
+    pub fn new_hidden(message: &str) -> Line<'_, io::Stdout> {
+        Line::new(message, LinePromptKind::Hidden)
+    }
 }
 
 #[cfg(test)]
@@ -162,7 +202,7 @@ mod tests {
 
     #[test]
     fn set_default_value() {
-        let mut text = Text::new("foo");
+        let mut text = Line::new_text("foo");
         text.default("bar");
 
         assert_eq!(text.default_value, "bar");
@@ -170,7 +210,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Text::new("");
+        let mut prompt = Line::new_text("");
 
         prompt.initial("bar");
         assert_eq!(prompt.value, "bar");
@@ -179,7 +219,7 @@ mod tests {
 
     #[test]
     fn update_value() {
-        let mut prompt = Text::new("");
+        let mut prompt = Line::new_text("");
 
         // simulate typing
         let text = "foo";
@@ -205,7 +245,7 @@ mod tests {
 
     #[test]
     fn update_cursor_position() {
-        let mut prompt = Text::new("");
+        let mut prompt = Line::new_text("");
         prompt.value = "foo".to_string();
         prompt.cursor_col = 2;
 
@@ -220,7 +260,7 @@ mod tests {
 
     #[test]
     fn submit_value() {
-        let mut prompt = Text::new("");
+        let mut prompt = Line::new_text("");
         let err_str = "Please enter an input";
 
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });

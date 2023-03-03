@@ -3,7 +3,7 @@ use std::io;
 use colored::Colorize;
 use crossterm::{cursor, queue, style::Print, terminal};
 
-enum DrawTime {
+pub enum DrawTime {
     First,
     Update,
     Last,
@@ -52,8 +52,8 @@ impl From<bool> for ConfirmOption {
 }
 
 pub struct Renderer<'a, W: io::Write> {
+    pub draw_time: DrawTime,
     message: &'a str,
-    draw_time: DrawTime,
     out: W,
 }
 
@@ -115,6 +115,19 @@ impl<W: io::Write> Renderer<'_, W> {
         self.out.flush()
     }
 
+    pub fn draw_password(
+        &mut self,
+        value: &str,
+        placeholder: &str,
+        validator_result: &Result<(), String>,
+        cursor_col: u16,
+    ) -> io::Result<()> {
+        let value = "*".repeat(value.len());
+        let placeholder = "*".repeat(placeholder.len());
+
+        self.draw_text(&value, &placeholder, validator_result, cursor_col)
+    }
+
     pub fn draw_toggle(&mut self, value: bool) -> io::Result<()> {
         if let DrawTime::First = self.draw_time {
             queue!(self.out, Print(self.message), cursor::MoveToNextLine(2))?;
@@ -145,8 +158,8 @@ impl<W: io::Write> Renderer<'_, W> {
 impl Renderer<'_, io::Stdout> {
     pub fn new(message: &str) -> Renderer<'_, io::Stdout> {
         Renderer {
-            message,
             draw_time: DrawTime::First,
+            message,
             out: io::stdout(),
         }
     }
@@ -159,8 +172,8 @@ mod tests {
     impl Renderer<'_, Vec<u8>> {
         fn to_test(message: &str) -> Renderer<'_, Vec<u8>> {
             Renderer {
-                message,
                 draw_time: DrawTime::First,
+                message,
                 out: Vec::new(),
             }
         }
