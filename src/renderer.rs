@@ -147,6 +147,33 @@ impl<W: io::Write> Renderer<'_, W> {
         self.out.flush()
     }
 
+    pub fn draw_select<T: ToString>(&mut self, options: &[T], selected: usize) -> io::Result<()> {
+        if let DrawTime::First = self.draw_time {
+            queue!(self.out, Print(self.message), cursor::MoveToNextLine(1))?;
+            self.update_draw_time();
+        } else {
+            queue!(self.out, cursor::MoveToPreviousLine(options.len() as u16))?;
+        }
+
+        for (i, option) in options.into_iter().enumerate() {
+            let option = option.to_string();
+            let (prefix, option) = if i == selected {
+                ("● ".blue(), option.blue())
+            } else {
+                ("○ ".bright_black(), option.normal())
+            };
+
+            queue!(
+                self.out,
+                Print(prefix),
+                Print(option),
+                cursor::MoveToNextLine(1),
+            )?;
+        }
+
+        self.out.flush()
+    }
+
     pub fn update_draw_time(&mut self) {
         self.draw_time = match self.draw_time {
             DrawTime::First => DrawTime::Update,
@@ -253,5 +280,21 @@ mod tests {
             assert!(out_str.contains(&message));
             assert!(out_str.contains(&expeted_option_str));
         }
+    }
+
+    #[test]
+    fn render_select() {
+        let message = "What's your favorite number?";
+        let mut renderer = Renderer::to_test(message);
+        let options = ["1", "2", "fish"];
+        let selected = 2;
+
+        renderer.draw_select(&options, selected).unwrap();
+
+        let out_str = String::from_utf8(renderer.out).unwrap();
+        assert!(out_str.contains(&message));
+        assert!(out_str.contains("1"));
+        assert!(out_str.contains("2"));
+        assert!(out_str.contains("fish"));
     }
 }
