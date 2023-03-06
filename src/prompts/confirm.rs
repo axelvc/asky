@@ -2,7 +2,7 @@ use std::io;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::{
+use crate::utils::{
     key_listener::{self, KeyHandler},
     renderer::Renderer,
 };

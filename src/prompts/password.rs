@@ -1,10 +1,11 @@
 use std::io;
 
-use crate::{
+use crate::utils::{
     key_listener::{self, KeyHandler},
-    renderer::DrawTime,
-    text::Text,
+    renderer::{DrawTime, Renderer},
 };
+
+use super::text::Text;
 
 pub struct Password<'a> {
     hidden: bool,
@@ -54,7 +55,7 @@ impl KeyHandler for Password<'_> {
         self.handler.submit()
     }
 
-    fn draw<W: io::Write>(&self, renderer: &mut crate::renderer::Renderer<W>) -> io::Result<()> {
+    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         if self.hidden && renderer.draw_time == DrawTime::Update {
             return Ok(());
         }

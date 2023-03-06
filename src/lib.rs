@@ -1,7 +1,3 @@
-mod key_listener;
-mod renderer;
+mod utils;
 
-pub mod confirm;
-pub mod password;
-pub mod select;
-pub mod text;
+pub mod prompts;

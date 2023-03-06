@@ -5,7 +5,7 @@ use crossterm::{
     terminal,
 };
 
-use crate::renderer::Renderer;
+use super::renderer::Renderer;
 
 pub trait KeyHandler {
     fn submit(&self) -> bool;
