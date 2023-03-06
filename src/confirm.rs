@@ -1,42 +1,45 @@
 use std::io;
 
-use crossterm::{
-    event::{read, Event, KeyCode, KeyEvent},
-    terminal,
+use crossterm::event::{KeyCode, KeyEvent};
+
+use crate::{
+    key_listener::{self, KeyHandler},
+    renderer::Renderer,
 };
 
-use crate::{renderer::Renderer, utils};
-
-pub struct Confirm<'a, W: io::Write> {
+pub struct Confirm<'a> {
+    message: &'a str,
     submit: bool,
     value: bool,
-    renderer: Renderer<'a, W>,
 }
 
-impl<W: io::Write> Confirm<'_, W> {
+impl Confirm<'_> {
+    pub fn new(message: &str) -> Confirm {
+        Confirm {
+            message,
+            value: false,
+            submit: false,
+        }
+    }
+
     pub fn initial(&mut self, value: bool) -> &mut Self {
         self.value = value;
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<bool> {
-        terminal::enable_raw_mode()?;
-        self.renderer.draw_toggle(self.value)?;
-
-        while !self.submit {
-            if let Event::Key(key) = read()? {
-                if utils::is_abort(key) {
-                    utils::abort()?;
-                }
-
-                self.handle_key(key);
-                self.renderer.draw_toggle(self.value)?;
-            }
-        }
-
-        terminal::disable_raw_mode()?;
-
+        key_listener::listen(self.message, self)?;
         Ok(self.value)
+    }
+}
+
+impl KeyHandler for Confirm<'_> {
+    fn submit(&self) -> bool {
+        self.submit
+    }
+
+    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
+        renderer.draw_toggle(self.value)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
@@ -64,16 +67,6 @@ impl<W: io::Write> Confirm<'_, W> {
         }
 
         self.submit = submit
-    }
-}
-
-impl Confirm<'_, io::Stdout> {
-    pub fn new(message: &str) -> Confirm<io::Stdout> {
-        Confirm {
-            value: false,
-            submit: false,
-            renderer: Renderer::new(message),
-        }
     }
 }
 

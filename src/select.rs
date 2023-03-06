@@ -1,34 +1,42 @@
 use std::{fmt::Display, io};
 
-use crossterm::{
-    event::{read, Event, KeyCode, KeyEvent},
-    terminal,
-};
+use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::{renderer::Renderer, utils};
+use crate::{
+    key_listener::{self, KeyHandler},
+    renderer::Renderer,
+};
 
 enum Direction {
     Up,
     Down,
 }
 
-pub struct Select<'a, T, W>
+pub struct Select<'a, T>
 where
     T: Display + Copy,
-    W: io::Write,
 {
+    message: &'a str,
     options: &'a [T],
     selected: usize,
-    renderer: Renderer<'a, W>,
     is_loop: bool,
     submit: bool,
 }
 
-impl<'a, T, W> Select<'a, T, W>
+impl<'a, T> Select<'a, T>
 where
     T: Display + Copy,
-    W: io::Write,
 {
+    pub fn new(message: &'a str, options: &'a [T]) -> Select<'a, T> {
+        Select {
+            message,
+            options,
+            selected: 0,
+            submit: false,
+            is_loop: false,
+        }
+    }
+
     pub fn initial(&mut self, selected: usize) -> &mut Self {
         self.selected = selected;
         self
@@ -40,37 +48,8 @@ where
     }
 
     pub fn prompt(&mut self) -> io::Result<T> {
-        terminal::enable_raw_mode()?;
-        self.renderer.draw_select(&self.options, self.selected)?;
-
-        while !self.submit {
-            if let Event::Key(key) = read()? {
-                if utils::is_abort(key) {
-                    utils::abort()?;
-                }
-
-                self.handle_key(key);
-                self.renderer.draw_select(&self.options, self.selected)?;
-            }
-        }
-
-        terminal::disable_raw_mode()?;
-
+        key_listener::listen(self.message, self)?;
         Ok(self.options[self.selected])
-    }
-
-    fn handle_key(&mut self, key: KeyEvent) {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.update_value(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.update_value(Direction::Down),
-            _ => (),
-        }
-
-        self.submit = submit
     }
 
     fn update_value(&mut self, direction: Direction) {
@@ -95,18 +74,31 @@ where
     }
 }
 
-impl<'a, T> Select<'a, T, io::Stdout>
+impl<'a, T> KeyHandler for Select<'a, T>
 where
     T: Display + Copy,
 {
-    pub fn new(message: &'a str, options: &'a [T]) -> Select<'a, T, io::Stdout> {
-        Select {
-            options,
-            selected: 0,
-            renderer: Renderer::new(message),
-            submit: false,
-            is_loop: false,
+    fn submit(&self) -> bool {
+        self.submit
+    }
+
+    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
+        renderer.draw_select(&self.options, self.selected)
+    }
+
+    fn handle_key(&mut self, key: KeyEvent) {
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            // update value
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.update_value(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.update_value(Direction::Down),
+            _ => (),
         }
+
+        self.submit = submit
     }
 }
 
