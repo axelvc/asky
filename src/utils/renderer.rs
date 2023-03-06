@@ -10,48 +10,6 @@ pub enum DrawTime {
     Last,
 }
 
-pub enum ConfirmOption {
-    Yes,
-    No,
-}
-
-impl ConfirmOption {
-    fn to_string(&self) -> String {
-        const YES: &str = " Yes ";
-        const NO: &str = " No ";
-
-        let (yes, no) = match self {
-            ConfirmOption::Yes => (
-                ConfirmOption::focused_colors(YES),
-                ConfirmOption::unfocused_colors(NO),
-            ),
-            ConfirmOption::No => (
-                ConfirmOption::unfocused_colors(YES),
-                ConfirmOption::focused_colors(NO),
-            ),
-        };
-
-        format!("{yes}  {no}")
-    }
-
-    fn focused_colors(s: &str) -> String {
-        s.black().on_blue().to_string()
-    }
-
-    fn unfocused_colors(s: &str) -> String {
-        s.white().on_bright_black().to_string()
-    }
-}
-
-impl From<bool> for ConfirmOption {
-    fn from(value: bool) -> Self {
-        match value {
-            true => ConfirmOption::Yes,
-            false => ConfirmOption::No,
-        }
-    }
-}
-
 pub struct Renderer<'a, W: io::Write> {
     pub draw_time: DrawTime,
     message: &'a str,
@@ -133,19 +91,17 @@ impl<W: io::Write> Renderer<'_, W> {
         self.draw_text("", "", validator_result, 0)
     }
 
-    pub fn draw_toggle(&mut self, value: bool) -> io::Result<()> {
+    pub fn draw_toggle(&mut self, options: (&str, &str), active: bool) -> io::Result<()> {
         if let DrawTime::First = self.draw_time {
             queue!(self.out, Print(self.message), cursor::MoveToNextLine(2))?;
             self.update_draw_time();
         }
 
-        let options = ConfirmOption::from(value);
-
         queue!(
             self.out,
             cursor::MoveToPreviousLine(1),
             cursor::MoveToColumn(0),
-            Print(options.to_string()),
+            Print(toggle_string(options, active)),
             cursor::MoveToNextLine(1),
         )?;
 
@@ -195,6 +151,25 @@ impl Renderer<'_, io::Stdout> {
             out: io::stdout(),
         }
     }
+}
+
+fn toggle_string(options: (&str, &str), active: bool) -> String {
+    let (left, right) = (format!(" {} ", options.0), format!(" {} ", options.1));
+
+    let (left, right) = match active {
+        false => (toggle_focused(&left), toggle_unfocused(&right)),
+        true => (toggle_unfocused(&left), toggle_focused(&right)),
+    };
+
+    format!("{}  {}", left, right)
+}
+
+fn toggle_focused(s: &str) -> String {
+    s.black().on_blue().to_string()
+}
+
+fn toggle_unfocused(s: &str) -> String {
+    s.white().on_bright_black().to_string()
 }
 
 #[cfg(test)]
@@ -273,13 +248,14 @@ mod tests {
     #[test]
     fn render_toggle() {
         let message = "Do you like pizza?";
-        let cases = [true, false];
+        let cases = [false, true];
 
-        for case in cases {
+        for active in cases {
             let mut renderer = Renderer::to_test(message);
-            let expeted_option_str = ConfirmOption::from(case).to_string();
+            let options = ("foo", "bar");
+            let expeted_option_str = toggle_string(options, active);
 
-            renderer.draw_toggle(case).unwrap();
+            renderer.draw_toggle(options, active).unwrap();
 
             let out_str = String::from_utf8(renderer.out).unwrap();
             assert!(out_str.contains(&message));

@@ -7,99 +7,58 @@ use crate::utils::{
     renderer::Renderer,
 };
 
+use super::toggle::Toggle;
+
 pub struct Confirm<'a> {
-    message: &'a str,
-    submit: bool,
-    value: bool,
+    handler: Toggle<'a>,
 }
 
 impl Confirm<'_> {
     pub fn new(message: &str) -> Confirm {
         Confirm {
-            message,
-            value: false,
-            submit: false,
+            handler: Toggle::new(message, ("No", "Yes")),
         }
     }
 
     pub fn initial(&mut self, value: bool) -> &mut Self {
-        self.value = value;
+        self.handler.initial(value);
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<bool> {
-        key_listener::listen(self.message, self)?;
-        Ok(self.value)
+        key_listener::listen(self.handler.message, self)?;
+        Ok(self.handler.active)
+    }
+
+    fn update_and_submit(&mut self, active: bool) {
+        self.handler.active = active;
+        self.handler.submit = true;
     }
 }
 
 impl KeyHandler for Confirm<'_> {
     fn submit(&self) -> bool {
-        self.submit
+        self.handler.submit()
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.draw_toggle(self.value)
+        self.handler.draw(renderer)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
-        let mut submit = false;
-
         match key.code {
-            // yes
-            KeyCode::Char('y' | 'Y') => {
-                self.value = true;
-                submit = true
-            }
-            // no
-            KeyCode::Char('n' | 'N') => {
-                self.value = false;
-                submit = true
-            }
-            // focused/initial
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            // focus yes
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.value = true,
-            // focus no
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.value = false,
-
-            _ => (),
+            // submit yes
+            KeyCode::Char('y' | 'Y') => self.update_and_submit(true),
+            // submit no
+            KeyCode::Char('n' | 'N') => self.update_and_submit(false),
+            _ => self.handler.handle_key(key),
         }
-
-        self.submit = submit
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn set_initial_value() {
-        let mut prompt = Confirm::new("");
-
-        assert!(!prompt.value);
-        prompt.initial(true);
-        assert!(prompt.value);
-    }
-
-    #[test]
-    fn sumit_focused() {
-        let events = [KeyCode::Enter, KeyCode::Backspace];
-
-        for event in events {
-            let mut prompt = Confirm::new("");
-            let simulated_key = KeyEvent::from(event);
-
-            prompt.initial(true);
-
-            assert_eq!(prompt.submit, false);
-
-            prompt.handle_key(simulated_key);
-            assert_eq!(prompt.value, true);
-            assert_eq!(prompt.submit, true);
-        }
-    }
 
     #[test]
     fn update_and_submit() {
@@ -110,35 +69,10 @@ mod tests {
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
             prompt.initial(!expected);
-
-            assert_eq!(prompt.submit, false);
-
-            prompt.handle_key(simulated_key);
-            assert_eq!(prompt.value, expected);
-            assert_eq!(prompt.submit, true);
-        }
-    }
-
-    #[test]
-    fn update_focused() {
-        let events = [
-            (KeyCode::Left, true),
-            (KeyCode::Char('h'), true),
-            (KeyCode::Char('H'), true),
-            (KeyCode::Right, false),
-            (KeyCode::Char('l'), false),
-            (KeyCode::Char('L'), false),
-        ];
-
-        for (key, expected) in events {
-            let mut prompt = Confirm::new("");
-            let simulated_key = KeyEvent::from(key);
-
-            prompt.initial(!expected);
             prompt.handle_key(simulated_key);
 
-            assert_eq!(prompt.value, expected);
-            assert_eq!(prompt.submit, false);
+            assert_eq!(prompt.handler.active, expected);
+            assert_eq!(prompt.handler.submit, true);
         }
     }
 }
