@@ -60,12 +60,16 @@ impl KeyHandler for Password<'_> {
             return Ok(());
         }
 
-        renderer.draw_password(
-            &self.handler.value,
-            &self.handler.default_value,
-            &self.handler.validator_result,
-            self.handler.cursor_col as u16,
-        )
+        if self.hidden {
+            renderer.draw_hidden(&self.handler.validator_result)
+        } else {
+            renderer.draw_password(
+                &self.handler.value,
+                &self.handler.default_value,
+                &self.handler.validator_result,
+                self.handler.cursor_col as u16,
+            )
+        }
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) {

@@ -129,6 +129,10 @@ impl<W: io::Write> Renderer<'_, W> {
         self.draw_text(&value, &placeholder, validator_result, cursor_col)
     }
 
+    pub fn draw_hidden(&mut self, validator_result: &Result<(), String>) -> io::Result<()> {
+        self.draw_text("", "", validator_result, 0)
+    }
+
     pub fn draw_toggle(&mut self, value: bool) -> io::Result<()> {
         if let DrawTime::First = self.draw_time {
             queue!(self.out, Print(self.message), cursor::MoveToNextLine(2))?;
