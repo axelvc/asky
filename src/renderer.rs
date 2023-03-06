@@ -3,6 +3,7 @@ use std::io;
 use colored::Colorize;
 use crossterm::{cursor, queue, style::Print, terminal};
 
+#[derive(PartialEq)]
 pub enum DrawTime {
     First,
     Update,

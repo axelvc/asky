@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     key_listener::{self, KeyHandler},
-    renderer::{DrawTime, Renderer},
+    renderer::Renderer,
 };
 
 enum Position {
@@ -12,28 +12,20 @@ enum Position {
     Right,
 }
 
-enum LinePromptKind {
-    Text,
-    Password,
-    Hidden,
+pub struct Text<'a> {
+    pub(super) message: &'a str,
+    pub(super) value: String,
+    pub(super) default_value: String,
+    pub(super) validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
+    pub(super) validator_result: Result<(), String>,
+    pub(super) cursor_col: usize,
+    pub(super) submit: bool,
 }
 
-pub struct Line<'a> {
-    message: &'a str,
-    kind: LinePromptKind,
-    value: String,
-    default_value: String,
-    validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
-    validator_result: Result<(), String>,
-    cursor_col: usize,
-    submit: bool,
-}
-
-impl Line<'_> {
-    fn new(message: &str, kind: LinePromptKind) -> Line<'_> {
-        Line {
+impl Text<'_> {
+    pub fn new(message: &str) -> Text<'_> {
+        Text {
             message,
-            kind,
             value: String::new(),
             default_value: String::new(),
             cursor_col: 0,
@@ -41,18 +33,6 @@ impl Line<'_> {
             validator_result: Ok(()),
             submit: false,
         }
-    }
-
-    pub fn new_text(message: &str) -> Line<'_> {
-        Line::new(message, LinePromptKind::Text)
-    }
-
-    pub fn new_password(message: &str) -> Line<'_> {
-        Line::new(message, LinePromptKind::Password)
-    }
-
-    pub fn new_hidden(message: &str) -> Line<'_> {
-        Line::new(message, LinePromptKind::Hidden)
     }
 
     pub fn default(&mut self, value: &str) -> &mut Self {
@@ -79,7 +59,7 @@ impl Line<'_> {
         Ok(self.get_value().to_owned())
     }
 
-    fn get_value(&self) -> &String {
+    pub(super) fn get_value(&self) -> &String {
         if self.value.is_empty() {
             &self.default_value
         } else {
@@ -123,35 +103,18 @@ impl Line<'_> {
     }
 }
 
-impl KeyHandler for Line<'_> {
+impl KeyHandler for Text<'_> {
     fn submit(&self) -> bool {
         self.submit
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        match self.kind {
-            LinePromptKind::Text => renderer.draw_text(
-                &self.value,
-                &self.default_value,
-                &self.validator_result,
-                self.cursor_col as u16,
-            ),
-            LinePromptKind::Password => renderer.draw_password(
-                &self.value,
-                &self.default_value,
-                &self.validator_result,
-                self.cursor_col as u16,
-            ),
-            LinePromptKind::Hidden => match renderer.draw_time {
-                DrawTime::First => renderer.draw_password(
-                    &self.value,
-                    &self.default_value,
-                    &self.validator_result,
-                    self.cursor_col as u16,
-                ),
-                _ => Ok(()),
-            },
-        }
+        renderer.draw_text(
+            &self.value,
+            &self.default_value,
+            &self.validator_result,
+            self.cursor_col as u16,
+        )
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
@@ -181,7 +144,7 @@ mod tests {
 
     #[test]
     fn set_default_value() {
-        let mut text = Line::new_text("foo");
+        let mut text = Text::new("foo");
         text.default("bar");
 
         assert_eq!(text.default_value, "bar");
@@ -189,7 +152,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Line::new_text("");
+        let mut prompt = Text::new("");
 
         prompt.initial("bar");
         assert_eq!(prompt.value, "bar");
@@ -198,7 +161,7 @@ mod tests {
 
     #[test]
     fn update_value() {
-        let mut prompt = Line::new_text("");
+        let mut prompt = Text::new("");
 
         // simulate typing
         let text = "foo";
@@ -224,7 +187,7 @@ mod tests {
 
     #[test]
     fn update_cursor_position() {
-        let mut prompt = Line::new_text("");
+        let mut prompt = Text::new("");
         prompt.value = "foo".to_string();
         prompt.cursor_col = 2;
 
@@ -239,7 +202,7 @@ mod tests {
 
     #[test]
     fn submit_value() {
-        let mut prompt = Line::new_text("");
+        let mut prompt = Text::new("");
         let err_str = "Please enter an input";
 
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
