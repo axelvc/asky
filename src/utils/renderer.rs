@@ -3,6 +3,8 @@ use std::io;
 use colored::Colorize;
 use crossterm::{cursor, queue, style::Print, terminal};
 
+use crate::prompts::multi_select::SelectOption;
+
 #[derive(PartialEq)]
 pub enum DrawTime {
     First,
@@ -123,6 +125,42 @@ impl<W: io::Write> Renderer<'_, W> {
             } else {
                 ("○ ".bright_black(), option.normal())
             };
+
+            queue!(
+                self.out,
+                Print(prefix),
+                Print(option),
+                cursor::MoveToNextLine(1),
+            )?;
+        }
+
+        self.out.flush()
+    }
+
+    pub fn draw_multi_select<T: ToString + Copy>(
+        &mut self,
+        options: &Vec<SelectOption<T>>,
+        focused: usize,
+    ) -> io::Result<()> {
+        if let DrawTime::First = self.draw_time {
+            queue!(self.out, Print(self.message), cursor::MoveToNextLine(1))?;
+            self.update_draw_time();
+        } else {
+            queue!(self.out, cursor::MoveToPreviousLine(options.len() as u16))?;
+        }
+
+        for (i, option) in options.into_iter().enumerate() {
+            let str = option.value.to_string();
+            let (mut prefix, mut option) = if option.selected {
+                ("● ".normal(), str.normal())
+            } else {
+                ("○ ".bright_black(), str.normal())
+            };
+
+            if i == focused {
+                prefix = prefix.blue();
+                option = option.blue();
+            }
 
             queue!(
                 self.out,
