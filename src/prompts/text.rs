@@ -67,7 +67,7 @@ impl Text<'_> {
         }
     }
 
-    fn update_value(&mut self, char: char) {
+    pub(super) fn update_value(&mut self, char: char) {
         self.value.insert(self.cursor_col, char);
         self.cursor_col += 1;
     }
