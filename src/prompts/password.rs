@@ -44,7 +44,7 @@ impl Password<'_> {
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self.handler.message, self)?;
+        key_listener::listen(self)?;
 
         Ok(self.handler.get_value().to_owned())
     }
@@ -60,16 +60,7 @@ impl KeyHandler for Password<'_> {
             return Ok(());
         }
 
-        if self.hidden {
-            renderer.draw_hidden(&self.handler.validator_result)
-        } else {
-            renderer.draw_password(
-                &self.handler.value,
-                &self.handler.default_value,
-                &self.handler.validator_result,
-                self.handler.cursor_col as u16,
-            )
-        }
+        renderer.password(&self.handler, self.hidden)
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) {

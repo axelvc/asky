@@ -39,7 +39,7 @@ impl Number<'_> {
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self.handler.message, self)?;
+        key_listener::listen(self)?;
 
         Ok(self.handler.value.to_owned())
     }

@@ -31,11 +31,11 @@ impl<T: ToString + Copy> SelectOption<T> {
 }
 
 pub struct MultiSelect<'a, T: ToString + Copy> {
-    message: &'a str,
-    options: Vec<SelectOption<T>>,
-    focused: usize,
-    is_loop: bool,
-    submit: bool,
+    pub(crate) message: &'a str,
+    pub(crate) options: Vec<SelectOption<T>>,
+    pub(crate) focused: usize,
+    pub(crate) is_loop: bool,
+    pub(crate) submit: bool,
 }
 
 impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
@@ -68,7 +68,7 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
     }
 
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
-        key_listener::listen(self.message, self)?;
+        key_listener::listen(self)?;
 
         Ok(self
             .options
@@ -110,7 +110,7 @@ impl<'a, T: ToString + Copy> KeyHandler for MultiSelect<'a, T> {
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.draw_multi_select(&self.options, self.focused)
+        renderer.multi_select(self)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {

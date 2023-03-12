@@ -8,10 +8,10 @@ use crate::utils::{
 };
 
 pub struct Toggle<'a> {
-    pub(super) message: &'a str,
-    pub(super) options: (&'a str, &'a str),
-    pub(super) submit: bool,
-    pub(super) active: bool,
+    pub(crate) message: &'a str,
+    pub(crate) options: (&'a str, &'a str),
+    pub(crate) submit: bool,
+    pub(crate) active: bool,
 }
 
 impl<'a> Toggle<'a> {
@@ -30,7 +30,7 @@ impl<'a> Toggle<'a> {
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self.message, self)?;
+        key_listener::listen(self)?;
 
         Ok(String::from(self.get_value()))
     }
@@ -50,7 +50,7 @@ impl KeyHandler for Toggle<'_> {
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.draw_toggle(self.options, self.active)
+        renderer.toggle(self)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {

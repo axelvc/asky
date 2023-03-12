@@ -13,8 +13,8 @@ pub trait KeyHandler {
     fn handle_key(&mut self, key: KeyEvent);
 }
 
-pub fn listen(message: &str, handler: &mut impl KeyHandler) -> io::Result<()> {
-    let mut renderer = Renderer::new(message);
+pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
+    let mut renderer = Renderer::new();
 
     terminal::enable_raw_mode()?;
     handler.draw(&mut renderer)?;

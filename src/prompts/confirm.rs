@@ -26,7 +26,7 @@ impl Confirm<'_> {
     }
 
     pub fn prompt(&mut self) -> io::Result<bool> {
-        key_listener::listen(self.handler.message, self)?;
+        key_listener::listen(self)?;
         Ok(self.handler.active)
     }
 

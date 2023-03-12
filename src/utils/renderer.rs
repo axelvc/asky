@@ -3,7 +3,7 @@ use std::io;
 use colored::Colorize;
 use crossterm::{cursor, queue, style::Print, terminal};
 
-use crate::prompts::multi_select::SelectOption;
+use crate::prompts::{multi_select::MultiSelect, select::Select, text::Text, toggle::Toggle};
 
 #[derive(PartialEq)]
 pub enum DrawTime {
@@ -12,23 +12,137 @@ pub enum DrawTime {
     Last,
 }
 
-pub struct Renderer<'a, W: io::Write> {
+pub struct Renderer<W: io::Write> {
     pub draw_time: DrawTime,
-    message: &'a str,
     out: W,
 }
 
-impl<W: io::Write> Renderer<'_, W> {
-    pub fn draw_text(
+impl<W: io::Write> Renderer<W> {
+    pub fn text(&mut self, state: &Text) -> io::Result<()> {
+        self.draw_line(
+            state.message,
+            &state.value,
+            &state.default_value,
+            &state.validator_result,
+            state.cursor_col,
+        )
+    }
+
+    pub fn password(&mut self, state: &Text, is_hidden: bool) -> io::Result<()> {
+        let (value, cursor_col) = match is_hidden {
+            true => (String::new(), 0),
+            false => ("*".repeat(state.value.len()), state.cursor_col),
+        };
+
+        self.draw_line(
+            state.message,
+            &value,
+            &state.default_value,
+            &state.validator_result,
+            cursor_col,
+        )
+    }
+
+    pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {
+        if let DrawTime::First = self.draw_time {
+            queue!(self.out, Print(state.message), cursor::MoveToNextLine(2))?;
+            self.update_draw_time();
+        }
+
+        queue!(
+            self.out,
+            cursor::MoveToPreviousLine(1),
+            cursor::MoveToColumn(0),
+            Print(toggle_string(state.options, state.active)),
+            cursor::MoveToNextLine(1),
+        )?;
+
+        self.out.flush()
+    }
+
+    pub fn select<T: ToString + Copy>(&mut self, state: &Select<T>) -> io::Result<()> {
+        if let DrawTime::First = self.draw_time {
+            queue!(self.out, Print(state.message), cursor::MoveToNextLine(1))?;
+            self.update_draw_time();
+        } else {
+            queue!(
+                self.out,
+                cursor::MoveToPreviousLine(state.options.len() as u16)
+            )?;
+        }
+
+        for (i, option) in state.options.iter().enumerate() {
+            let option = option.to_string();
+            let (prefix, option) = if i == state.selected {
+                ("● ".blue(), option.blue())
+            } else {
+                ("○ ".bright_black(), option.normal())
+            };
+
+            queue!(
+                self.out,
+                Print(prefix),
+                Print(option),
+                cursor::MoveToNextLine(1),
+            )?;
+        }
+
+        self.out.flush()
+    }
+
+    pub fn multi_select<T: ToString + Copy>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
+        if let DrawTime::First = self.draw_time {
+            queue!(self.out, Print(state.message), cursor::MoveToNextLine(1))?;
+            self.update_draw_time();
+        } else {
+            queue!(
+                self.out,
+                cursor::MoveToPreviousLine(state.options.len() as u16)
+            )?;
+        }
+
+        for (i, option) in state.options.iter().enumerate() {
+            let str = option.value.to_string();
+            let (mut prefix, mut option) = if option.selected {
+                ("● ".normal(), str.normal())
+            } else {
+                ("○ ".bright_black(), str.normal())
+            };
+
+            if i == state.focused {
+                prefix = prefix.blue();
+                option = option.blue();
+            }
+
+            queue!(
+                self.out,
+                Print(prefix),
+                Print(option),
+                cursor::MoveToNextLine(1),
+            )?;
+        }
+
+        self.out.flush()
+    }
+
+    pub fn update_draw_time(&mut self) {
+        self.draw_time = match self.draw_time {
+            DrawTime::First => DrawTime::Update,
+            _ => DrawTime::Last,
+        }
+    }
+
+    fn draw_line(
         &mut self,
+        message: &str,
         value: &str,
         default_value: &str,
         validator_result: &Result<(), String>,
-        cursor_col: u16,
+        cursor_col: usize,
     ) -> io::Result<()> {
         // print message/question
         if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(&self.message), cursor::MoveToNextLine(1))?;
+            queue!(self.out, Print(message), cursor::MoveToNextLine(1))?;
             self.update_draw_time()
         }
 
@@ -75,117 +189,12 @@ impl<W: io::Write> Renderer<'_, W> {
 
         self.out.flush()
     }
-
-    pub fn draw_password(
-        &mut self,
-        value: &str,
-        placeholder: &str,
-        validator_result: &Result<(), String>,
-        cursor_col: u16,
-    ) -> io::Result<()> {
-        let value = "*".repeat(value.len());
-        let placeholder = "*".repeat(placeholder.len());
-
-        self.draw_text(&value, &placeholder, validator_result, cursor_col)
-    }
-
-    pub fn draw_hidden(&mut self, validator_result: &Result<(), String>) -> io::Result<()> {
-        self.draw_text("", "", validator_result, 0)
-    }
-
-    pub fn draw_toggle(&mut self, options: (&str, &str), active: bool) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(self.message), cursor::MoveToNextLine(2))?;
-            self.update_draw_time();
-        }
-
-        queue!(
-            self.out,
-            cursor::MoveToPreviousLine(1),
-            cursor::MoveToColumn(0),
-            Print(toggle_string(options, active)),
-            cursor::MoveToNextLine(1),
-        )?;
-
-        self.out.flush()
-    }
-
-    pub fn draw_select<T: ToString>(&mut self, options: &[T], selected: usize) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(self.message), cursor::MoveToNextLine(1))?;
-            self.update_draw_time();
-        } else {
-            queue!(self.out, cursor::MoveToPreviousLine(options.len() as u16))?;
-        }
-
-        for (i, option) in options.into_iter().enumerate() {
-            let option = option.to_string();
-            let (prefix, option) = if i == selected {
-                ("● ".blue(), option.blue())
-            } else {
-                ("○ ".bright_black(), option.normal())
-            };
-
-            queue!(
-                self.out,
-                Print(prefix),
-                Print(option),
-                cursor::MoveToNextLine(1),
-            )?;
-        }
-
-        self.out.flush()
-    }
-
-    pub fn draw_multi_select<T: ToString + Copy>(
-        &mut self,
-        options: &Vec<SelectOption<T>>,
-        focused: usize,
-    ) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(self.message), cursor::MoveToNextLine(1))?;
-            self.update_draw_time();
-        } else {
-            queue!(self.out, cursor::MoveToPreviousLine(options.len() as u16))?;
-        }
-
-        for (i, option) in options.into_iter().enumerate() {
-            let str = option.value.to_string();
-            let (mut prefix, mut option) = if option.selected {
-                ("● ".normal(), str.normal())
-            } else {
-                ("○ ".bright_black(), str.normal())
-            };
-
-            if i == focused {
-                prefix = prefix.blue();
-                option = option.blue();
-            }
-
-            queue!(
-                self.out,
-                Print(prefix),
-                Print(option),
-                cursor::MoveToNextLine(1),
-            )?;
-        }
-
-        self.out.flush()
-    }
-
-    pub fn update_draw_time(&mut self) {
-        self.draw_time = match self.draw_time {
-            DrawTime::First => DrawTime::Update,
-            _ => DrawTime::Last,
-        }
-    }
 }
 
-impl Renderer<'_, io::Stdout> {
-    pub fn new(message: &str) -> Renderer<'_, io::Stdout> {
+impl Renderer<io::Stdout> {
+    pub fn new() -> Renderer<io::Stdout> {
         Renderer {
             draw_time: DrawTime::First,
-            message,
             out: io::stdout(),
         }
     }
@@ -214,11 +223,10 @@ fn toggle_unfocused(s: &str) -> String {
 mod tests {
     use super::*;
 
-    impl Renderer<'_, Vec<u8>> {
-        fn to_test(message: &str) -> Renderer<'_, Vec<u8>> {
+    impl Renderer<Vec<u8>> {
+        fn to_test() -> Renderer<Vec<u8>> {
             Renderer {
                 draw_time: DrawTime::First,
-                message,
                 out: Vec::new(),
             }
         }
@@ -226,77 +234,89 @@ mod tests {
 
     #[test]
     fn render_text_with_value() {
-        let message = "What's your name?";
-        let mut renderer = Renderer::to_test(message);
-        let value = "Leopoldo";
-        let default_value = "Goofy";
-        let validator_result = Ok(());
-        let cursor_col = 0;
+        let state = Text {
+            message: "What's your name?",
+            value: "Leopoldo".to_string(),
+            default_value: "Goofy".to_string(),
+            validator: None,
+            validator_result: Ok(()),
+            cursor_col: 0,
+            submit: false,
+        };
 
-        renderer
-            .draw_text(value, default_value, &validator_result, cursor_col)
-            .unwrap();
+        let mut renderer = Renderer::to_test();
+        renderer.text(&state).unwrap();
 
         let out_str = String::from_utf8(renderer.out).unwrap();
 
-        assert!(out_str.contains(message));
-        assert!(out_str.contains(value));
-        assert!(!out_str.contains(default_value));
+        assert!(out_str.contains(state.message));
+        assert!(out_str.contains(&state.value));
+        assert!(!out_str.contains(&state.default_value));
     }
 
     #[test]
     fn render_text_with_default_value() {
-        let message = "What's your name?";
-        let mut renderer = Renderer::to_test(message);
-        let value = "";
-        let default_value = "Goofy";
-        let validator_result = Ok(());
-        let cursor_col = 0;
+        let state = Text {
+            message: "What's your name?",
+            value: String::new(),
+            default_value: "Goofy".to_string(),
+            validator: None,
+            validator_result: Ok(()),
+            cursor_col: 0,
+            submit: false,
+        };
 
-        renderer
-            .draw_text(value, default_value, &validator_result, cursor_col)
-            .unwrap();
+        let mut renderer = Renderer::to_test();
+
+        renderer.text(&state).unwrap();
 
         let out_str = String::from_utf8(renderer.out).unwrap();
 
-        assert!(out_str.contains(message));
-        assert!(out_str.contains(default_value));
+        assert!(out_str.contains(state.message));
+        assert!(out_str.contains(&state.default_value));
     }
 
     #[test]
     fn render_text_with_error() {
-        let message = "What's your name?";
-        let mut renderer = Renderer::to_test(message);
-        let value = "Leopoldo";
-        let default_value = "";
-        let validator_result = Err("Invalid name".to_string());
-        let cursor_col = 0;
+        let state = Text {
+            message: "What's your name?",
+            value: "Leopoldo".to_string(),
+            default_value: String::new(),
+            validator: None,
+            validator_result: Err("Invalid name".to_string()),
+            cursor_col: 0,
+            submit: false,
+        };
 
-        renderer
-            .draw_text(value, default_value, &validator_result, cursor_col)
-            .unwrap();
+        let mut renderer = Renderer::to_test();
+        renderer.text(&state).unwrap();
 
         let out_str = String::from_utf8(renderer.out).unwrap();
 
-        assert!(out_str.contains(message));
-        assert!(out_str.contains(value));
-        assert!(out_str.contains(&validator_result.unwrap_err()));
+        assert!(out_str.contains(state.message));
+        assert!(out_str.contains(&state.value));
+        assert!(out_str.contains(&state.validator_result.unwrap_err()));
     }
 
     #[test]
     fn render_toggle() {
-        let message = "Do you like pizza?";
         let cases = [false, true];
 
         for active in cases {
-            let mut renderer = Renderer::to_test(message);
-            let options = ("foo", "bar");
-            let expeted_option_str = toggle_string(options, active);
+            let state = &Toggle {
+                message: "Do you like pizza?",
+                options: ("foo", "bar"),
+                active,
+                submit: false,
+            };
 
-            renderer.draw_toggle(options, active).unwrap();
+            let mut renderer = Renderer::to_test();
+
+            renderer.toggle(&state).unwrap();
 
             let out_str = String::from_utf8(renderer.out).unwrap();
-            assert!(out_str.contains(&message));
+            let expeted_option_str = toggle_string(state.options, active);
+            assert!(out_str.contains(&state.message));
             assert!(out_str.contains(&expeted_option_str));
         }
     }
@@ -304,11 +324,16 @@ mod tests {
     #[test]
     fn render_select() {
         let message = "What's your favorite number?";
-        let mut renderer = Renderer::to_test(message);
-        let options = ["1", "2", "fish"];
-        let selected = 2;
+        let mut renderer = Renderer::to_test();
+        let state = Select {
+            message,
+            options: &["1", "2", "fish"],
+            selected: 2,
+            is_loop: false,
+            submit: false,
+        };
 
-        renderer.draw_select(&options, selected).unwrap();
+        renderer.select(&state).unwrap();
 
         let out_str = String::from_utf8(renderer.out).unwrap();
         assert!(out_str.contains(&message));

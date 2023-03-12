@@ -14,13 +14,13 @@ enum Direction {
 
 pub struct Select<'a, T>
 where
-    T: Display + Copy,
+    T: ToString + Copy,
 {
-    message: &'a str,
-    options: &'a [T],
-    selected: usize,
-    is_loop: bool,
-    submit: bool,
+    pub(crate) message: &'a str,
+    pub(crate) options: &'a [T],
+    pub(crate) selected: usize,
+    pub(crate) is_loop: bool,
+    pub(crate) submit: bool,
 }
 
 impl<'a, T> Select<'a, T>
@@ -48,7 +48,7 @@ where
     }
 
     pub fn prompt(&mut self) -> io::Result<T> {
-        key_listener::listen(self.message, self)?;
+        key_listener::listen(self)?;
         Ok(self.options[self.selected])
     }
 
@@ -83,7 +83,7 @@ where
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.draw_select(&self.options, self.selected)
+        renderer.select(self)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {

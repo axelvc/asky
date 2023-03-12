@@ -13,13 +13,13 @@ enum Position {
 }
 
 pub struct Text<'a> {
-    pub(super) message: &'a str,
-    pub(super) value: String,
-    pub(super) default_value: String,
-    pub(super) validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
-    pub(super) validator_result: Result<(), String>,
-    pub(super) cursor_col: usize,
-    pub(super) submit: bool,
+    pub(crate) message: &'a str,
+    pub(crate) value: String,
+    pub(crate) default_value: String,
+    pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
+    pub(crate) validator_result: Result<(), String>,
+    pub(crate) cursor_col: usize,
+    pub(crate) submit: bool,
 }
 
 impl Text<'_> {
@@ -55,7 +55,7 @@ impl Text<'_> {
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self.message, self)?;
+        key_listener::listen(self)?;
         Ok(self.get_value().to_owned())
     }
 
@@ -109,12 +109,7 @@ impl KeyHandler for Text<'_> {
     }
 
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.draw_text(
-            &self.value,
-            &self.default_value,
-            &self.validator_result,
-            self.cursor_col as u16,
-        )
+        renderer.text(self)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
