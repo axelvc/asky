@@ -16,11 +16,15 @@ pub trait KeyHandler {
 pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
     let mut renderer = Renderer::new();
 
-    terminal::enable_raw_mode()?;
     handler.draw(&mut renderer)?;
+    renderer.update_draw_time();
 
     while !handler.submit() {
-        if let Event::Key(key) = read()? {
+        terminal::enable_raw_mode()?;
+        let k = read()?;
+        terminal::disable_raw_mode()?;
+
+        if let Event::Key(key) = k {
             if is_abort(key) {
                 renderer.update_draw_time();
                 handler.draw(&mut renderer)?;
@@ -34,7 +38,6 @@ pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
 
     renderer.update_draw_time();
     handler.draw(&mut renderer)?;
-    terminal::disable_raw_mode()?;
 
     Ok(())
 }

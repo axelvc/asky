@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, KeyHandler},
-    renderer::Renderer,
+    renderer::Renderer, theme::{DefaultTheme, Theme},
 };
 
 enum Direction {
@@ -21,6 +21,7 @@ where
     pub(crate) selected: usize,
     pub(crate) is_loop: bool,
     pub(crate) submit: bool,
+    pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a, T> Select<'a, T>
@@ -34,6 +35,7 @@ where
             selected: 0,
             submit: false,
             is_loop: false,
+            theme: &DefaultTheme,
         }
     }
 
@@ -44,6 +46,11 @@ where
 
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
         self.is_loop = is_loop;
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.theme = theme;
         self
     }
 

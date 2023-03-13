@@ -1,11 +1,12 @@
 use std::io;
 
-use colored::Colorize;
 use crossterm::{cursor, queue, style::Print, terminal};
 
 use crate::prompts::{multi_select::MultiSelect, select::Select, text::Text, toggle::Toggle};
 
-#[derive(PartialEq)]
+use super::theme::Theme;
+
+#[derive(PartialEq, Debug)]
 pub enum DrawTime {
     First,
     Update,
@@ -25,13 +26,17 @@ impl<W: io::Write> Renderer<W> {
             &state.default_value,
             &state.validator_result,
             state.cursor_col,
+            state.theme,
         )
     }
 
     pub fn password(&mut self, state: &Text, is_hidden: bool) -> io::Result<()> {
         let (value, cursor_col) = match is_hidden {
             true => (String::new(), 0),
-            false => ("*".repeat(state.value.len()), state.cursor_col),
+            false => (
+                state.theme.password_char().repeat(state.value.len()),
+                state.cursor_col,
+            ),
         };
 
         self.draw_line(
@@ -40,87 +45,85 @@ impl<W: io::Write> Renderer<W> {
             &state.default_value,
             &state.validator_result,
             cursor_col,
+            state.theme,
         )
     }
 
     pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(state.message), cursor::MoveToNextLine(2))?;
-            self.update_draw_time();
+        if self.draw_time != DrawTime::First {
+            queue!(self.out, cursor::RestorePosition)?;
         }
 
         queue!(
             self.out,
-            cursor::MoveToPreviousLine(1),
-            cursor::MoveToColumn(0),
-            Print(toggle_string(state.options, state.active)),
-            cursor::MoveToNextLine(1),
+            cursor::SavePosition,
+            Print(state.theme.fmt_toggle(
+                state.message,
+                &self.draw_time,
+                state.active,
+                state.options,
+            ))
         )?;
 
         self.out.flush()
     }
 
     pub fn select<T: ToString + Copy>(&mut self, state: &Select<T>) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(state.message), cursor::MoveToNextLine(1))?;
-            self.update_draw_time();
-        } else {
-            queue!(
-                self.out,
-                cursor::MoveToPreviousLine(state.options.len() as u16)
-            )?;
+        if self.draw_time != DrawTime::First {
+            queue!(self.out, cursor::RestorePosition)?;
         }
 
-        for (i, option) in state.options.iter().enumerate() {
-            let option = option.to_string();
-            let (prefix, option) = if i == state.selected {
-                ("● ".blue(), option.blue())
-            } else {
-                ("○ ".bright_black(), option.normal())
-            };
+        let options: Vec<String> = state
+            .options
+            .iter()
+            .enumerate()
+            .map(|(i, option)| {
+                state
+                    .theme
+                    .fmt_select_option(&option.to_string(), state.selected == i)
+            })
+            .collect();
 
-            queue!(
-                self.out,
-                Print(prefix),
-                Print(option),
-                cursor::MoveToNextLine(1),
-            )?;
-        }
+        queue!(
+            self.out,
+            cursor::SavePosition,
+            Print(
+                state
+                    .theme
+                    .fmt_select(state.message, &self.draw_time, &options)
+            ),
+        )?;
 
         self.out.flush()
     }
 
     pub fn multi_select<T: ToString + Copy>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(state.message), cursor::MoveToNextLine(1))?;
-            self.update_draw_time();
-        } else {
-            queue!(
-                self.out,
-                cursor::MoveToPreviousLine(state.options.len() as u16)
-            )?;
+        if self.draw_time != DrawTime::First {
+            queue!(self.out, cursor::RestorePosition)?;
         }
 
-        for (i, option) in state.options.iter().enumerate() {
-            let str = option.value.to_string();
-            let (mut prefix, mut option) = if option.selected {
-                ("● ".normal(), str.normal())
-            } else {
-                ("○ ".bright_black(), str.normal())
-            };
+        let options: Vec<String> = state
+            .options
+            .iter()
+            .enumerate()
+            .map(|(i, option)| {
+                state.theme.fmt_multi_select_option(
+                    &option.value.to_string(),
+                    option.selected,
+                    i == state.focused,
+                )
+            })
+            .collect();
 
-            if i == state.focused {
-                prefix = prefix.blue();
-                option = option.blue();
-            }
-
-            queue!(
-                self.out,
-                Print(prefix),
-                Print(option),
-                cursor::MoveToNextLine(1),
-            )?;
-        }
+        queue!(
+            self.out,
+            cursor::SavePosition,
+            Print(
+                state
+                    .theme
+                    .fmt_multi_select(state.message, &self.draw_time, &options)
+            ),
+        )?;
 
         self.out.flush()
     }
@@ -132,59 +135,60 @@ impl<W: io::Write> Renderer<W> {
         }
     }
 
+    // NOTE: try to find a way to let the user change the all the prompt
     fn draw_line(
         &mut self,
         message: &str,
         value: &str,
         default_value: &str,
         validator_result: &Result<(), String>,
-        cursor_col: usize,
+        _cursor_col: usize,
+        theme: &dyn Theme,
     ) -> io::Result<()> {
-        // print message/question
-        if let DrawTime::First = self.draw_time {
-            queue!(self.out, Print(message), cursor::MoveToNextLine(1))?;
-            self.update_draw_time()
+        if self.draw_time != DrawTime::First {
+            queue!(self.out, cursor::RestorePosition)?;
         }
 
-        // print response prefix
-        let prefix = if validator_result.is_ok() {
-            "› ".blue()
-        } else {
-            "› ".red()
-        };
+        let (prefix, value, placeholder) =
+            theme.fmt_text(value, default_value, validator_result.is_err());
 
+        // draw message
         queue!(
             self.out,
-            cursor::MoveToColumn(0),
-            Print(prefix),
-            terminal::Clear(terminal::ClearType::UntilNewLine),
+            cursor::SavePosition,
+            Print(theme.fmt_message(message, &self.draw_time)),
+            cursor::MoveToNextLine(1),
+            terminal::Clear(terminal::ClearType::FromCursorDown),
         )?;
 
-        // print response or default value
-        let value = if value.is_empty() {
-            default_value.bright_black().to_string()
-        } else {
-            value.to_owned()
+        // draw error
+        match validator_result {
+            Ok(_) => (),
+            Err(error) => queue!(
+                self.out,
+                cursor::MoveToNextLine(1),
+                Print(theme.fmt_error(error)),
+                cursor::MoveToPreviousLine(1),
+            )?,
         };
 
-        queue!(self.out, Print(value))?;
-
-        // print/clean validator error
-        queue!(self.out, cursor::MoveToNextLine(1))?;
-
-        if let Err(validator_error) = validator_result {
-            queue!(self.out, Print(validator_error.bright_red()))?;
-        } else {
-            queue!(self.out, terminal::Clear(terminal::ClearType::CurrentLine))?;
+        // draw value or placeholder
+        match value.is_empty() {
+            false => queue!(self.out, Print(prefix), Print(value))?,
+            true => queue!(
+                self.out,
+                Print(&prefix),
+                Print(&placeholder),
+                // reprint prefix to set cursor position
+                // use `SavePosition` cause bugs on the updates renders
+                cursor::MoveToColumn(0),
+                Print(&prefix),
+            )?,
         }
 
-        queue!(self.out, cursor::MoveToPreviousLine(1))?;
-
-        // set cursor position
+        // new line on last draw
         if let DrawTime::Last = self.draw_time {
             queue!(self.out, cursor::MoveToNextLine(1))?;
-        } else {
-            queue!(self.out, cursor::MoveToColumn(2 + cursor_col as u16))?;
         }
 
         self.out.flush()
@@ -200,27 +204,10 @@ impl Renderer<io::Stdout> {
     }
 }
 
-fn toggle_string(options: (&str, &str), active: bool) -> String {
-    let (left, right) = (format!(" {} ", options.0), format!(" {} ", options.1));
-
-    let (left, right) = match active {
-        false => (toggle_focused(&left), toggle_unfocused(&right)),
-        true => (toggle_unfocused(&left), toggle_focused(&right)),
-    };
-
-    format!("{}  {}", left, right)
-}
-
-fn toggle_focused(s: &str) -> String {
-    s.black().on_blue().to_string()
-}
-
-fn toggle_unfocused(s: &str) -> String {
-    s.white().on_bright_black().to_string()
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::utils::theme::DefaultTheme;
+
     use super::*;
 
     impl Renderer<Vec<u8>> {
@@ -242,6 +229,7 @@ mod tests {
             validator_result: Ok(()),
             cursor_col: 0,
             submit: false,
+            theme: &DefaultTheme,
         };
 
         let mut renderer = Renderer::to_test();
@@ -264,6 +252,7 @@ mod tests {
             validator_result: Ok(()),
             cursor_col: 0,
             submit: false,
+            theme: &DefaultTheme,
         };
 
         let mut renderer = Renderer::to_test();
@@ -286,6 +275,7 @@ mod tests {
             validator_result: Err("Invalid name".to_string()),
             cursor_col: 0,
             submit: false,
+            theme: &DefaultTheme,
         };
 
         let mut renderer = Renderer::to_test();
@@ -308,6 +298,7 @@ mod tests {
                 options: ("foo", "bar"),
                 active,
                 submit: false,
+                theme: &DefaultTheme,
             };
 
             let mut renderer = Renderer::to_test();
@@ -315,7 +306,12 @@ mod tests {
             renderer.toggle(&state).unwrap();
 
             let out_str = String::from_utf8(renderer.out).unwrap();
-            let expeted_option_str = toggle_string(state.options, active);
+            let expeted_option_str = DefaultTheme.fmt_toggle(
+                state.message,
+                &renderer.draw_time,
+                active,
+                state.options,
+            );
             assert!(out_str.contains(&state.message));
             assert!(out_str.contains(&expeted_option_str));
         }
@@ -331,6 +327,7 @@ mod tests {
             selected: 2,
             is_loop: false,
             submit: false,
+            theme: &DefaultTheme,
         };
 
         renderer.select(&state).unwrap();

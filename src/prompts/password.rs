@@ -2,7 +2,7 @@ use std::io;
 
 use crate::utils::{
     key_listener::{self, KeyHandler},
-    renderer::{DrawTime, Renderer},
+    renderer::{DrawTime, Renderer}, theme::Theme,
 };
 
 use super::text::Text;
@@ -12,7 +12,7 @@ pub struct Password<'a> {
     handler: Text<'a>,
 }
 
-impl Password<'_> {
+impl<'a> Password<'a> {
     pub fn new(message: &str) -> Password {
         Password {
             hidden: false,
@@ -40,6 +40,11 @@ impl Password<'_> {
         F: Fn(&str) -> Result<(), &str> + 'static,
     {
         self.handler.validate(validator);
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.handler.theme(theme);
         self
     }
 

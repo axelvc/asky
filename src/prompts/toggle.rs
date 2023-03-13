@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils::{
     key_listener::{self, KeyHandler},
     renderer::Renderer,
+    theme::{DefaultTheme, Theme},
 };
 
 pub struct Toggle<'a> {
@@ -12,6 +13,7 @@ pub struct Toggle<'a> {
     pub(crate) options: (&'a str, &'a str),
     pub(crate) submit: bool,
     pub(crate) active: bool,
+    pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a> Toggle<'a> {
@@ -21,11 +23,17 @@ impl<'a> Toggle<'a> {
             options,
             active: false,
             submit: false,
+            theme: &DefaultTheme,
         }
     }
 
     pub fn initial(&mut self, value: bool) -> &mut Self {
         self.active = value;
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.theme = theme;
         self
     }
 

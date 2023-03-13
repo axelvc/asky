@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils::{
     key_listener::{self, KeyHandler},
     renderer::Renderer,
+    theme::{DefaultTheme, Theme},
 };
 
 enum Position {
@@ -20,9 +21,10 @@ pub struct Text<'a> {
     pub(crate) validator_result: Result<(), String>,
     pub(crate) cursor_col: usize,
     pub(crate) submit: bool,
+    pub(crate) theme: &'a dyn Theme,
 }
 
-impl Text<'_> {
+impl<'a> Text<'a> {
     pub fn new(message: &str) -> Text<'_> {
         Text {
             message,
@@ -32,6 +34,7 @@ impl Text<'_> {
             validator: None,
             validator_result: Ok(()),
             submit: false,
+            theme: &DefaultTheme,
         }
     }
 
@@ -51,6 +54,11 @@ impl Text<'_> {
         F: Fn(&str) -> Result<(), &str> + 'static,
     {
         self.validator = Some(Box::new(validator));
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.theme = theme;
         self
     }
 

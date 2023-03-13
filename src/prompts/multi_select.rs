@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils::{
     key_listener::{self, KeyHandler},
     renderer::Renderer,
+    theme::{DefaultTheme, Theme},
 };
 
 enum Direction {
@@ -36,6 +37,7 @@ pub struct MultiSelect<'a, T: ToString + Copy> {
     pub(crate) focused: usize,
     pub(crate) is_loop: bool,
     pub(crate) submit: bool,
+    pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
@@ -49,6 +51,7 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
             focused: 0,
             submit: false,
             is_loop: false,
+            theme: &DefaultTheme,
         }
     }
 
@@ -64,6 +67,11 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
 
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
         self.is_loop = is_loop;
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.theme = theme;
         self
     }
 
