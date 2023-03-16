@@ -68,25 +68,30 @@ impl<W: io::Write> Renderer<W> {
         self.out.flush()
     }
 
-    pub fn select<T: ToString + Copy>(&mut self, state: &Select<T>) -> io::Result<()> {
+    pub fn select<T: Copy>(&mut self, state: &Select<T>) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }
 
+        // TODO: move this to theme module (for consistencie)
         let options: Vec<String> = state
             .options
             .iter()
             .enumerate()
             .map(|(i, option)| {
-                state
-                    .theme
-                    .fmt_select_option(&option.to_string(), state.selected == i)
+                state.theme.fmt_select_option(
+                    option.title,
+                    option.description,
+                    option.disabled,
+                    state.selected == i,
+                )
             })
             .collect();
 
         queue!(
             self.out,
             cursor::SavePosition,
+            terminal::Clear(terminal::ClearType::FromCursorDown),
             Print(
                 state
                     .theme
@@ -97,19 +102,22 @@ impl<W: io::Write> Renderer<W> {
         self.out.flush()
     }
 
-    pub fn multi_select<T: ToString + Copy>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
+    pub fn multi_select<T: Copy>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }
 
+        // TODO: move this to theme module (for consistencie)
         let options: Vec<String> = state
             .options
             .iter()
             .enumerate()
             .map(|(i, option)| {
                 state.theme.fmt_multi_select_option(
-                    &option.value.to_string(),
-                    option.selected,
+                    option.title,
+                    option.description,
+                    option.disabled,
+                    option.active,
                     i == state.focused,
                 )
             })
@@ -118,6 +126,7 @@ impl<W: io::Write> Renderer<W> {
         queue!(
             self.out,
             cursor::SavePosition,
+            terminal::Clear(terminal::ClearType::FromCursorDown),
             Print(
                 state
                     .theme
@@ -206,7 +215,7 @@ impl Renderer<io::Stdout> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::theme::DefaultTheme;
+    use crate::{prompts::select::SelectOption, utils::theme::DefaultTheme};
 
     use super::*;
 
@@ -306,12 +315,8 @@ mod tests {
             renderer.toggle(&state).unwrap();
 
             let out_str = String::from_utf8(renderer.out).unwrap();
-            let expeted_option_str = DefaultTheme.fmt_toggle(
-                state.message,
-                &renderer.draw_time,
-                active,
-                state.options,
-            );
+            let expeted_option_str =
+                DefaultTheme.fmt_toggle(state.message, &renderer.draw_time, active, state.options);
             assert!(out_str.contains(&state.message));
             assert!(out_str.contains(&expeted_option_str));
         }
@@ -323,7 +328,11 @@ mod tests {
         let mut renderer = Renderer::to_test();
         let state = Select {
             message,
-            options: &["1", "2", "fish"],
+            options: vec![
+                SelectOption::new("1", "1"),
+                SelectOption::new("2", "2"),
+                SelectOption::new("fish", "fish"),
+            ],
             selected: 2,
             is_loop: false,
             submit: false,

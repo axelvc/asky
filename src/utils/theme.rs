@@ -101,14 +101,37 @@ pub trait Theme {
     }
 
     /// Formats `Select` prompt option
-    fn fmt_select_option(&self, option: &str, selected: bool) -> String {
-        let (prefix, option) = if selected {
-            (self.select_prefix(true).blue(), option.blue())
-        } else {
-            (self.select_prefix(false).bright_black(), option.normal())
+    fn fmt_select_option(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        disabled: bool,
+        active: bool,
+    ) -> String {
+        // prefix
+        let prefix = self.select_prefix(active);
+        let prefix = match (active, disabled) {
+            (false, _) => prefix.bright_black(),
+            (true, true) => prefix.yellow(),
+            (true, false) => prefix.blue(),
         };
 
-        format!("{}{}", prefix, option)
+        // title
+        let title = match (disabled, active) {
+            (true, _) => title.bright_black().strikethrough(),
+            (false, true) => title.blue(),
+            (false, false) => title.normal(),
+        };
+
+        // description
+        let make_description = |s: &str| format!(" · {}", s).bright_black();
+        let description = match (active, disabled) {
+            (false, _) => "".normal(),
+            (true, true) => make_description("(Disabled)"),
+            (true, false) => make_description(description.unwrap_or_default()),
+        };
+
+        format!("{}{}{}", prefix, title, description)
     }
 
     // Formats `MultiSelect` prompt
@@ -122,21 +145,39 @@ pub trait Theme {
     }
 
     /// Formats `MultiSelect` prompt option
-    fn fmt_multi_select_option(&self, option: &str, selected: bool, focused: bool) -> String {
-        let mut option = option.normal();
-
-        let mut prefix = if selected {
-            self.multi_select_prefix(true).normal()
-        } else {
-            self.multi_select_prefix(false).bright_black()
+    fn fmt_multi_select_option(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        disabled: bool,
+        active: bool,
+        focused: bool,
+    ) -> String {
+        // prefix
+        let prefix = self.select_prefix(active);
+        let prefix = match (focused, disabled, active) {
+            (true, true, _) => prefix.yellow(),
+            (true, false, _) => prefix.blue(),
+            (false, _, true) => prefix.normal(),
+            (false, _, false) => prefix.bright_black(),
         };
 
-        if focused {
-            prefix = prefix.blue();
-            option = option.blue();
-        }
+        // title
+        let title = match (disabled, focused) {
+            (true, _) => title.bright_black().strikethrough(),
+            (false, true) => title.blue(),
+            (false, false) => title.normal(),
+        };
 
-        format!("{}{}", prefix, option)
+        // description
+        let make_description = |s: &str| format!(" · {}", s).bright_black();
+        let description = match (focused, disabled) {
+            (false, _) => "".normal(),
+            (true, true) => make_description("(Disabled)"),
+            (true, false) => make_description(description.unwrap_or_default()),
+        };
+
+        format!("{}{}{}", prefix, title, description)
     }
 }
 

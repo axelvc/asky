@@ -8,49 +8,30 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
+use super::select::SelectOption;
+
 enum Direction {
     Up,
     Down,
 }
 
-pub struct SelectOption<T: ToString + Copy> {
-    pub value: T,
-    pub selected: bool,
-}
-
-impl<T: ToString + Copy> SelectOption<T> {
-    pub fn new(value: T) -> SelectOption<T> {
-        SelectOption {
-            value,
-            selected: false,
-        }
-    }
-
-    pub fn toggle_selected(&mut self) {
-        self.selected = !self.selected
-    }
-}
-
-pub struct MultiSelect<'a, T: ToString + Copy> {
+pub struct MultiSelect<'a, T: Copy> {
     pub(crate) message: &'a str,
-    pub(crate) options: Vec<SelectOption<T>>,
+    pub(crate) options: Vec<SelectOption<'a, T>>,
     pub(crate) focused: usize,
     pub(crate) is_loop: bool,
     pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
-impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
-    pub fn new(message: &'a str, options: &'a [T]) -> MultiSelect<'a, T> {
+impl<'a, T: Copy> MultiSelect<'a, T> {
+    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> MultiSelect<'a, T> {
         MultiSelect {
             message,
-            options: options
-                .iter()
-                .map(|x| SelectOption::new(x.to_owned()))
-                .collect(),
+            options,
             focused: 0,
-            submit: false,
             is_loop: false,
+            submit: false,
             theme: &DefaultTheme,
         }
     }
@@ -58,7 +39,7 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
     pub fn selected(&mut self, selected: &[usize]) -> &mut Self {
         for i in selected {
             if let Some(option) = self.options.get_mut(*i) {
-                option.selected = true
+                option.active = true
             }
         }
 
@@ -81,7 +62,7 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
         Ok(self
             .options
             .iter()
-            .filter(|x| x.selected)
+            .filter(|x| x.active)
             .map(|x| x.value)
             .collect())
     }
@@ -112,7 +93,7 @@ impl<'a, T: ToString + Copy> MultiSelect<'a, T> {
     }
 }
 
-impl<'a, T: ToString + Copy> KeyHandler for MultiSelect<'a, T> {
+impl<'a, T: Copy> KeyHandler for MultiSelect<'a, T> {
     fn submit(&self) -> bool {
         self.submit
     }
@@ -145,18 +126,30 @@ mod tests {
 
     #[test]
     fn set_selected_value() {
-        let mut prompt = MultiSelect::new("", &["a", "b", "c"]);
-
-        assert!(prompt.options.iter().all(|x| !x.selected));
+        let mut prompt = MultiSelect::new(
+            "",
+            vec![
+                SelectOption::new("a", "a"),
+                SelectOption::new("b", "b"),
+                SelectOption::new("c", "c"),
+            ],
+        );
 
         prompt.selected(&[0, 2]);
-        assert!(prompt.options[0].selected);
-        assert!(prompt.options[2].selected);
+        assert!(prompt.options[0].active);
+        assert!(prompt.options[2].active);
     }
 
     #[test]
     fn set_in_loop() {
-        let mut prompt = MultiSelect::new("", &["a", "b", "c"]);
+        let mut prompt = MultiSelect::new(
+            "",
+            vec![
+                SelectOption::new("a", "a"),
+                SelectOption::new("b", "b"),
+                SelectOption::new("c", "c"),
+            ],
+        );
 
         assert!(!prompt.is_loop);
         prompt.in_loop(true);
@@ -168,7 +161,14 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = MultiSelect::new("", &["a", "b", "c"]);
+            let mut prompt = MultiSelect::new(
+                "",
+                vec![
+                    SelectOption::new("a", "a"),
+                    SelectOption::new("b", "b"),
+                    SelectOption::new("c", "c"),
+                ],
+            );
             let simulated_key = KeyEvent::from(event);
 
             prompt.handle_key(simulated_key);
@@ -178,7 +178,14 @@ mod tests {
 
     #[test]
     fn move_cursor() {
-        let mut prompt = MultiSelect::new("", &["a", "b", "c"]);
+        let mut prompt = MultiSelect::new(
+            "",
+            vec![
+                SelectOption::new("a", "a"),
+                SelectOption::new("b", "b"),
+                SelectOption::new("c", "c"),
+            ],
+        );
         let prev_keys = [KeyCode::Up, KeyCode::Char('k'), KeyCode::Char('K')];
         let next_keys = [KeyCode::Down, KeyCode::Char('j'), KeyCode::Char('j')];
 
@@ -224,14 +231,20 @@ mod tests {
     }
 
     #[test]
-    fn update_focused_selected() {
-        let mut prompt = MultiSelect::new("", &["a", "b", "c"]);
+    fn update_focused_selected() { let mut prompt = MultiSelect::new(
+            "",
+            vec![
+                SelectOption::new("a", "a"),
+                SelectOption::new("b", "b"),
+                SelectOption::new("c", "c"),
+            ],
+        );
 
-        assert!(!prompt.options[1].selected);
+        assert!(!prompt.options[1].active);
 
         prompt.focused = 1;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
-        assert!(prompt.options[1].selected);
+        assert!(prompt.options[1].active);
     }
 }

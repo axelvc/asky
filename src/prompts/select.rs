@@ -1,10 +1,11 @@
-use std::{fmt::Display, io};
+use std::io;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, KeyHandler},
-    renderer::Renderer, theme::{DefaultTheme, Theme},
+    renderer::Renderer,
+    theme::{DefaultTheme, Theme},
 };
 
 enum Direction {
@@ -12,23 +13,55 @@ enum Direction {
     Down,
 }
 
-pub struct Select<'a, T>
-where
-    T: ToString + Copy,
-{
+pub struct SelectOption<'a, T: Copy> {
+    pub(crate) value: T,
+    pub(crate) title: &'a str,
+    pub(crate) description: Option<&'a str>,
+    pub(crate) disabled: bool,
+    pub(crate) active: bool,
+}
+
+impl<'a, T: Copy> SelectOption<'a, T> {
+    pub fn new(value: T, title: &'a str) -> Self {
+        Self {
+            value,
+            title,
+            description: None,
+            disabled: false,
+            active: false,
+        }
+    }
+
+    /// Description text to show in the prompt when focus the option
+    pub fn description(mut self, description: &'a str) -> Self {
+        self.description = Some(description);
+        self
+    }
+
+    /// If it is disabled, the option cannot be selected by the user
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
+    pub(crate) fn toggle_selected(&mut self) {
+        if !self.disabled {
+            self.active = !self.active
+        }
+    }
+}
+
+pub struct Select<'a, T: Copy> {
     pub(crate) message: &'a str,
-    pub(crate) options: &'a [T],
+    pub(crate) options: Vec<SelectOption<'a, T>>,
     pub(crate) selected: usize,
     pub(crate) is_loop: bool,
     pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
-impl<'a, T> Select<'a, T>
-where
-    T: Display + Copy,
-{
-    pub fn new(message: &'a str, options: &'a [T]) -> Select<'a, T> {
+impl<'a, T: Copy> Select<'a, T> {
+    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Select<'a, T> {
         Select {
             message,
             options,
@@ -56,7 +89,7 @@ where
 
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self)?;
-        Ok(self.options[self.selected])
+        Ok(self.options[self.selected].value)
     }
 
     fn update_value(&mut self, direction: Direction) {
@@ -79,12 +112,14 @@ where
             }
         }
     }
+
+    /// Only submit if the option isn't disabled
+    fn validate_to_submit(&self) -> bool {
+        !self.options[self.selected].disabled
+    }
 }
 
-impl<'a, T> KeyHandler for Select<'a, T>
-where
-    T: Display + Copy,
-{
+impl<'a, T: Copy> KeyHandler for Select<'a, T> {
     fn submit(&self) -> bool {
         self.submit
     }
@@ -98,7 +133,7 @@ where
 
         match key.code {
             // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // update value
             KeyCode::Up | KeyCode::Char('k' | 'K') => self.update_value(Direction::Up),
             KeyCode::Down | KeyCode::Char('j' | 'J') => self.update_value(Direction::Down),
@@ -115,7 +150,13 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Select::new("", &["foo", "bar"]);
+        let mut prompt = Select::new(
+            "",
+            vec![
+                SelectOption::new("foo", "foo"),
+                SelectOption::new("bar", "bar"),
+            ],
+        );
 
         assert_eq!(prompt.selected, 0);
         prompt.initial(1);
@@ -124,7 +165,13 @@ mod tests {
 
     #[test]
     fn set_in_loop() {
-        let mut prompt = Select::new("", &["foo", "bar"]);
+        let mut prompt = Select::new(
+            "",
+            vec![
+                SelectOption::new("foo", "foo"),
+                SelectOption::new("bar", "bar"),
+            ],
+        );
 
         assert!(!prompt.is_loop);
         prompt.in_loop(true);
@@ -136,7 +183,13 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Select::new("", &["foo", "bar"]);
+            let mut prompt = Select::new(
+                "",
+                vec![
+                    SelectOption::new("foo", "foo"),
+                    SelectOption::new("bar", "bar"),
+                ],
+            );
             let simulated_key = KeyEvent::from(event);
 
             prompt.initial(1);
@@ -144,6 +197,18 @@ mod tests {
             prompt.handle_key(simulated_key);
             assert_eq!(prompt.selected, 1);
             assert_eq!(prompt.submit, true);
+        }
+    }
+
+    #[test]
+    fn not_sumit_disabled() {
+        let events = [KeyCode::Enter, KeyCode::Backspace];
+
+        for event in events {
+            let mut prompt = Select::new("", vec![SelectOption::new("foo", "foo").disabled(true)]);
+
+            prompt.handle_key(KeyEvent::from(event));
+            assert_eq!(prompt.submit, false);
         }
     }
 
@@ -167,7 +232,13 @@ mod tests {
 
         for key in up_keys {
             for (in_loop, initial, expected) in up_cases {
-                let mut prompt = Select::new("", &["foo", "bar"]);
+                let mut prompt = Select::new(
+                    "",
+                    vec![
+                        SelectOption::new("foo", "foo"),
+                        SelectOption::new("bar", "bar"),
+                    ],
+                );
                 let simulated_key = KeyEvent::from(key);
 
                 prompt.initial(initial);
@@ -179,7 +250,13 @@ mod tests {
 
         for key in down_keys {
             for (in_loop, initial, expected) in down_cases {
-                let mut prompt = Select::new("", &["foo", "bar"]);
+                let mut prompt = Select::new(
+                    "",
+                    vec![
+                        SelectOption::new("foo", "foo"),
+                        SelectOption::new("bar", "bar"),
+                    ],
+                );
                 let simulated_key = KeyEvent::from(key);
 
                 prompt.initial(initial);
