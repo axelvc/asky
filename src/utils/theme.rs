@@ -84,8 +84,8 @@ pub trait Theme {
     fn fmt_toggle_option(&self, option: &str, active: bool) -> String {
         let option = format!(" {} ", option);
         let option = match active {
-            false => option.black().on_blue(),
-            true => option.white().on_bright_black(),
+            true => option.black().on_blue(),
+            false => option.white().on_bright_black(),
         };
 
         option.to_string()
