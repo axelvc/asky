@@ -144,60 +144,50 @@ impl<W: io::Write> Renderer<W> {
         }
     }
 
-    // NOTE: try to find a way to let the user change the all the prompt
     fn draw_line(
         &mut self,
         message: &str,
         value: &str,
         default_value: &str,
         validator_result: &Result<(), String>,
-        _cursor_col: usize,
+        cursor_col: usize,
         theme: &dyn Theme,
     ) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }
 
-        let (prefix, value, placeholder) =
-            theme.fmt_text(value, default_value, validator_result.is_err());
+        let (text, cursor) = theme.fmt_text(
+            message,
+            &self.draw_time,
+            value,
+            default_value,
+            validator_result,
+        );
 
-        // draw message
         queue!(
             self.out,
             cursor::SavePosition,
-            Print(theme.fmt_message(message, &self.draw_time)),
-            cursor::MoveToNextLine(1),
             terminal::Clear(terminal::ClearType::FromCursorDown),
+            Print(text)
         )?;
 
-        // draw error
-        match validator_result {
-            Ok(_) => (),
-            Err(error) => queue!(
-                self.out,
-                cursor::MoveToNextLine(1),
-                Print(theme.fmt_error(error)),
-                cursor::MoveToPreviousLine(1),
-            )?,
-        };
+        if self.draw_time != DrawTime::Last {
+            if let Some((row, col)) = cursor {
+                queue!(self.out, cursor::RestorePosition, cursor::SavePosition)?;
 
-        // draw value or placeholder
-        match value.is_empty() {
-            false => queue!(self.out, Print(prefix), Print(value))?,
-            true => queue!(
-                self.out,
-                Print(&prefix),
-                Print(&placeholder),
-                // reprint prefix to set cursor position
-                // use `SavePosition` cause bugs on the updates renders
-                cursor::MoveToColumn(0),
-                Print(&prefix),
-            )?,
-        }
+                if row > 0 {
+                    queue!(self.out, cursor::MoveDown(row))?;
+                }
 
-        // new line on last draw
-        if let DrawTime::Last = self.draw_time {
-            queue!(self.out, cursor::MoveToNextLine(1))?;
+                if col > 0 {
+                    queue!(self.out, cursor::MoveRight(col))?;
+                }
+            }
+
+            if cursor_col > 0 {
+                queue!(self.out, cursor::MoveRight(cursor_col as u16))?;
+            }
         }
 
         self.out.flush()
