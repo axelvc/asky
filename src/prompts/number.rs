@@ -10,7 +10,7 @@ use crate::utils::{
 use super::text::Text;
 
 pub struct Number<'a> {
-    handler: Text<'a>,
+    pub(crate) handler: Text<'a>,
 }
 
 impl Number<'_> {
@@ -65,7 +65,7 @@ impl KeyHandler for Number<'_> {
     }
 
     fn draw<W: std::io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        self.handler.draw(renderer)
+        renderer.number(self)
     }
 
     fn handle_key(&mut self, key: KeyEvent) {

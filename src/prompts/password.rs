@@ -8,8 +8,8 @@ use crate::utils::{
 use super::text::Text;
 
 pub struct Password<'a> {
-    hidden: bool,
-    handler: Text<'a>,
+    pub(crate) hidden: bool,
+    pub(crate) handler: Text<'a>,
 }
 
 impl<'a> Password<'a> {
@@ -65,7 +65,7 @@ impl KeyHandler for Password<'_> {
             return Ok(());
         }
 
-        renderer.password(&self.handler, self.hidden)
+        renderer.password(&self)
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) {

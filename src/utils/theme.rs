@@ -106,6 +106,106 @@ pub trait Theme {
         )
     }
 
+    /// Formats `Password` prompt
+    /// Due a important part of this prompt is the cursor position
+    /// you can return an optional tuple of (`row`, `col`) to set the initial cursor position.
+    /// If you return `None` then the cursor position will be at the end of the formatted string.
+    ///
+    /// ---
+    /// The cursor position will be relative to the position before print the formatted string
+    ///
+    /// Example:
+    ///
+    /// ```md
+    /// |What's your name?
+    /// ~
+    /// <error>
+    /// ```
+    ///
+    /// Where "`|`" is the initial cursor position, if you want the cursor after the "`~`" character
+    /// must be return (1, 2), which will set the cursor in the following position
+    ///
+    /// Example:
+    ///
+    /// ```md
+    /// What's your name?
+    /// ~ |
+    /// <error>
+    /// ```
+    fn fmt_password(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        text: &str,
+        placeholder: &str,
+        validator_result: &Result<(), String>,
+        is_hidden: bool,
+    ) -> (String, Option<(u16, u16)>) {
+        let text = match is_hidden {
+            true => String::new(),
+            false => self.password_char().repeat(text.len()),
+        };
+
+        self.fmt_text(message, draw_time, &text, placeholder, validator_result)
+    }
+
+    /// Formats `Number` prompt
+    /// Due a important part of this prompt is the cursor position
+    /// you can return an optional tuple of (`row`, `col`) to set the initial cursor position.
+    /// If you return `None` then the cursor position will be at the end of the formatted string.
+    ///
+    /// ---
+    /// The cursor position will be relative to the position before print the formatted string
+    ///
+    /// Example:
+    ///
+    /// ```md
+    /// |What's your name?
+    /// ~
+    /// <error>
+    /// ```
+    ///
+    /// Where "`|`" is the initial cursor position, if you want the cursor after the "`~`" character
+    /// must be return (1, 2), which will set the cursor in the following position
+    ///
+    /// Example:
+    ///
+    /// ```md
+    /// What's your name?
+    /// ~ |
+    /// <error>
+    /// ```
+    fn fmt_number(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        text: &str,
+        placeholder: &str,
+        validator_result: &Result<(), String>,
+    ) -> (String, Option<(u16, u16)>) {
+        let (prefix, error) = match validator_result {
+            Err(e) => (self.text_prefix().red(), (String::from("\n") + e).red()),
+            Ok(_) => (self.text_prefix().blue(), String::new().normal()),
+        };
+
+        let text = if text.is_empty() {
+            placeholder.bright_black()
+        } else {
+            text.yellow()
+        };
+
+        (
+            format!(
+                "{}\n{}{}{}\n",
+                self.fmt_message(message, draw_time),
+                prefix,
+                text,
+                error,
+            ),
+            Some((1, 2)),
+        )
+    }
+
     /// Formats `Toggle` prompt
     fn fmt_toggle(
         &self,

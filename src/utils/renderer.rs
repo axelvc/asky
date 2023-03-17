@@ -2,9 +2,10 @@ use std::io;
 
 use crossterm::{cursor, queue, style::Print, terminal};
 
-use crate::prompts::{multi_select::MultiSelect, select::Select, text::Text, toggle::Toggle};
-
-use super::theme::Theme;
+use crate::prompts::{
+    multi_select::MultiSelect, number::Number, password::Password, select::Select, text::Text,
+    toggle::Toggle,
+};
 
 #[derive(PartialEq, Debug)]
 pub enum DrawTime {
@@ -20,33 +21,48 @@ pub struct Renderer<W: io::Write> {
 
 impl<W: io::Write> Renderer<W> {
     pub fn text(&mut self, state: &Text) -> io::Result<()> {
-        self.draw_line(
+        let (text, cursor) = state.theme.fmt_text(
             state.message,
+            &self.draw_time,
             &state.value,
             &state.default_value,
             &state.validator_result,
-            state.cursor_col,
-            state.theme,
-        )
+        );
+
+        self.render_line_prompt(text, state.cursor_col, cursor)?;
+        self.out.flush()
     }
 
-    pub fn password(&mut self, state: &Text, is_hidden: bool) -> io::Result<()> {
-        let (value, cursor_col) = match is_hidden {
-            true => (String::new(), 0),
-            false => (
-                state.theme.password_char().repeat(state.value.len()),
-                state.cursor_col,
-            ),
+    pub fn password(&mut self, state: &Password) -> io::Result<()> {
+        let (text, cursor) = state.handler.theme.fmt_password(
+            state.handler.message,
+            &self.draw_time,
+            &state.handler.value,
+            &state.handler.default_value,
+            &state.handler.validator_result,
+            state.hidden,
+        );
+
+        let cursor_col = match state.hidden {
+            true => 0,
+            false => state.handler.cursor_col,
         };
 
-        self.draw_line(
-            state.message,
-            &value,
-            &state.default_value,
-            &state.validator_result,
-            cursor_col,
-            state.theme,
-        )
+        self.render_line_prompt(text, cursor_col, cursor)?;
+        self.out.flush()
+    }
+
+    pub fn number(&mut self, state: &Number) -> io::Result<()> {
+        let (text, cursor) = state.handler.theme.fmt_number(
+            state.handler.message,
+            &self.draw_time,
+            &state.handler.value,
+            &state.handler.default_value,
+            &state.handler.validator_result,
+        );
+
+        self.render_line_prompt(text, state.handler.cursor_col, cursor)?;
+        self.out.flush()
     }
 
     pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {
@@ -144,26 +160,15 @@ impl<W: io::Write> Renderer<W> {
         }
     }
 
-    fn draw_line(
+    fn render_line_prompt(
         &mut self,
-        message: &str,
-        value: &str,
-        default_value: &str,
-        validator_result: &Result<(), String>,
+        text: String,
         cursor_col: usize,
-        theme: &dyn Theme,
+        initial_position: Option<(u16, u16)>,
     ) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }
-
-        let (text, cursor) = theme.fmt_text(
-            message,
-            &self.draw_time,
-            value,
-            default_value,
-            validator_result,
-        );
 
         queue!(
             self.out,
@@ -173,7 +178,7 @@ impl<W: io::Write> Renderer<W> {
         )?;
 
         if self.draw_time != DrawTime::Last {
-            if let Some((row, col)) = cursor {
+            if let Some((row, col)) = initial_position {
                 queue!(self.out, cursor::RestorePosition, cursor::SavePosition)?;
 
                 if row > 0 {
@@ -190,7 +195,7 @@ impl<W: io::Write> Renderer<W> {
             }
         }
 
-        self.out.flush()
+        Ok(())
     }
 }
 
@@ -205,7 +210,10 @@ impl Renderer<io::Stdout> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{prompts::select::SelectOption, utils::theme::DefaultTheme};
+    use crate::{
+        prompts::select::SelectOption,
+        utils::theme::{DefaultTheme, Theme},
+    };
 
     use super::*;
 
