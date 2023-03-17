@@ -1,5 +1,7 @@
 use colored::Colorize;
 
+use crate::prompts::select::SelectOptionData;
+
 use super::renderer::DrawTime;
 
 pub trait Theme {
@@ -234,7 +236,19 @@ pub trait Theme {
     }
 
     // Formats `Select` prompt
-    fn fmt_select(&self, message: &str, draw_time: &DrawTime, options: &Vec<String>) -> String {
+    fn fmt_select(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        options: Vec<SelectOptionData>,
+        selected: usize,
+    ) -> String {
+        let options: Vec<String> = options
+            .iter()
+            .enumerate()
+            .map(|(i, option)| self.fmt_select_option(option, selected == i))
+            .collect();
+
         format!(
             "{}\n{}\n",
             self.fmt_message(message, draw_time),
@@ -245,9 +259,12 @@ pub trait Theme {
     /// Formats `Select` prompt option
     fn fmt_select_option(
         &self,
-        title: &str,
-        description: Option<&str>,
-        disabled: bool,
+        SelectOptionData {
+            title,
+            description,
+            disabled,
+            ..
+        }: &SelectOptionData,
         active: bool,
     ) -> String {
         // prefix
@@ -281,22 +298,35 @@ pub trait Theme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        options: &Vec<String>,
+        options: Vec<SelectOptionData>,
+        focused: usize,
     ) -> String {
-        self.fmt_select(message, draw_time, options)
+        let options: Vec<String> = options
+            .iter()
+            .enumerate()
+            .map(|(i, option)| self.fmt_multi_select_option(option, i == focused))
+            .collect();
+
+        format!(
+            "{}\n{}\n",
+            self.fmt_message(message, draw_time),
+            options.join("\n")
+        )
     }
 
     /// Formats `MultiSelect` prompt option
     fn fmt_multi_select_option(
         &self,
-        title: &str,
-        description: Option<&str>,
-        disabled: bool,
-        active: bool,
+        SelectOptionData {
+            title,
+            description,
+            disabled,
+            active,
+        }: &SelectOptionData,
         focused: bool,
     ) -> String {
         // prefix
-        let prefix = self.select_prefix(active);
+        let prefix = self.select_prefix(*active);
         let prefix = match (focused, disabled, active) {
             (true, true, _) => prefix.yellow(),
             (true, false, _) => prefix.blue(),

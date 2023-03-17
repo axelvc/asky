@@ -3,7 +3,11 @@ use std::io;
 use crossterm::{cursor, queue, style::Print, terminal};
 
 use crate::prompts::{
-    multi_select::MultiSelect, number::Number, password::Password, select::Select, text::Text,
+    multi_select::MultiSelect,
+    number::Number,
+    password::Password,
+    select::{Select, SelectOption, SelectOptionData},
+    text::Text,
     toggle::Toggle,
 };
 
@@ -89,30 +93,16 @@ impl<W: io::Write> Renderer<W> {
             queue!(self.out, cursor::RestorePosition)?;
         }
 
-        // TODO: move this to theme module (for consistencie)
-        let options: Vec<String> = state
-            .options
-            .iter()
-            .enumerate()
-            .map(|(i, option)| {
-                state.theme.fmt_select_option(
-                    option.title,
-                    option.description,
-                    option.disabled,
-                    state.selected == i,
-                )
-            })
-            .collect();
-
         queue!(
             self.out,
             cursor::SavePosition,
             terminal::Clear(terminal::ClearType::FromCursorDown),
-            Print(
-                state
-                    .theme
-                    .fmt_select(state.message, &self.draw_time, &options)
-            ),
+            Print(state.theme.fmt_select(
+                state.message,
+                &self.draw_time,
+                Self::get_select_options_data(&state.options),
+                state.selected
+            )),
         )?;
 
         self.out.flush()
@@ -123,31 +113,16 @@ impl<W: io::Write> Renderer<W> {
             queue!(self.out, cursor::RestorePosition)?;
         }
 
-        // TODO: move this to theme module (for consistencie)
-        let options: Vec<String> = state
-            .options
-            .iter()
-            .enumerate()
-            .map(|(i, option)| {
-                state.theme.fmt_multi_select_option(
-                    option.title,
-                    option.description,
-                    option.disabled,
-                    option.active,
-                    i == state.focused,
-                )
-            })
-            .collect();
-
         queue!(
             self.out,
             cursor::SavePosition,
             terminal::Clear(terminal::ClearType::FromCursorDown),
-            Print(
-                state
-                    .theme
-                    .fmt_multi_select(state.message, &self.draw_time, &options)
-            ),
+            Print(state.theme.fmt_multi_select(
+                state.message,
+                &self.draw_time,
+                Self::get_select_options_data(&state.options),
+                state.focused
+            )),
         )?;
 
         self.out.flush()
@@ -196,6 +171,13 @@ impl<W: io::Write> Renderer<W> {
         }
 
         Ok(())
+    }
+
+    #[inline]
+    fn get_select_options_data<'a, T>(
+        options: &'a Vec<SelectOption<'a, T>>,
+    ) -> Vec<SelectOptionData<'a>> {
+        options.iter().map(|x| SelectOptionData::from(x)).collect()
     }
 }
 

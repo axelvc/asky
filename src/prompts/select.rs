@@ -51,6 +51,25 @@ impl<'a, T> SelectOption<'a, T> {
     }
 }
 
+/// Helper struct to pass SelectOption data to theme trait
+pub struct SelectOptionData<'a> {
+    pub title: &'a str,
+    pub description: Option<&'a str>,
+    pub disabled: bool,
+    pub active: bool,
+}
+
+impl<'a, T> From<&'a SelectOption<'a, T>> for SelectOptionData<'a> {
+    fn from(o: &'a SelectOption<'a, T>) -> Self {
+        Self {
+            title: o.title,
+            description: o.description,
+            disabled: o.disabled,
+            active: o.active,
+        }
+    }
+}
+
 pub struct Select<'a, T> {
     pub(crate) message: &'a str,
     pub(crate) options: Vec<SelectOption<'a, T>>,
