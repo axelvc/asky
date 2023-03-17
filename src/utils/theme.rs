@@ -224,6 +224,11 @@ pub trait Theme {
         )
     }
 
+    /// Format `Confirm` prompt
+    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, active: bool) -> String {
+        self.fmt_toggle(message, draw_time, active, ("No", "Yes"))
+    }
+
     /// Formats `Toggle` prompt option
     fn fmt_toggle_option(&self, option: &str, active: bool) -> String {
         let option = format!(" {} ", option);

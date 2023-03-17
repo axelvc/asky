@@ -3,6 +3,7 @@ use std::io;
 use crossterm::{cursor, queue, style::Print, terminal};
 
 use crate::prompts::{
+    confirm::Confirm,
     multi_select::MultiSelect,
     number::Number,
     password::Password,
@@ -83,6 +84,24 @@ impl<W: io::Write> Renderer<W> {
                 state.active,
                 state.options,
             ))
+        )?;
+
+        self.out.flush()
+    }
+
+    pub fn confirm(&mut self, state: &Confirm) -> io::Result<()> {
+        if self.draw_time != DrawTime::First {
+            queue!(self.out, cursor::RestorePosition)?;
+        }
+
+        queue!(
+            self.out,
+            cursor::SavePosition,
+            Print(
+                state
+                    .theme
+                    .fmt_confirm(state.message, &self.draw_time, state.active)
+            )
         )?;
 
         self.out.flush()
