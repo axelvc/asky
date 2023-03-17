@@ -15,7 +15,7 @@ enum Direction {
     Down,
 }
 
-pub struct MultiSelect<'a, T: Copy> {
+pub struct MultiSelect<'a, T> {
     pub(crate) message: &'a str,
     pub(crate) options: Vec<SelectOption<'a, T>>,
     pub(crate) focused: usize,
@@ -24,7 +24,7 @@ pub struct MultiSelect<'a, T: Copy> {
     pub(crate) theme: &'a dyn Theme,
 }
 
-impl<'a, T: Copy> MultiSelect<'a, T> {
+impl<'a, T> MultiSelect<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> MultiSelect<'a, T> {
         MultiSelect {
             message,
@@ -59,12 +59,9 @@ impl<'a, T: Copy> MultiSelect<'a, T> {
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self)?;
 
-        Ok(self
-            .options
-            .iter()
-            .filter(|x| x.active)
-            .map(|x| x.value)
-            .collect())
+        let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
+
+        Ok(selected.into_iter().map(|x| x.value).collect())
     }
 
     fn move_cursor(&mut self, direction: Direction) {
@@ -93,7 +90,7 @@ impl<'a, T: Copy> MultiSelect<'a, T> {
     }
 }
 
-impl<'a, T: Copy> KeyHandler for MultiSelect<'a, T> {
+impl<'a, T> KeyHandler for MultiSelect<'a, T> {
     fn submit(&self) -> bool {
         self.submit
     }
@@ -231,7 +228,8 @@ mod tests {
     }
 
     #[test]
-    fn update_focused_selected() { let mut prompt = MultiSelect::new(
+    fn update_focused_selected() {
+        let mut prompt = MultiSelect::new(
             "",
             vec![
                 SelectOption::new("a", "a"),

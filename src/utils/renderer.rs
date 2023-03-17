@@ -84,7 +84,7 @@ impl<W: io::Write> Renderer<W> {
         self.out.flush()
     }
 
-    pub fn select<T: Copy>(&mut self, state: &Select<T>) -> io::Result<()> {
+    pub fn select<T>(&mut self, state: &Select<T>) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }
@@ -118,7 +118,7 @@ impl<W: io::Write> Renderer<W> {
         self.out.flush()
     }
 
-    pub fn multi_select<T: Copy>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
+    pub fn multi_select<T>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(self.out, cursor::RestorePosition)?;
         }

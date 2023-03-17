@@ -13,7 +13,7 @@ enum Direction {
     Down,
 }
 
-pub struct SelectOption<'a, T: Copy> {
+pub struct SelectOption<'a, T> {
     pub(crate) value: T,
     pub(crate) title: &'a str,
     pub(crate) description: Option<&'a str>,
@@ -21,7 +21,7 @@ pub struct SelectOption<'a, T: Copy> {
     pub(crate) active: bool,
 }
 
-impl<'a, T: Copy> SelectOption<'a, T> {
+impl<'a, T> SelectOption<'a, T> {
     pub fn new(value: T, title: &'a str) -> Self {
         Self {
             value,
@@ -51,7 +51,7 @@ impl<'a, T: Copy> SelectOption<'a, T> {
     }
 }
 
-pub struct Select<'a, T: Copy> {
+pub struct Select<'a, T> {
     pub(crate) message: &'a str,
     pub(crate) options: Vec<SelectOption<'a, T>>,
     pub(crate) selected: usize,
@@ -60,7 +60,7 @@ pub struct Select<'a, T: Copy> {
     pub(crate) theme: &'a dyn Theme,
 }
 
-impl<'a, T: Copy> Select<'a, T> {
+impl<'a, T> Select<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Select<'a, T> {
         Select {
             message,
@@ -89,7 +89,9 @@ impl<'a, T: Copy> Select<'a, T> {
 
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self)?;
-        Ok(self.options[self.selected].value)
+
+        let selected = self.options.remove(self.selected);
+        Ok(selected.value)
     }
 
     fn update_value(&mut self, direction: Direction) {
@@ -119,7 +121,7 @@ impl<'a, T: Copy> Select<'a, T> {
     }
 }
 
-impl<'a, T: Copy> KeyHandler for Select<'a, T> {
+impl<'a, T> KeyHandler for Select<'a, T> {
     fn submit(&self) -> bool {
         self.submit
     }
