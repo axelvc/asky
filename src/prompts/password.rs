@@ -25,7 +25,12 @@ impl<'a> Password<'a> {
         self
     }
 
-    pub fn default(&mut self, value: &str) -> &mut Self {
+    pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
+        self.handler.placeholder(value);
+        self
+    }
+
+    pub fn default(&mut self, value: &'a str) -> &mut Self {
         self.handler.default(value);
         self
     }

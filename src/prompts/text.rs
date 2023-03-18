@@ -16,7 +16,8 @@ enum Position {
 pub struct Text<'a> {
     pub(crate) message: &'a str,
     pub(crate) value: String,
-    pub(crate) default_value: String,
+    pub(crate) placeholder: Option<&'a str>,
+    pub(crate) default_value: Option<&'a str>,
     pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
     pub(crate) validator_result: Result<(), String>,
     pub(crate) cursor_col: usize,
@@ -29,7 +30,8 @@ impl<'a> Text<'a> {
         Text {
             message,
             value: String::new(),
-            default_value: String::new(),
+            placeholder: None,
+            default_value: None,
             cursor_col: 0,
             validator: None,
             validator_result: Ok(()),
@@ -38,8 +40,13 @@ impl<'a> Text<'a> {
         }
     }
 
-    pub fn default(&mut self, value: &str) -> &mut Self {
-        self.default_value = String::from(value);
+    pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
+        self.placeholder = Some(value);
+        self
+    }
+
+    pub fn default(&mut self, value: &'a str) -> &mut Self {
+        self.default_value = Some(value);
         self
     }
 
@@ -67,12 +74,8 @@ impl<'a> Text<'a> {
         Ok(self.get_value().to_owned())
     }
 
-    pub(super) fn get_value(&self) -> &String {
-        if self.value.is_empty() {
-            &self.default_value
-        } else {
-            &self.value
-        }
+    pub(super) fn get_value(&self) -> &str {
+        self.default_value.unwrap_or(&self.value)
     }
 
     pub(super) fn update_value(&mut self, char: char) {
@@ -82,7 +85,7 @@ impl<'a> Text<'a> {
 
     fn validate_to_submit(&mut self) -> bool {
         let validator_result = match &self.validator {
-            Some(validator) => validator(self.get_value()).map_err(|e| e.to_string()),
+            Some(validator) => validator(&self.get_value()).map_err(|e| e.to_string()),
             None => Ok(()),
         };
 
@@ -150,7 +153,7 @@ mod tests {
         let mut text = Text::new("foo");
         text.default("bar");
 
-        assert_eq!(text.default_value, "bar");
+        assert_eq!(text.default_value, Some("bar"));
     }
 
     #[test]

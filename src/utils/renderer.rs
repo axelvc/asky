@@ -30,6 +30,7 @@ impl<W: io::Write> Renderer<W> {
             state.message,
             &self.draw_time,
             &state.value,
+            &state.placeholder,
             &state.default_value,
             &state.validator_result,
         );
@@ -43,6 +44,7 @@ impl<W: io::Write> Renderer<W> {
             state.handler.message,
             &self.draw_time,
             &state.handler.value,
+            &state.handler.placeholder,
             &state.handler.default_value,
             &state.handler.validator_result,
             state.hidden,
@@ -62,6 +64,7 @@ impl<W: io::Write> Renderer<W> {
             state.handler.message,
             &self.draw_time,
             &state.handler.value,
+            &state.handler.placeholder,
             &state.handler.default_value,
             &state.handler.validator_result,
         );
@@ -231,8 +234,9 @@ mod tests {
     fn render_text_with_value() {
         let state = Text {
             message: "What's your name?",
-            value: "Leopoldo".to_string(),
-            default_value: "Goofy".to_string(),
+            value: String::from("Leopoldo"),
+            placeholder: None,
+            default_value: Some("Goofy"),
             validator: None,
             validator_result: Ok(()),
             cursor_col: 0,
@@ -247,7 +251,7 @@ mod tests {
 
         assert!(out_str.contains(state.message));
         assert!(out_str.contains(&state.value));
-        assert!(!out_str.contains(&state.default_value));
+        assert!(!out_str.contains(&state.default_value.unwrap()));
     }
 
     #[test]
@@ -255,7 +259,8 @@ mod tests {
         let state = Text {
             message: "What's your name?",
             value: String::new(),
-            default_value: "Goofy".to_string(),
+            placeholder: None,
+            default_value: Some("Goofy"),
             validator: None,
             validator_result: Ok(()),
             cursor_col: 0,
@@ -270,17 +275,18 @@ mod tests {
         let out_str = String::from_utf8(renderer.out).unwrap();
 
         assert!(out_str.contains(state.message));
-        assert!(out_str.contains(&state.default_value));
+        assert!(out_str.contains(&state.default_value.unwrap()));
     }
 
     #[test]
     fn render_text_with_error() {
         let state = Text {
             message: "What's your name?",
-            value: "Leopoldo".to_string(),
-            default_value: String::new(),
+            value: String::from("Leopoldo"),
+            placeholder: None,
+            default_value: None,
             validator: None,
-            validator_result: Err("Invalid name".to_string()),
+            validator_result: Err(String::from("Invalid name")),
             cursor_col: 0,
             submit: false,
             theme: &DefaultTheme,

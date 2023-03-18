@@ -82,24 +82,30 @@ pub trait Theme {
         message: &str,
         draw_time: &DrawTime,
         text: &str,
-        placeholder: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
         validator_result: &Result<(), String>,
     ) -> (String, Option<(u16, u16)>) {
+        let default_value = match default_value {
+            Some(_) => format!("Default: {} ", default_value.unwrap_or_default()).bright_black(),
+            None => "".normal(),
+        };
+
         let (prefix, error) = match validator_result {
             Err(e) => (self.text_prefix().red(), (String::from("\n") + e).red()),
             Ok(_) => (self.text_prefix().blue(), String::new().normal()),
         };
 
-        let text = if text.is_empty() {
-            placeholder.bright_black()
-        } else {
-            text.normal()
+        let text = match text.is_empty() {
+            true => placeholder.unwrap_or_default().bright_black(),
+            false => text.normal(),
         };
 
         (
             format!(
-                "{}\n{}{}{}\n",
+                "{} {}\n{}{}{}\n",
                 self.fmt_message(message, draw_time),
+                default_value,
                 prefix,
                 text,
                 error,
@@ -139,7 +145,8 @@ pub trait Theme {
         message: &str,
         draw_time: &DrawTime,
         text: &str,
-        placeholder: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
         validator_result: &Result<(), String>,
         is_hidden: bool,
     ) -> (String, Option<(u16, u16)>) {
@@ -148,7 +155,14 @@ pub trait Theme {
             false => self.password_char().repeat(text.len()),
         };
 
-        self.fmt_text(message, draw_time, &text, placeholder, validator_result)
+        self.fmt_text(
+            message,
+            draw_time,
+            &text,
+            placeholder,
+            default_value,
+            validator_result,
+        )
     }
 
     /// Formats `Number` prompt
@@ -182,24 +196,30 @@ pub trait Theme {
         message: &str,
         draw_time: &DrawTime,
         text: &str,
-        placeholder: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
         validator_result: &Result<(), String>,
     ) -> (String, Option<(u16, u16)>) {
+        let default_value = match default_value {
+            Some(_) => format!("Default: {} ", default_value.unwrap_or_default()).bright_black(),
+            None => "".normal(),
+        };
+
         let (prefix, error) = match validator_result {
             Err(e) => (self.text_prefix().red(), (String::from("\n") + e).red()),
             Ok(_) => (self.text_prefix().blue(), String::new().normal()),
         };
 
-        let text = if text.is_empty() {
-            placeholder.bright_black()
-        } else {
-            text.yellow()
+        let text = match text.is_empty() {
+            true => placeholder.clone().unwrap_or_default().bright_black(),
+            false => text.yellow(),
         };
 
         (
             format!(
-                "{}\n{}{}{}\n",
+                "{} {}\n{}{}{}\n",
                 self.fmt_message(message, draw_time),
+                default_value,
                 prefix,
                 text,
                 error,

@@ -14,19 +14,24 @@ pub struct Number<'a> {
 }
 
 impl<'a> Number<'a> {
-    pub fn new(message: &str) -> Number {
+    pub fn new(message: &'a str) -> Number {
         Number {
             handler: Text::new(message),
         }
     }
 
-    pub fn default<T: ToString>(&mut self, value: T) -> &mut Self {
-        self.handler.default(&value.to_string());
+    pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
+        self.handler.placeholder(value);
         self
     }
 
-    pub fn initial<T: ToString>(&mut self, value: T) -> &mut Self {
-        self.handler.initial(&value.to_string());
+    pub fn default(&mut self, value: &'a str) -> &mut Self {
+        self.handler.default(value);
+        self
+    }
+
+    pub fn initial(&mut self, value: &'a str) -> &mut Self {
+        self.handler.initial(value);
         self
     }
 
