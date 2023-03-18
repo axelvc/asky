@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, KeyHandler},
-    renderer::Renderer,
+    renderer::Renderer, theme::Theme,
 };
 
 use super::text::Text;
@@ -13,7 +13,7 @@ pub struct Number<'a> {
     pub(crate) handler: Text<'a>,
 }
 
-impl Number<'_> {
+impl<'a> Number<'a> {
     pub fn new(message: &str) -> Number {
         Number {
             handler: Text::new(message),
@@ -35,6 +35,11 @@ impl Number<'_> {
         F: Fn(&str) -> Result<(), &str> + 'static,
     {
         self.handler.validate(validator);
+        self
+    }
+
+    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
+        self.handler.theme(theme);
         self
     }
 
