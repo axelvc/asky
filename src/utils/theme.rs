@@ -5,52 +5,6 @@ use crate::prompts::select::SelectOptionData;
 use super::renderer::DrawTime;
 
 pub trait Theme {
-    /// Prefix used in `Line` prompts, before the user input
-    fn text_prefix(&self) -> &'static str {
-        "› "
-    }
-
-    /// Character that replaces the text at the `Password` prompt when it is not hidden
-    fn password_char(&self) -> &'static str {
-        "*"
-    }
-
-    /// Prefix used in the prompt message
-    fn message_prefix(&self, draw_time: &DrawTime) -> &'static str {
-        match draw_time {
-            DrawTime::Last => "✓ ",
-            _ => "? ",
-        }
-    }
-
-    /// Prefix used in each prompt option of type `Select`.
-    fn select_prefix(&self, selected: bool) -> &'static str {
-        match selected {
-            true => "● ",
-            false => "○ ",
-        }
-    }
-
-    /// Prefix used in each prompt option of type `MultiSelect`.
-    fn multi_select_prefix(&self, selected: bool) -> &'static str {
-        self.select_prefix(selected)
-    }
-
-    /// Formats message of any prompt
-    fn fmt_message(&self, message: &str, draw_time: &DrawTime) -> String {
-        let prefix = match draw_time {
-            DrawTime::Last => self.message_prefix(draw_time).green(),
-            _ => self.message_prefix(draw_time).blue(),
-        };
-
-        format!("{}{}", prefix, message)
-    }
-
-    /// Formats error messages
-    fn fmt_error(&self, error: &str) -> String {
-        error.red().to_string()
-    }
-
     /// Formats `Line` prompts
     /// Due a important part of this prompt is the cursor position
     /// you can return an optional tuple of (`row`, `col`) to set the initial cursor position.
@@ -81,38 +35,11 @@ pub trait Theme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        text: &str,
+        input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
         validator_result: &Result<(), String>,
-    ) -> (String, Option<(u16, u16)>) {
-        let default_value = match default_value {
-            Some(_) => format!("Default: {} ", default_value.unwrap_or_default()).bright_black(),
-            None => "".normal(),
-        };
-
-        let (prefix, error) = match validator_result {
-            Err(e) => (self.text_prefix().red(), (String::from("\n") + e).red()),
-            Ok(_) => (self.text_prefix().blue(), String::new().normal()),
-        };
-
-        let text = match text.is_empty() {
-            true => placeholder.unwrap_or_default().bright_black(),
-            false => text.normal(),
-        };
-
-        (
-            format!(
-                "{} {}\n{}{}{}\n",
-                self.fmt_message(message, draw_time),
-                default_value,
-                prefix,
-                text,
-                error,
-            ),
-            Some((1, 2)),
-        )
-    }
+    ) -> (String, Option<(u16, u16)>);
 
     /// Formats `Password` prompt
     /// Due a important part of this prompt is the cursor position
@@ -144,26 +71,12 @@ pub trait Theme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        text: &str,
+        input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
         validator_result: &Result<(), String>,
         is_hidden: bool,
-    ) -> (String, Option<(u16, u16)>) {
-        let text = match is_hidden {
-            true => String::new(),
-            false => self.password_char().repeat(text.len()),
-        };
-
-        self.fmt_text(
-            message,
-            draw_time,
-            &text,
-            placeholder,
-            default_value,
-            validator_result,
-        )
-    }
+    ) -> (String, Option<(u16, u16)>);
 
     /// Formats `Number` prompt
     /// Due a important part of this prompt is the cursor position
@@ -195,38 +108,11 @@ pub trait Theme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        text: &str,
+        input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
         validator_result: &Result<(), String>,
-    ) -> (String, Option<(u16, u16)>) {
-        let default_value = match default_value {
-            Some(_) => format!("Default: {} ", default_value.unwrap_or_default()).bright_black(),
-            None => "".normal(),
-        };
-
-        let (prefix, error) = match validator_result {
-            Err(e) => (self.text_prefix().red(), (String::from("\n") + e).red()),
-            Ok(_) => (self.text_prefix().blue(), String::new().normal()),
-        };
-
-        let text = match text.is_empty() {
-            true => placeholder.clone().unwrap_or_default().bright_black(),
-            false => text.yellow(),
-        };
-
-        (
-            format!(
-                "{} {}\n{}{}{}\n",
-                self.fmt_message(message, draw_time),
-                default_value,
-                prefix,
-                text,
-                error,
-            ),
-            Some((1, 2)),
-        )
-    }
+    ) -> (String, Option<(u16, u16)>);
 
     /// Formats `Toggle` prompt
     fn fmt_toggle(
@@ -235,22 +121,94 @@ pub trait Theme {
         draw_time: &DrawTime,
         active: bool,
         options: (&str, &str),
-    ) -> String {
-        format!(
-            "{}\n{}  {}\n",
-            self.fmt_message(message, draw_time),
-            self.fmt_toggle_option(options.0, active == false),
-            self.fmt_toggle_option(options.1, active == true),
-        )
+    ) -> String;
+
+    /// Formats `Confirm` prompt
+    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, focused: bool) -> String;
+
+    // Formats `Select` prompt
+    fn fmt_select(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        options: Vec<SelectOptionData>,
+        selected: usize,
+    ) -> String;
+
+    // Formats `MultiSelect` prompt
+    fn fmt_multi_select(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        options: Vec<SelectOptionData>,
+        focused: usize,
+    ) -> String;
+}
+
+pub struct DefaultTheme;
+
+impl DefaultTheme {
+    #[inline]
+    fn text_prefix(&self, validator_result: &Result<(), String>) -> String {
+        let error = match validator_result {
+            Ok(_) => "›".blue(),
+            Err(_) => "›".red(),
+        };
+
+        error.to_string()
     }
 
-    /// Format `Confirm` prompt
-    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, active: bool) -> String {
-        self.fmt_toggle(message, draw_time, active, ("No", "Yes"))
+    #[inline]
+    fn text_default_value(&self, default_value: &Option<&str>) -> String {
+        let value = match default_value {
+            Some(value) => format!("Default: {}", value).bright_black(),
+            None => "".normal(),
+        };
+
+        value.to_string()
     }
 
-    /// Formats `Toggle` prompt option
-    fn fmt_toggle_option(&self, option: &str, active: bool) -> String {
+    #[inline]
+    fn text_error(&self, validator_result: &Result<(), String>) -> String {
+        let error = match validator_result {
+            Ok(_) => String::new(),
+            Err(e) => format!("{}\n", e.red()),
+        };
+
+        error.to_string()
+    }
+
+    #[inline]
+    fn text_input(&self, input: &str, placeholder: &Option<&str>, is_number: bool) -> String {
+        let input = match (input.is_empty(), is_number) {
+            (true, _) => placeholder.unwrap_or_default().bright_black(),
+            (false, false) => input.normal(),
+            (false, true) => input.yellow(),
+        };
+
+        input.to_string()
+    }
+
+    #[inline]
+    fn select_prefix(&self, selected: bool) -> &'static str {
+        match selected {
+            true => "● ",
+            false => "○ ",
+        }
+    }
+
+    #[inline]
+    fn message(&self, message: &str, draw_time: &DrawTime) -> String {
+        let prefix = match draw_time {
+            DrawTime::Last => "✓ ".green(),
+            _ => "? ".blue(),
+        };
+
+        format!("{}{}", prefix, message)
+    }
+
+    #[inline]
+    fn toggle_option(&self, option: &str, active: bool) -> String {
         let option = format!(" {} ", option);
         let option = match active {
             true => option.black().on_blue(),
@@ -260,7 +218,145 @@ pub trait Theme {
         option.to_string()
     }
 
-    // Formats `Select` prompt
+    fn select_option_title(
+        &self,
+        SelectOptionData {
+            title,
+            description,
+            disabled,
+            ..
+        }: &SelectOptionData,
+        focused: bool,
+    ) -> String {
+        let title = match (disabled, focused) {
+            (true, _) => title.bright_black().strikethrough(),
+            (false, true) => title.blue(),
+            (false, false) => title.normal(),
+        };
+
+        let make_description = |s: &str| format!(" · {}", s).bright_black();
+        let description = match (focused, disabled) {
+            (false, _) => "".normal(),
+            (true, true) => make_description("(Disabled)"),
+            (true, false) => make_description(description.unwrap_or_default()),
+        };
+
+        format!("{} {}", title, description)
+    }
+
+    fn select_option(&self, option: &SelectOptionData, focused: bool) -> String {
+        let prefix = self.select_prefix(focused);
+        let prefix = match (focused, option.disabled) {
+            (false, _) => prefix.bright_black(),
+            (true, true) => prefix.yellow(),
+            (true, false) => prefix.blue(),
+        };
+
+        format!("{}{}", prefix, self.select_option_title(option, focused))
+    }
+
+    fn multi_select_option(&self, option: &SelectOptionData, focused: bool) -> String {
+        let prefix = self.select_prefix(option.active);
+        let prefix = match (focused, option.disabled, option.active) {
+            (true, true, _) => prefix.yellow(),
+            (true, false, _) => prefix.blue(),
+            (false, _, true) => prefix.normal(),
+            (false, _, false) => prefix.bright_black(),
+        };
+
+        format!("{}{}", prefix, self.select_option_title(option, focused))
+    }
+}
+
+impl Theme for DefaultTheme {
+    fn fmt_text(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        input: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
+        validator_result: &Result<(), String>,
+    ) -> (String, Option<(u16, u16)>) {
+        (
+            format!(
+                "{} {}\n{} {}\n{}",
+                self.message(message, draw_time),
+                self.text_default_value(default_value),
+                self.text_prefix(validator_result),
+                self.text_input(input, placeholder, false),
+                self.text_error(validator_result),
+            ),
+            Some((1, 2)),
+        )
+    }
+
+    fn fmt_password(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        input: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
+        validator_result: &Result<(), String>,
+        is_hidden: bool,
+    ) -> (String, Option<(u16, u16)>) {
+        let text = match is_hidden {
+            true => String::new(),
+            false => "*".repeat(input.len()),
+        };
+
+        self.fmt_text(
+            message,
+            draw_time,
+            &text,
+            placeholder,
+            default_value,
+            validator_result,
+        )
+    }
+
+    fn fmt_number(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        input: &str,
+        placeholder: &Option<&str>,
+        default_value: &Option<&str>,
+        validator_result: &Result<(), String>,
+    ) -> (String, Option<(u16, u16)>) {
+        (
+            format!(
+                "{} {}\n{} {}\n{}",
+                self.message(message, draw_time),
+                self.text_default_value(default_value),
+                self.text_prefix(validator_result),
+                self.text_input(input, placeholder, true),
+                self.text_error(validator_result),
+            ),
+            Some((1, 2)),
+        )
+    }
+
+    fn fmt_toggle(
+        &self,
+        message: &str,
+        draw_time: &DrawTime,
+        active: bool,
+        options: (&str, &str),
+    ) -> String {
+        format!(
+            "{}\n{}  {}\n",
+            self.message(message, draw_time),
+            self.toggle_option(options.0, active == false),
+            self.toggle_option(options.1, active == true),
+        )
+    }
+
+    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, active: bool) -> String {
+        self.fmt_toggle(message, draw_time, active, ("No", "Yes"))
+    }
+
     fn fmt_select(
         &self,
         message: &str,
@@ -271,54 +367,16 @@ pub trait Theme {
         let options: Vec<String> = options
             .iter()
             .enumerate()
-            .map(|(i, option)| self.fmt_select_option(option, selected == i))
+            .map(|(i, option)| self.select_option(option, selected == i))
             .collect();
 
         format!(
             "{}\n{}\n",
-            self.fmt_message(message, draw_time),
+            self.message(message, draw_time),
             options.join("\n")
         )
     }
 
-    /// Formats `Select` prompt option
-    fn fmt_select_option(
-        &self,
-        SelectOptionData {
-            title,
-            description,
-            disabled,
-            ..
-        }: &SelectOptionData,
-        active: bool,
-    ) -> String {
-        // prefix
-        let prefix = self.select_prefix(active);
-        let prefix = match (active, disabled) {
-            (false, _) => prefix.bright_black(),
-            (true, true) => prefix.yellow(),
-            (true, false) => prefix.blue(),
-        };
-
-        // title
-        let title = match (disabled, active) {
-            (true, _) => title.bright_black().strikethrough(),
-            (false, true) => title.blue(),
-            (false, false) => title.normal(),
-        };
-
-        // description
-        let make_description = |s: &str| format!(" · {}", s).bright_black();
-        let description = match (active, disabled) {
-            (false, _) => "".normal(),
-            (true, true) => make_description("(Disabled)"),
-            (true, false) => make_description(description.unwrap_or_default()),
-        };
-
-        format!("{}{}{}", prefix, title, description)
-    }
-
-    // Formats `MultiSelect` prompt
     fn fmt_multi_select(
         &self,
         message: &str,
@@ -329,54 +387,13 @@ pub trait Theme {
         let options: Vec<String> = options
             .iter()
             .enumerate()
-            .map(|(i, option)| self.fmt_multi_select_option(option, i == focused))
+            .map(|(i, option)| self.multi_select_option(option, i == focused))
             .collect();
 
         format!(
             "{}\n{}\n",
-            self.fmt_message(message, draw_time),
+            self.message(message, draw_time),
             options.join("\n")
         )
     }
-
-    /// Formats `MultiSelect` prompt option
-    fn fmt_multi_select_option(
-        &self,
-        SelectOptionData {
-            title,
-            description,
-            disabled,
-            active,
-        }: &SelectOptionData,
-        focused: bool,
-    ) -> String {
-        // prefix
-        let prefix = self.select_prefix(*active);
-        let prefix = match (focused, disabled, active) {
-            (true, true, _) => prefix.yellow(),
-            (true, false, _) => prefix.blue(),
-            (false, _, true) => prefix.normal(),
-            (false, _, false) => prefix.bright_black(),
-        };
-
-        // title
-        let title = match (disabled, focused) {
-            (true, _) => title.bright_black().strikethrough(),
-            (false, true) => title.blue(),
-            (false, false) => title.normal(),
-        };
-
-        // description
-        let make_description = |s: &str| format!(" · {}", s).bright_black();
-        let description = match (focused, disabled) {
-            (false, _) => "".normal(),
-            (true, true) => make_description("(Disabled)"),
-            (true, false) => make_description(description.unwrap_or_default()),
-        };
-
-        format!("{}{}{}", prefix, title, description)
-    }
 }
-
-pub struct DefaultTheme;
-impl Theme for DefaultTheme {}
