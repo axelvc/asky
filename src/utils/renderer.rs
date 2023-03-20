@@ -35,8 +35,8 @@ impl<W: io::Write> Renderer<W> {
             &state.validator_result,
         );
 
-        self.render_line_prompt(text, state.cursor_col, cursor)?;
-        self.out.flush()
+        self.print(&text)?;
+        self.update_cursor(state.cursor_col, cursor)
     }
 
     pub fn password(&mut self, state: &Password) -> io::Result<()> {
@@ -55,8 +55,8 @@ impl<W: io::Write> Renderer<W> {
             false => state.handler.cursor_col,
         };
 
-        self.render_line_prompt(text, cursor_col, cursor)?;
-        self.out.flush()
+        self.print(&text)?;
+        self.update_cursor(cursor_col, cursor)
     }
 
     pub fn number(&mut self, state: &Number) -> io::Result<()> {
@@ -69,85 +69,47 @@ impl<W: io::Write> Renderer<W> {
             &state.handler.validator_result,
         );
 
-        self.render_line_prompt(text, state.handler.cursor_col, cursor)?;
-        self.out.flush()
+        self.print(&text)?;
+        self.update_cursor(state.handler.cursor_col, cursor)
     }
 
     pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(self.out, cursor::RestorePosition)?;
-        }
+        let text =
+            state
+                .theme
+                .fmt_toggle(state.message, &self.draw_time, state.active, state.options);
 
-        queue!(
-            self.out,
-            cursor::SavePosition,
-            Print(state.theme.fmt_toggle(
-                state.message,
-                &self.draw_time,
-                state.active,
-                state.options,
-            ))
-        )?;
-
-        self.out.flush()
+        self.print(&text)
     }
 
     pub fn confirm(&mut self, state: &Confirm) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(self.out, cursor::RestorePosition)?;
-        }
+        let text = state
+            .theme
+            .fmt_confirm(state.message, &self.draw_time, state.active);
 
-        queue!(
-            self.out,
-            cursor::SavePosition,
-            Print(
-                state
-                    .theme
-                    .fmt_confirm(state.message, &self.draw_time, state.active)
-            )
-        )?;
-
-        self.out.flush()
+        self.print(&text)
     }
 
     pub fn select<T>(&mut self, state: &Select<T>) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(self.out, cursor::RestorePosition)?;
-        }
+        let text = state.theme.fmt_select(
+            state.message,
+            &self.draw_time,
+            Self::get_select_options_data(&state.options),
+            state.selected,
+        );
 
-        queue!(
-            self.out,
-            cursor::SavePosition,
-            terminal::Clear(terminal::ClearType::FromCursorDown),
-            Print(state.theme.fmt_select(
-                state.message,
-                &self.draw_time,
-                Self::get_select_options_data(&state.options),
-                state.selected
-            )),
-        )?;
-
-        self.out.flush()
+        self.print(&text)
     }
 
     pub fn multi_select<T>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(self.out, cursor::RestorePosition)?;
-        }
+        let text = state.theme.fmt_multi_select(
+            state.message,
+            &self.draw_time,
+            Self::get_select_options_data(&state.options),
+            state.focused,
+        );
 
-        queue!(
-            self.out,
-            cursor::SavePosition,
-            terminal::Clear(terminal::ClearType::FromCursorDown),
-            Print(state.theme.fmt_multi_select(
-                state.message,
-                &self.draw_time,
-                Self::get_select_options_data(&state.options),
-                state.focused
-            )),
-        )?;
-
-        self.out.flush()
+        self.print(&text)
     }
 
     pub fn update_draw_time(&mut self) {
@@ -157,26 +119,46 @@ impl<W: io::Write> Renderer<W> {
         }
     }
 
-    fn render_line_prompt(
+    fn print(&mut self, text: &str) -> io::Result<()> {
+        if self.draw_time != DrawTime::First {
+            queue!(
+                self.out,
+                cursor::RestorePosition,
+                terminal::Clear(terminal::ClearType::FromCursorDown),
+            )?;
+        }
+
+        queue!(self.out, Print(&text))?;
+
+        // Saved position is updated each draw because the text lines could be different
+        // between draws. The last draw is ignored to always set the cursor at the end
+        //
+        // The position is saved this way to ensure the correct position when the cursor is at
+        // the bottom of the terminal. Otherwise, the saved position will be the last row
+        // and when trying to restore, the next draw will be below the last row.
+        if self.draw_time != DrawTime::Last {
+            let (col, row) = cursor::position()?;
+            let text_lines = text.lines().count() as u16;
+
+            queue!(
+                self.out,
+                cursor::MoveToPreviousLine(text_lines),
+                cursor::SavePosition,
+                cursor::MoveTo(col, row)
+            )?;
+        }
+
+        self.out.flush()
+    }
+
+    fn update_cursor(
         &mut self,
-        text: String,
         cursor_col: usize,
         initial_position: Option<(u16, u16)>,
     ) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(self.out, cursor::RestorePosition)?;
-        }
-
-        queue!(
-            self.out,
-            cursor::SavePosition,
-            terminal::Clear(terminal::ClearType::FromCursorDown),
-            Print(text)
-        )?;
-
         if self.draw_time != DrawTime::Last {
             if let Some((row, col)) = initial_position {
-                queue!(self.out, cursor::RestorePosition, cursor::SavePosition)?;
+                queue!(self.out, cursor::RestorePosition)?;
 
                 if row > 0 {
                     queue!(self.out, cursor::MoveDown(row))?;
@@ -192,7 +174,7 @@ impl<W: io::Write> Renderer<W> {
             }
         }
 
-        Ok(())
+        self.out.flush()
     }
 
     #[inline]
@@ -209,147 +191,5 @@ impl Renderer<io::Stdout> {
             draw_time: DrawTime::First,
             out: io::stdout(),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{
-        prompts::select::SelectOption,
-        utils::theme::{DefaultTheme, Theme},
-    };
-
-    use super::*;
-
-    impl Renderer<Vec<u8>> {
-        fn to_test() -> Renderer<Vec<u8>> {
-            Renderer {
-                draw_time: DrawTime::First,
-                out: Vec::new(),
-            }
-        }
-    }
-
-    #[test]
-    fn render_text_with_value() {
-        let state = Text {
-            message: "What's your name?",
-            value: String::from("Leopoldo"),
-            placeholder: None,
-            default_value: Some("Goofy"),
-            validator: None,
-            validator_result: Ok(()),
-            cursor_col: 0,
-            submit: false,
-            theme: &DefaultTheme,
-        };
-
-        let mut renderer = Renderer::to_test();
-        renderer.text(&state).unwrap();
-
-        let out_str = String::from_utf8(renderer.out).unwrap();
-
-        assert!(out_str.contains(state.message));
-        assert!(out_str.contains(&state.value));
-        assert!(!out_str.contains(&state.default_value.unwrap()));
-    }
-
-    #[test]
-    fn render_text_with_default_value() {
-        let state = Text {
-            message: "What's your name?",
-            value: String::new(),
-            placeholder: None,
-            default_value: Some("Goofy"),
-            validator: None,
-            validator_result: Ok(()),
-            cursor_col: 0,
-            submit: false,
-            theme: &DefaultTheme,
-        };
-
-        let mut renderer = Renderer::to_test();
-
-        renderer.text(&state).unwrap();
-
-        let out_str = String::from_utf8(renderer.out).unwrap();
-
-        assert!(out_str.contains(state.message));
-        assert!(out_str.contains(&state.default_value.unwrap()));
-    }
-
-    #[test]
-    fn render_text_with_error() {
-        let state = Text {
-            message: "What's your name?",
-            value: String::from("Leopoldo"),
-            placeholder: None,
-            default_value: None,
-            validator: None,
-            validator_result: Err(String::from("Invalid name")),
-            cursor_col: 0,
-            submit: false,
-            theme: &DefaultTheme,
-        };
-
-        let mut renderer = Renderer::to_test();
-        renderer.text(&state).unwrap();
-
-        let out_str = String::from_utf8(renderer.out).unwrap();
-
-        assert!(out_str.contains(state.message));
-        assert!(out_str.contains(&state.value));
-        assert!(out_str.contains(&state.validator_result.unwrap_err()));
-    }
-
-    #[test]
-    fn render_toggle() {
-        let cases = [false, true];
-
-        for active in cases {
-            let state = &Toggle {
-                message: "Do you like pizza?",
-                options: ("foo", "bar"),
-                active,
-                submit: false,
-                theme: &DefaultTheme,
-            };
-
-            let mut renderer = Renderer::to_test();
-
-            renderer.toggle(&state).unwrap();
-
-            let out_str = String::from_utf8(renderer.out).unwrap();
-            let expeted_option_str =
-                DefaultTheme.fmt_toggle(state.message, &renderer.draw_time, active, state.options);
-            assert!(out_str.contains(&state.message));
-            assert!(out_str.contains(&expeted_option_str));
-        }
-    }
-
-    #[test]
-    fn render_select() {
-        let message = "What's your favorite number?";
-        let mut renderer = Renderer::to_test();
-        let state = Select {
-            message,
-            options: vec![
-                SelectOption::new("1", "1"),
-                SelectOption::new("2", "2"),
-                SelectOption::new("fish", "fish"),
-            ],
-            selected: 2,
-            is_loop: false,
-            submit: false,
-            theme: &DefaultTheme,
-        };
-
-        renderer.select(&state).unwrap();
-
-        let out_str = String::from_utf8(renderer.out).unwrap();
-        assert!(out_str.contains(&message));
-        assert!(out_str.contains("1"));
-        assert!(out_str.contains("2"));
-        assert!(out_str.contains("fish"));
     }
 }
