@@ -29,30 +29,30 @@ impl<W: io::Write> Renderer<W> {
         let (text, cursor) = state.theme.fmt_text(
             state.message,
             &self.draw_time,
-            &state.value,
+            &state.input.value,
             &state.placeholder,
             &state.default_value,
             &state.validator_result,
         );
 
         self.print(&text)?;
-        self.update_cursor(state.cursor_col, cursor)
+        self.update_cursor(state.input.col, cursor)
     }
 
     pub fn password(&mut self, state: &Password) -> io::Result<()> {
-        let (text, cursor) = state.handler.theme.fmt_password(
-            state.handler.message,
+        let (text, cursor) = state.theme.fmt_password(
+            state.message,
             &self.draw_time,
-            &state.handler.value,
-            &state.handler.placeholder,
-            &state.handler.default_value,
-            &state.handler.validator_result,
+            &state.input.value,
+            &state.placeholder,
+            &state.default_value,
+            &state.validator_result,
             state.hidden,
         );
 
         let cursor_col = match state.hidden {
             true => 0,
-            false => state.handler.cursor_col,
+            false => state.input.col,
         };
 
         self.print(&text)?;
@@ -60,17 +60,17 @@ impl<W: io::Write> Renderer<W> {
     }
 
     pub fn number(&mut self, state: &Number) -> io::Result<()> {
-        let (text, cursor) = state.handler.theme.fmt_number(
-            state.handler.message,
+        let (text, cursor) = state.theme.fmt_number(
+            state.message,
             &self.draw_time,
-            &state.handler.value,
-            &state.handler.placeholder,
-            &state.handler.default_value,
-            &state.handler.validator_result,
+            &state.input.value,
+            &state.placeholder,
+            &state.default_value,
+            &state.validator_result,
         );
 
         self.print(&text)?;
-        self.update_cursor(state.handler.cursor_col, cursor)
+        self.update_cursor(state.input.col, cursor)
     }
 
     pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {

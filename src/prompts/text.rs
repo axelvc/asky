@@ -8,19 +8,60 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
-enum Position {
+pub enum Direction {
     Left,
     Right,
 }
 
+#[derive(Debug, PartialEq, Default)]
+pub struct TextInput {
+    pub value: String,
+    pub col: usize,
+}
+
+impl TextInput {
+    pub fn new() -> Self {
+        TextInput::default()
+    }
+
+    pub fn set_value(&mut self, value: &str) {
+        self.value = String::from(value);
+        self.col = value.len();
+    }
+
+    pub fn insert(&mut self, ch: char) {
+        self.value.insert(self.col, ch);
+        self.col += 1;
+    }
+
+    pub fn backspace(&mut self) {
+        if !self.value.is_empty() && self.col > 0 {
+            self.col -= 1;
+            self.value.remove(self.col);
+        }
+    }
+
+    pub fn delete(&mut self) {
+        if !self.value.is_empty() && self.col < self.value.len() {
+            self.value.remove(self.col);
+        }
+    }
+
+    pub fn move_cursor(&mut self, position: Direction) {
+        self.col = match position {
+            Direction::Left => self.col.saturating_sub(1),
+            Direction::Right => (self.col + 1).min(self.value.len()),
+        }
+    }
+}
+
 pub struct Text<'a> {
     pub(crate) message: &'a str,
-    pub(crate) value: String,
+    pub(crate) input: TextInput,
     pub(crate) placeholder: Option<&'a str>,
     pub(crate) default_value: Option<&'a str>,
-    pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &str>>>,
-    pub(crate) validator_result: Result<(), String>,
-    pub(crate) cursor_col: usize,
+    pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &'a str>>>,
+    pub(crate) validator_result: Result<(), &'a str>,
     pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
@@ -29,10 +70,9 @@ impl<'a> Text<'a> {
     pub fn new(message: &str) -> Text<'_> {
         Text {
             message,
-            value: String::new(),
+            input: TextInput::new(),
             placeholder: None,
             default_value: None,
-            cursor_col: 0,
             validator: None,
             validator_result: Ok(()),
             submit: false,
@@ -51,14 +91,13 @@ impl<'a> Text<'a> {
     }
 
     pub fn initial(&mut self, value: &str) -> &mut Self {
-        self.value = String::from(value);
-        self.cursor_col = value.len();
+        self.input.set_value(value);
         self
     }
 
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &str> + 'static,
+        F: Fn(&str) -> Result<(), &'a str> + 'static,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -74,43 +113,19 @@ impl<'a> Text<'a> {
         Ok(self.get_value().to_owned())
     }
 
-    pub(super) fn get_value(&self) -> &str {
-        self.default_value.unwrap_or(&self.value)
-    }
-
-    pub(super) fn update_value(&mut self, char: char) {
-        self.value.insert(self.cursor_col, char);
-        self.cursor_col += 1;
+    fn get_value(&self) -> &str {
+        match self.input.value.is_empty() {
+            true => self.default_value.unwrap_or_default(),
+            false => &self.input.value,
+        }
     }
 
     fn validate_to_submit(&mut self) -> bool {
-        let validator_result = match &self.validator {
-            Some(validator) => validator(&self.get_value()).map_err(|e| e.to_string()),
-            None => Ok(()),
-        };
+        if let Some(validator) = &self.validator {
+            self.validator_result = validator(&self.get_value());
+        }
 
-        self.validator_result = validator_result;
         self.validator_result.is_ok()
-    }
-
-    fn backspace(&mut self) {
-        if !self.value.is_empty() && self.cursor_col > 0 {
-            self.cursor_col -= 1;
-            self.value.remove(self.cursor_col);
-        }
-    }
-
-    fn delete(&mut self) {
-        if !self.value.is_empty() && self.cursor_col < self.value.len() {
-            self.value.remove(self.cursor_col);
-        }
-    }
-
-    fn move_cursor(&mut self, position: Position) {
-        self.cursor_col = match position {
-            Position::Left => self.cursor_col.saturating_sub(1),
-            Position::Right => (self.cursor_col + 1).min(self.value.len()),
-        }
     }
 }
 
@@ -130,13 +145,13 @@ impl KeyHandler for Text<'_> {
             // submit
             KeyCode::Enter => submit = self.validate_to_submit(),
             // type
-            KeyCode::Char(c) => self.update_value(c),
+            KeyCode::Char(c) => self.input.insert(c),
             // remove delete
-            KeyCode::Backspace => self.backspace(),
-            KeyCode::Delete => self.delete(),
+            KeyCode::Backspace => self.input.backspace(),
+            KeyCode::Delete => self.input.delete(),
             // move cursor
-            KeyCode::Left => self.move_cursor(Position::Left),
-            KeyCode::Right => self.move_cursor(Position::Right),
+            KeyCode::Left => self.input.move_cursor(Direction::Left),
+            KeyCode::Right => self.input.move_cursor(Direction::Right),
             _ => (),
         };
 
@@ -149,20 +164,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn set_default_value() {
-        let mut text = Text::new("foo");
-        text.default("bar");
+    fn set_placeholder() {
+        let mut text = Text::new("");
+        text.placeholder("foo");
 
-        assert_eq!(text.default_value, Some("bar"));
+        assert_eq!(text.placeholder, Some("foo"));
+    }
+
+    #[test]
+    fn set_default_value() {
+        let mut text = Text::new("");
+        text.default("foo");
+
+        assert_eq!(text.default_value, Some("foo"));
     }
 
     #[test]
     fn set_initial_value() {
         let mut prompt = Text::new("");
 
-        prompt.initial("bar");
-        assert_eq!(prompt.value, "bar");
-        assert_eq!(prompt.cursor_col, 3);
+        assert_eq!(prompt.input, TextInput::new());
+
+        prompt.initial("foo");
+
+        assert_eq!(
+            prompt.input,
+            TextInput {
+                value: String::from("foo"),
+                col: 3,
+            }
+        );
     }
 
     #[test]
@@ -176,40 +207,40 @@ mod tests {
             prompt.handle_key(KeyEvent::from(KeyCode::Char(char)));
         }
 
-        assert_eq!(prompt.value, "foo");
-        assert_eq!(prompt.cursor_col, 3);
+        assert_eq!(prompt.input.value, "foo");
+        assert_eq!(prompt.input.col, 3);
 
         // removing
         let keys = [(KeyCode::Backspace, "fo"), (KeyCode::Delete, "f")];
-        prompt.cursor_col = 2;
+        prompt.input.col = 2;
 
         for (key, expected) in keys {
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.value, expected);
-            assert_eq!(prompt.cursor_col, 1);
+            assert_eq!(prompt.input.value, expected);
+            assert_eq!(prompt.input.col, 1);
         }
     }
 
     #[test]
     fn update_cursor_position() {
         let mut prompt = Text::new("");
-        prompt.value = "foo".to_string();
-        prompt.cursor_col = 2;
+        prompt.input.set_value("foo");
+        prompt.input.col = 2;
 
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.cursor_col, expected);
+            assert_eq!(prompt.input.col, expected);
         }
     }
 
     #[test]
-    fn submit_value() {
+    fn validate_input() {
         let mut prompt = Text::new("");
-        let err_str = "Please enter an input";
+        let err_str = "Please enter an response";
 
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
 
@@ -217,13 +248,31 @@ mod tests {
         prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
         assert_eq!(prompt.submit, false);
-        assert_eq!(prompt.validator_result, Err(err_str.to_string()));
+        assert_eq!(prompt.validator_result, Err(err_str));
 
         // valid value
-        prompt.value = "foo".to_string();
+        prompt.input.set_value("foo");
         prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
         assert_eq!(prompt.submit, true);
         assert_eq!(prompt.validator_result, Ok(()));
+    }
+
+    #[test]
+    fn submit_input_value() {
+        let mut prompt = Text::new("");
+        prompt.input.set_value("foo");
+        prompt.default("bar");
+
+        assert_eq!(prompt.get_value(), "foo");
+    }
+
+    #[test]
+    fn submit_default_value() {
+        let mut prompt = Text::new("");
+        prompt.input.set_value("");
+        prompt.default("bar");
+
+        assert_eq!(prompt.get_value(), "bar");
     }
 }

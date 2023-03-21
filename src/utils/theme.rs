@@ -38,7 +38,7 @@ pub trait Theme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
     ) -> (String, Option<(u16, u16)>);
 
     /// Formats `Password` prompt
@@ -74,7 +74,7 @@ pub trait Theme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
         is_hidden: bool,
     ) -> (String, Option<(u16, u16)>);
 
@@ -111,7 +111,7 @@ pub trait Theme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
     ) -> (String, Option<(u16, u16)>);
 
     /// Formats `Toggle` prompt
@@ -149,7 +149,7 @@ pub struct DefaultTheme;
 
 impl DefaultTheme {
     #[inline]
-    fn text_prefix(&self, validator_result: &Result<(), String>) -> String {
+    fn text_prefix(&self, validator_result: &Result<(), &str>) -> String {
         let error = match validator_result {
             Ok(_) => "›".blue(),
             Err(_) => "›".red(),
@@ -169,7 +169,7 @@ impl DefaultTheme {
     }
 
     #[inline]
-    fn text_error(&self, validator_result: &Result<(), String>) -> String {
+    fn text_error(&self, validator_result: &Result<(), &str>) -> String {
         let error = match validator_result {
             Ok(_) => String::new(),
             Err(e) => format!("{}\n", e.red()),
@@ -276,7 +276,7 @@ impl Theme for DefaultTheme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
     ) -> (String, Option<(u16, u16)>) {
         (
             format!(
@@ -298,7 +298,7 @@ impl Theme for DefaultTheme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
         is_hidden: bool,
     ) -> (String, Option<(u16, u16)>) {
         let text = match is_hidden {
@@ -323,7 +323,7 @@ impl Theme for DefaultTheme {
         input: &str,
         placeholder: &Option<&str>,
         default_value: &Option<&str>,
-        validator_result: &Result<(), String>,
+        validator_result: &Result<(), &str>,
     ) -> (String, Option<(u16, u16)>) {
         (
             format!(
