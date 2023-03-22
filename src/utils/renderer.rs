@@ -5,7 +5,7 @@ use crossterm::{cursor, queue, style::Print, terminal};
 use crate::prompts::{
     confirm::Confirm,
     multi_select::MultiSelect,
-    number::Number,
+    number::{Num, Number},
     password::Password,
     select::{Select, SelectOption, SelectOptionData},
     text::Text,
@@ -59,13 +59,13 @@ impl<W: io::Write> Renderer<W> {
         self.update_cursor(cursor_col, cursor)
     }
 
-    pub fn number(&mut self, state: &Number) -> io::Result<()> {
+    pub fn number<T: Num>(&mut self, state: &Number<T>) -> io::Result<()> {
         let (text, cursor) = state.theme.fmt_number(
             state.message,
             &self.draw_time,
             &state.input.value,
             &state.placeholder,
-            &state.default_value,
+            &state.default_value.as_ref().map(|x| x.as_str()),
             &state.validator_result,
         );
 
