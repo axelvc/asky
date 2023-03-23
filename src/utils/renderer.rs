@@ -107,6 +107,8 @@ impl<W: io::Write> Renderer<W> {
             &self.draw_time,
             Self::get_select_options_data(&state.options),
             state.focused,
+            state.min,
+            state.max,
         );
 
         self.print(&text)

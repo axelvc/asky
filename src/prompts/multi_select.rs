@@ -21,7 +21,10 @@ pub struct MultiSelect<'a, T> {
     pub(crate) focused: usize,
     pub(crate) is_loop: bool,
     pub(crate) submit: bool,
+    pub(crate) min: Option<usize>,
+    pub(crate) max: Option<usize>,
     pub(crate) theme: &'a dyn Theme,
+    selected_count: usize,
 }
 
 impl<'a, T> MultiSelect<'a, T> {
@@ -32,6 +35,9 @@ impl<'a, T> MultiSelect<'a, T> {
             focused: 0,
             is_loop: false,
             submit: false,
+            min: None,
+            max: None,
+            selected_count: 0,
             theme: &DefaultTheme,
         }
     }
@@ -39,10 +45,21 @@ impl<'a, T> MultiSelect<'a, T> {
     pub fn selected(&mut self, selected: &[usize]) -> &mut Self {
         for i in selected {
             if let Some(option) = self.options.get_mut(*i) {
-                option.active = true
+                option.active = true;
+                self.selected_count += 1;
             }
         }
 
+        self
+    }
+
+    pub fn min(&mut self, min: usize) -> &mut Self {
+        self.min = Some(min);
+        self
+    }
+
+    pub fn max(&mut self, max: usize) -> &mut Self {
+        self.max = Some(max);
         self
     }
 
@@ -86,7 +103,34 @@ impl<'a, T> MultiSelect<'a, T> {
     }
 
     fn toggle_focused(&mut self) {
-        self.options[self.focused].toggle_selected()
+        let focused = &mut self.options[self.focused];
+
+        if focused.disabled {
+            return;
+        }
+
+        let under_limit = match self.max {
+            None => true,
+            Some(max) => self.selected_count < max,
+        };
+
+        if focused.active {
+            focused.active = false;
+            self.selected_count -= 1;
+        } else if under_limit {
+            focused.active = true;
+            self.selected_count += 1;
+        }
+    }
+
+    fn validate_to_submit(&mut self) -> bool {
+        if let Some(min) = self.min {
+            if self.selected_count < min {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -104,7 +148,7 @@ impl<'a, T> KeyHandler for MultiSelect<'a, T> {
 
         match key.code {
             // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // select/unselect
             KeyCode::Char(' ') => self.toggle_focused(),
             // update value
@@ -122,7 +166,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn set_selected_value() {
+    fn set_selected_values() {
         let mut prompt = MultiSelect::new(
             "",
             vec![
@@ -135,6 +179,24 @@ mod tests {
         prompt.selected(&[0, 2]);
         assert!(prompt.options[0].active);
         assert!(prompt.options[2].active);
+    }
+
+    #[test]
+    fn set_min() {
+        let mut prompt = MultiSelect::<&str>::new("", vec![]);
+
+        prompt.min(2);
+
+        assert_eq!(prompt.min, Some(2));
+    }
+
+    #[test]
+    fn set_max() {
+        let mut prompt = MultiSelect::<&str>::new("", vec![]);
+
+        prompt.max(2);
+
+        assert_eq!(prompt.max, Some(2));
     }
 
     #[test]
@@ -171,6 +233,28 @@ mod tests {
             prompt.handle_key(simulated_key);
             assert_eq!(prompt.submit, true);
         }
+    }
+
+    #[test]
+    fn not_submit_without_min() {
+        let mut prompt = MultiSelect::new(
+            "",
+            vec![
+                SelectOption::new("a", "a"),
+                SelectOption::new("b", "b"),
+                SelectOption::new("c", "c"),
+            ],
+        );
+
+        prompt.min(1);
+        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert!(!prompt.submit);
+
+        prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
+        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert!(prompt.submit);
     }
 
     #[test]
@@ -238,11 +322,19 @@ mod tests {
             ],
         );
 
+        prompt.max(1);
+
         assert!(!prompt.options[1].active);
+        assert!(!prompt.options[2].active);
 
         prompt.focused = 1;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
+        // must not update over limit
+        prompt.focused = 2;
+        prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
+
         assert!(prompt.options[1].active);
+        assert!(!prompt.options[2].active);
     }
 }

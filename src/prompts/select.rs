@@ -43,12 +43,6 @@ impl<'a, T> SelectOption<'a, T> {
         self.disabled = disabled;
         self
     }
-
-    pub(crate) fn toggle_selected(&mut self) {
-        if !self.disabled {
-            self.active = !self.active
-        }
-    }
 }
 
 /// Helper struct to pass SelectOption data to theme trait

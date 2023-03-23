@@ -142,6 +142,8 @@ pub trait Theme {
         draw_time: &DrawTime,
         options: Vec<SelectOptionData>,
         focused: usize,
+        min: Option<usize>,
+        max: Option<usize>,
     ) -> String;
 }
 
@@ -205,6 +207,18 @@ impl DefaultTheme {
         };
 
         format!("{}{}", prefix, message)
+    }
+
+    #[inline]
+    fn min_max_message(&self, min: Option<usize>, max: Option<usize>) -> String {
+        match (min, max) {
+            (None, None) => String::new(),
+            (None, Some(max)) => format!("Max: {}", max),
+            (Some(min), None) => format!("Min: {}", min),
+            (Some(min), Some(max)) => format!("Min: {} · Max: {}", min, max),
+        }
+        .bright_black()
+        .to_string()
     }
 
     #[inline]
@@ -383,6 +397,8 @@ impl Theme for DefaultTheme {
         draw_time: &DrawTime,
         options: Vec<SelectOptionData>,
         focused: usize,
+        min: Option<usize>,
+        max: Option<usize>,
     ) -> String {
         let options: Vec<String> = options
             .iter()
@@ -391,8 +407,9 @@ impl Theme for DefaultTheme {
             .collect();
 
         format!(
-            "{}\n{}\n",
+            "{} {}\n{}\n",
             self.message(message, draw_time),
+            self.min_max_message(min, max),
             options.join("\n")
         )
     }
