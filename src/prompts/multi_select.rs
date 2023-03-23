@@ -8,12 +8,7 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
-use super::select::SelectOption;
-
-enum Direction {
-    Up,
-    Down,
-}
+use super::select::{SelectOption, Direction};
 
 pub struct MultiSelect<'a, T> {
     pub(crate) message: &'a str,

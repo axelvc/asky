@@ -1,4 +1,7 @@
-use std::io;
+use std::{
+    io,
+    ops::{Deref, DerefMut},
+};
 
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -8,27 +11,48 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
-enum Direction {
+pub enum Direction {
     Up,
     Down,
 }
 
 pub struct SelectOption<'a, T> {
     pub(crate) value: T,
-    pub(crate) title: &'a str,
-    pub(crate) description: Option<&'a str>,
-    pub(crate) disabled: bool,
-    pub(crate) active: bool,
+    pub(crate) data: SelectOptionData<'a>,
+}
+
+/// Helper struct to pass SelectOption data to theme trait
+pub struct SelectOptionData<'a> {
+    pub title: &'a str,
+    pub description: Option<&'a str>,
+    pub disabled: bool,
+    pub active: bool,
+}
+
+impl<'a, T> Deref for SelectOption<'a, T> {
+    type Target = SelectOptionData<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl<'a, T> DerefMut for SelectOption<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
 }
 
 impl<'a, T> SelectOption<'a, T> {
     pub fn new(value: T, title: &'a str) -> Self {
         Self {
             value,
-            title,
-            description: None,
-            disabled: false,
-            active: false,
+            data: SelectOptionData {
+                title,
+                description: None,
+                disabled: false,
+                active: false,
+            },
         }
     }
 
@@ -42,25 +66,6 @@ impl<'a, T> SelectOption<'a, T> {
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
-    }
-}
-
-/// Helper struct to pass SelectOption data to theme trait
-pub struct SelectOptionData<'a> {
-    pub title: &'a str,
-    pub description: Option<&'a str>,
-    pub disabled: bool,
-    pub active: bool,
-}
-
-impl<'a, T> From<&'a SelectOption<'a, T>> for SelectOptionData<'a> {
-    fn from(o: &'a SelectOption<'a, T>) -> Self {
-        Self {
-            title: o.title,
-            description: o.description,
-            disabled: o.disabled,
-            active: o.active,
-        }
     }
 }
 

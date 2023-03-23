@@ -124,14 +124,14 @@ pub trait Theme {
     ) -> String;
 
     /// Formats `Confirm` prompt
-    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, focused: bool) -> String;
+    fn fmt_confirm(&self, message: &str, draw_time: &DrawTime, active: bool) -> String;
 
     // Formats `Select` prompt
     fn fmt_select(
         &self,
         message: &str,
         draw_time: &DrawTime,
-        options: Vec<SelectOptionData>,
+        options: Vec<&SelectOptionData>,
         selected: usize,
     ) -> String;
 
@@ -140,7 +140,7 @@ pub trait Theme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        options: Vec<SelectOptionData>,
+        options: Vec<&SelectOptionData>,
         focused: usize,
         min: Option<usize>,
         max: Option<usize>,
@@ -375,7 +375,7 @@ impl Theme for DefaultTheme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        options: Vec<SelectOptionData>,
+        options: Vec<&SelectOptionData>,
         selected: usize,
     ) -> String {
         let options: Vec<String> = options
@@ -395,7 +395,7 @@ impl Theme for DefaultTheme {
         &self,
         message: &str,
         draw_time: &DrawTime,
-        options: Vec<SelectOptionData>,
+        options: Vec<&SelectOptionData>,
         focused: usize,
         min: Option<usize>,
         max: Option<usize>,

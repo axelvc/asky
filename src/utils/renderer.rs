@@ -7,7 +7,7 @@ use crate::prompts::{
     multi_select::MultiSelect,
     number::{Num, Number},
     password::Password,
-    select::{Select, SelectOption, SelectOptionData},
+    select::Select,
     text::Text,
     toggle::Toggle,
 };
@@ -94,7 +94,7 @@ impl<W: io::Write> Renderer<W> {
         let text = state.theme.fmt_select(
             state.message,
             &self.draw_time,
-            Self::get_select_options_data(&state.options),
+            state.options.iter().map(|x| &x.data).collect(),
             state.selected,
         );
 
@@ -105,7 +105,7 @@ impl<W: io::Write> Renderer<W> {
         let text = state.theme.fmt_multi_select(
             state.message,
             &self.draw_time,
-            Self::get_select_options_data(&state.options),
+            state.options.iter().map(|x| &x.data).collect(),
             state.focused,
             state.min,
             state.max,
@@ -177,13 +177,6 @@ impl<W: io::Write> Renderer<W> {
         }
 
         self.out.flush()
-    }
-
-    #[inline]
-    fn get_select_options_data<'a, T>(
-        options: &'a Vec<SelectOption<'a, T>>,
-    ) -> Vec<SelectOptionData<'a>> {
-        options.iter().map(|x| SelectOptionData::from(x)).collect()
     }
 }
 
