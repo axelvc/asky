@@ -14,6 +14,8 @@ use crate::utils::{
 pub enum Direction {
     Up,
     Down,
+    Left,
+    Right,
 }
 
 pub struct SelectOption<'a, T> {
@@ -69,11 +71,95 @@ impl<'a, T> SelectOption<'a, T> {
     }
 }
 
+pub struct SelectInput<'a, T> {
+    pub focused: usize,
+    pub items_per_page: usize,
+    pub(crate) options: Vec<SelectOption<'a, T>>,
+    pub(crate) loop_mode: bool,
+}
+
+impl<'a, T> SelectInput<'a, T> {
+    pub fn count_pages(&self) -> usize {
+        let total = self.options.len();
+        let per_page = self.items_per_page;
+        let mut pages = total / per_page;
+
+        if total % per_page != 0 {
+            pages += 1
+        }
+
+        pages
+    }
+
+    pub fn page(&self) -> usize {
+        self.focused / self.items_per_page
+    }
+
+    pub fn get_options_data(&self) -> Vec<&SelectOptionData> {
+        self.options.iter().map(|x| &x.data).collect()
+    }
+
+    pub(crate) fn new(options: Vec<SelectOption<'a, T>>) -> Self {
+        SelectInput {
+            options,
+            focused: 0,
+            items_per_page: 10,
+            loop_mode: true,
+        }
+    }
+
+    pub(crate) fn set_loop_mode(&mut self, loop_mode: bool) {
+        self.loop_mode = loop_mode;
+    }
+
+    pub(crate) fn move_cursor(&mut self, direction: Direction) {
+        match direction {
+            Direction::Up => self.prev_item(),
+            Direction::Down => self.next_item(),
+            Direction::Left => self.prev_page(),
+            Direction::Right => self.next_page(),
+        };
+    }
+
+    pub(crate) fn set_items_per_page(&mut self, item_per_page: usize) {
+        self.items_per_page = item_per_page.min(self.options.len());
+    }
+
+    fn prev_item(&mut self) {
+        let max = self.options.len() - 1;
+
+        self.focused = match self.loop_mode {
+            true => self.focused.checked_sub(1).unwrap_or(max),
+            false => self.focused.saturating_sub(1),
+        }
+    }
+
+    fn next_item(&mut self) {
+        let max = self.options.len() - 1;
+        let new_value = self.focused + 1;
+
+        self.focused = match (new_value > max, self.loop_mode) {
+            (true, true) => 0,
+            (true, false) => max,
+            (false, _) => new_value,
+        }
+    }
+
+    fn prev_page(&mut self) {
+        self.focused = self.focused.saturating_sub(self.items_per_page)
+    }
+
+    fn next_page(&mut self) {
+        let max = self.options.len() - 1;
+        let new_value = self.focused + self.items_per_page;
+
+        self.focused = new_value.min(max)
+    }
+}
+
 pub struct Select<'a, T> {
     pub(crate) message: &'a str,
-    pub(crate) options: Vec<SelectOption<'a, T>>,
-    pub(crate) selected: usize,
-    pub(crate) is_loop: bool,
+    pub(crate) input: SelectInput<'a, T>,
     pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
@@ -82,21 +168,24 @@ impl<'a, T> Select<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Select<'a, T> {
         Select {
             message,
-            options,
-            selected: 0,
+            input: SelectInput::new(options),
             submit: false,
-            is_loop: false,
             theme: &DefaultTheme,
         }
     }
 
-    pub fn initial(&mut self, selected: usize) -> &mut Self {
-        self.selected = selected;
+    pub fn initial(&mut self, value: usize) -> &mut Self {
+        self.input.focused = value.min(self.input.options.len() - 1);
         self
     }
 
-    pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
-        self.is_loop = is_loop;
+    pub fn in_loop(&mut self, loop_mode: bool) -> &mut Self {
+        self.input.set_loop_mode(loop_mode);
+        self
+    }
+
+    pub fn items_per_page(&mut self, item_per_page: usize) -> &mut Self {
+        self.input.set_items_per_page(item_per_page);
         self
     }
 
@@ -108,34 +197,16 @@ impl<'a, T> Select<'a, T> {
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self)?;
 
-        let selected = self.options.remove(self.selected);
+        let selected = self.input.options.remove(self.input.focused);
+
         Ok(selected.value)
-    }
-
-    fn update_value(&mut self, direction: Direction) {
-        let max = self.options.len() - 1;
-
-        self.selected = match direction {
-            Direction::Up => {
-                if self.is_loop && self.selected == 0 {
-                    max
-                } else {
-                    self.selected.saturating_sub(1)
-                }
-            }
-            Direction::Down => {
-                if self.is_loop && self.selected == max {
-                    0
-                } else {
-                    (self.selected + 1).min(self.options.len() - 1)
-                }
-            }
-        }
     }
 
     /// Only submit if the option isn't disabled
     fn validate_to_submit(&self) -> bool {
-        !self.options[self.selected].disabled
+        let focused = &self.input.options[self.input.focused];
+
+        !focused.disabled
     }
 }
 
@@ -155,8 +226,10 @@ impl<'a, T> KeyHandler for Select<'a, T> {
             // submit
             KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.update_value(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.update_value(Direction::Down),
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -178,13 +251,13 @@ mod tests {
             ],
         );
 
-        assert_eq!(prompt.selected, 0);
+        assert_eq!(prompt.input.focused, 0);
         prompt.initial(1);
-        assert_eq!(prompt.selected, 1);
+        assert_eq!(prompt.input.focused, 1);
     }
 
     #[test]
-    fn set_in_loop() {
+    fn set_loop_mode() {
         let mut prompt = Select::new(
             "",
             vec![
@@ -193,9 +266,10 @@ mod tests {
             ],
         );
 
-        assert!(!prompt.is_loop);
+        prompt.in_loop(false);
+        assert!(!prompt.input.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.is_loop);
+        assert!(prompt.input.loop_mode);
     }
 
     #[test]
@@ -215,7 +289,7 @@ mod tests {
             prompt.initial(1);
 
             prompt.handle_key(simulated_key);
-            assert_eq!(prompt.selected, 1);
+            assert_eq!(prompt.input.focused, 1);
             assert_eq!(prompt.submit, true);
         }
     }
@@ -233,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    fn update_selected() {
+    fn update_focused() {
         let up_keys = [KeyCode::Up, KeyCode::Char('k'), KeyCode::Char('K')];
         let down_keys = [KeyCode::Down, KeyCode::Char('j'), KeyCode::Char('j')];
 
@@ -264,7 +338,7 @@ mod tests {
                 prompt.initial(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.selected, expected);
+                assert_eq!(prompt.input.focused, expected);
             }
         }
 
@@ -282,7 +356,7 @@ mod tests {
                 prompt.initial(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.selected, expected);
+                assert_eq!(prompt.input.focused, expected);
             }
         }
     }

@@ -8,17 +8,15 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
-use super::select::{SelectOption, Direction};
+use super::select::{Direction, SelectInput, SelectOption};
 
 pub struct MultiSelect<'a, T> {
     pub(crate) message: &'a str,
-    pub(crate) options: Vec<SelectOption<'a, T>>,
-    pub(crate) focused: usize,
-    pub(crate) is_loop: bool,
+    pub(crate) input: SelectInput<'a, T>,
     pub(crate) submit: bool,
+    pub(crate) theme: &'a dyn Theme,
     pub(crate) min: Option<usize>,
     pub(crate) max: Option<usize>,
-    pub(crate) theme: &'a dyn Theme,
     selected_count: usize,
 }
 
@@ -26,20 +24,18 @@ impl<'a, T> MultiSelect<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> MultiSelect<'a, T> {
         MultiSelect {
             message,
-            options,
-            focused: 0,
-            is_loop: false,
+            input: SelectInput::new(options),
             submit: false,
+            theme: &DefaultTheme,
             min: None,
             max: None,
             selected_count: 0,
-            theme: &DefaultTheme,
         }
     }
 
     pub fn selected(&mut self, selected: &[usize]) -> &mut Self {
         for i in selected {
-            if let Some(option) = self.options.get_mut(*i) {
+            if let Some(option) = self.input.options.get_mut(*i) {
                 option.active = true;
                 self.selected_count += 1;
             }
@@ -59,7 +55,12 @@ impl<'a, T> MultiSelect<'a, T> {
     }
 
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
-        self.is_loop = is_loop;
+        self.input.set_loop_mode(is_loop);
+        self
+    }
+
+    pub fn items_per_page(&mut self, items_per_page: usize) -> &mut Self {
+        self.input.set_items_per_page(items_per_page);
         self
     }
 
@@ -71,34 +72,15 @@ impl<'a, T> MultiSelect<'a, T> {
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self)?;
 
-        let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
+        let (selected, _): (Vec<_>, Vec<_>) = self.input.options.drain(..).partition(|x| x.active);
+        let selected = selected.into_iter().map(|x| x.value).collect();
 
-        Ok(selected.into_iter().map(|x| x.value).collect())
-    }
-
-    fn move_cursor(&mut self, direction: Direction) {
-        let max = self.options.len() - 1;
-
-        self.focused = match direction {
-            Direction::Up => {
-                if self.is_loop && self.focused == 0 {
-                    max
-                } else {
-                    self.focused.saturating_sub(1)
-                }
-            }
-            Direction::Down => {
-                if self.is_loop && self.focused == max {
-                    0
-                } else {
-                    (self.focused + 1).min(self.options.len() - 1)
-                }
-            }
-        }
+        Ok(selected)
     }
 
     fn toggle_focused(&mut self) {
-        let focused = &mut self.options[self.focused];
+        let selected = self.input.focused;
+        let focused = &self.input.options[selected];
 
         if focused.disabled {
             return;
@@ -109,6 +91,8 @@ impl<'a, T> MultiSelect<'a, T> {
             Some(max) => self.selected_count < max,
         };
 
+        let focused = &mut self.input.options[selected];
+
         if focused.active {
             focused.active = false;
             self.selected_count -= 1;
@@ -118,14 +102,12 @@ impl<'a, T> MultiSelect<'a, T> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
-        if let Some(min) = self.min {
-            if self.selected_count < min {
-                return false;
-            }
+    /// Only submit if the minimun are selected
+    fn validate_to_submit(&self) -> bool {
+        match self.min {
+            None => true,
+            Some(min) => self.selected_count >= min,
         }
-
-        true
     }
 }
 
@@ -146,9 +128,11 @@ impl<'a, T> KeyHandler for MultiSelect<'a, T> {
             KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // select/unselect
             KeyCode::Char(' ') => self.toggle_focused(),
-            // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.move_cursor(Direction::Down),
+            // update focus
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -172,8 +156,8 @@ mod tests {
         );
 
         prompt.selected(&[0, 2]);
-        assert!(prompt.options[0].active);
-        assert!(prompt.options[2].active);
+        assert!(prompt.input.options[0].active);
+        assert!(prompt.input.options[2].active);
     }
 
     #[test]
@@ -205,9 +189,10 @@ mod tests {
             ],
         );
 
-        assert!(!prompt.is_loop);
+        prompt.in_loop(false);
+        assert!(!prompt.input.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.is_loop);
+        assert!(prompt.input.loop_mode);
     }
 
     #[test]
@@ -269,40 +254,40 @@ mod tests {
         prompt.in_loop(false);
 
         for key in next_keys {
-            prompt.focused = 0;
+            prompt.input.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.focused, 1);
+            assert_eq!(prompt.input.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in next_keys {
-            prompt.focused = 2;
+            prompt.input.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.focused, 0);
+            assert_eq!(prompt.input.focused, 0);
         }
 
         // move next
         prompt.in_loop(false);
 
         for key in prev_keys {
-            prompt.focused = 2;
+            prompt.input.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.focused, 1);
+            assert_eq!(prompt.input.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in prev_keys {
-            prompt.focused = 0;
+            prompt.input.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.focused, 2);
+            assert_eq!(prompt.input.focused, 2);
         }
     }
 
@@ -319,17 +304,17 @@ mod tests {
 
         prompt.max(1);
 
-        assert!(!prompt.options[1].active);
-        assert!(!prompt.options[2].active);
+        assert!(!prompt.input.options[1].active);
+        assert!(!prompt.input.options[2].active);
 
-        prompt.focused = 1;
+        prompt.input.focused = 1;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
         // must not update over limit
-        prompt.focused = 2;
+        prompt.input.focused = 2;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
-        assert!(prompt.options[1].active);
-        assert!(!prompt.options[2].active);
+        assert!(prompt.input.options[1].active);
+        assert!(!prompt.input.options[2].active);
     }
 }

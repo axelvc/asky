@@ -133,6 +133,9 @@ pub trait Theme {
         draw_time: &DrawTime,
         options: Vec<&SelectOptionData>,
         selected: usize,
+        items_per_page: usize,
+        page: usize,
+        pages: usize,
     ) -> String;
 
     // Formats `MultiSelect` prompt
@@ -144,6 +147,9 @@ pub trait Theme {
         focused: usize,
         min: Option<usize>,
         max: Option<usize>,
+        items_per_page: usize,
+        page: usize,
+        pages: usize,
     ) -> String;
 }
 
@@ -249,10 +255,10 @@ impl DefaultTheme {
         };
 
         let make_description = |s: &str| format!(" · {}", s).bright_black();
-        let description = match (focused, disabled) {
-            (false, _) => "".normal(),
-            (true, true) => make_description("(Disabled)"),
-            (true, false) => make_description(description.unwrap_or_default()),
+        let description = match (focused, disabled, description) {
+            (true, true, _) => make_description("(Disabled)"),
+            (true, false, Some(description)) => make_description(description),
+            _ => "".normal(),
         };
 
         format!("{} {}", title, description)
@@ -279,6 +285,21 @@ impl DefaultTheme {
         };
 
         format!("{}{}", prefix, self.select_option_title(option, focused))
+    }
+
+    fn select_pagination(&self, page: usize, pages: usize) -> String {
+        if pages == 1 {
+            return String::new();
+        }
+
+        let icon = "•";
+
+        format!(
+            "\n\n  {}{}{}",
+            icon.repeat(page).bright_black(),
+            icon,
+            icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
+        )
     }
 }
 
@@ -377,17 +398,27 @@ impl Theme for DefaultTheme {
         draw_time: &DrawTime,
         options: Vec<&SelectOptionData>,
         selected: usize,
+        items_per_page: usize,
+        page: usize,
+        pages: usize,
     ) -> String {
-        let options: Vec<String> = options
+        let page_start_idx = page * items_per_page;
+        let page_end_idx = (page_start_idx + items_per_page).min(options.len());
+        let page_options = &options[page_start_idx..page_end_idx];
+        let selected = selected % items_per_page;
+
+        let page_options: Vec<String> = page_options
             .iter()
             .enumerate()
             .map(|(i, option)| self.select_option(option, selected == i))
             .collect();
 
         format!(
-            "{}\n{}\n",
+            "{}\n{}{}{}\n",
             self.message(message, draw_time),
-            options.join("\n")
+            page_options.join("\n"),
+            "\n".repeat(items_per_page - page_options.len()),
+            self.select_pagination(page, pages),
         )
     }
 
@@ -399,18 +430,28 @@ impl Theme for DefaultTheme {
         focused: usize,
         min: Option<usize>,
         max: Option<usize>,
+        items_per_page: usize,
+        page: usize,
+        pages: usize,
     ) -> String {
-        let options: Vec<String> = options
+        let page_start_idx = page * items_per_page;
+        let page_end_idx = (page_start_idx + items_per_page).min(options.len());
+        let page_options = &options[page_start_idx..page_end_idx];
+        let focused = focused % items_per_page;
+
+        let page_options: Vec<String> = page_options
             .iter()
             .enumerate()
             .map(|(i, option)| self.multi_select_option(option, i == focused))
             .collect();
 
         format!(
-            "{} {}\n{}\n",
+            "{} {}\n{}{}{}\n",
             self.message(message, draw_time),
             self.min_max_message(min, max),
-            options.join("\n")
+            page_options.join("\n"),
+            "\n".repeat(items_per_page - page_options.len()),
+            self.select_pagination(page, pages),
         )
     }
 }

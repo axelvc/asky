@@ -94,8 +94,11 @@ impl<W: io::Write> Renderer<W> {
         let text = state.theme.fmt_select(
             state.message,
             &self.draw_time,
-            state.options.iter().map(|x| &x.data).collect(),
-            state.selected,
+            state.input.get_options_data(),
+            state.input.focused,
+            state.input.items_per_page,
+            state.input.page(),
+            state.input.count_pages(),
         );
 
         self.print(&text)
@@ -105,10 +108,13 @@ impl<W: io::Write> Renderer<W> {
         let text = state.theme.fmt_multi_select(
             state.message,
             &self.draw_time,
-            state.options.iter().map(|x| &x.data).collect(),
-            state.focused,
+            state.input.get_options_data(),
+            state.input.focused,
             state.min,
             state.max,
+            state.input.items_per_page,
+            state.input.page(),
+            state.input.count_pages(),
         );
 
         self.print(&text)
