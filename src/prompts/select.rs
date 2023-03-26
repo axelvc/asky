@@ -47,7 +47,7 @@ impl<'a, T> DerefMut for SelectOption<'a, T> {
 
 impl<'a, T> SelectOption<'a, T> {
     pub fn new(value: T, title: &'a str) -> Self {
-        Self {
+        SelectOption {
             value,
             data: SelectOptionData {
                 title,
@@ -160,21 +160,19 @@ impl<'a, T> SelectInput<'a, T> {
 pub struct Select<'a, T> {
     pub(crate) message: &'a str,
     pub(crate) input: SelectInput<'a, T>,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a, T> Select<'a, T> {
-    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Select<'a, T> {
+    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         Select {
             message,
             input: SelectInput::new(options),
-            submit: false,
             theme: &DefaultTheme,
         }
     }
 
-    pub fn initial(&mut self, value: usize) -> &mut Self {
+    pub fn selected(&mut self, value: usize) -> &mut Self {
         self.input.focused = value.min(self.input.options.len() - 1);
         self
     }
@@ -201,7 +199,9 @@ impl<'a, T> Select<'a, T> {
 
         Ok(selected.value)
     }
+}
 
+impl<T> Select<'_, T> {
     /// Only submit if the option isn't disabled
     fn validate_to_submit(&self) -> bool {
         let focused = &self.input.options[self.input.focused];
@@ -210,16 +210,12 @@ impl<'a, T> Select<'a, T> {
     }
 }
 
-impl<'a, T> KeyHandler for Select<'a, T> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
+impl<T> KeyHandler for Select<'_, T> {
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.select(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -233,7 +229,7 @@ impl<'a, T> KeyHandler for Select<'a, T> {
             _ => (),
         }
 
-        self.submit = submit
+        submit
     }
 }
 
@@ -252,7 +248,7 @@ mod tests {
         );
 
         assert_eq!(prompt.input.focused, 0);
-        prompt.initial(1);
+        prompt.selected(1);
         assert_eq!(prompt.input.focused, 1);
     }
 
@@ -286,11 +282,11 @@ mod tests {
             );
             let simulated_key = KeyEvent::from(event);
 
-            prompt.initial(1);
+            prompt.selected(1);
 
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
             assert_eq!(prompt.input.focused, 1);
-            assert_eq!(prompt.submit, true);
+            assert!(submit);
         }
     }
 
@@ -301,8 +297,8 @@ mod tests {
         for event in events {
             let mut prompt = Select::new("", vec![SelectOption::new("foo", "foo").disabled(true)]);
 
-            prompt.handle_key(KeyEvent::from(event));
-            assert_eq!(prompt.submit, false);
+            let submit = prompt.handle_key(KeyEvent::from(event));
+            assert!(!submit);
         }
     }
 
@@ -335,7 +331,7 @@ mod tests {
                 );
                 let simulated_key = KeyEvent::from(key);
 
-                prompt.initial(initial);
+                prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
                 assert_eq!(prompt.input.focused, expected);
@@ -353,7 +349,7 @@ mod tests {
                 );
                 let simulated_key = KeyEvent::from(key);
 
-                prompt.initial(initial);
+                prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
                 assert_eq!(prompt.input.focused, expected);

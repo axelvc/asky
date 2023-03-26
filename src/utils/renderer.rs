@@ -3,14 +3,11 @@ use std::io;
 use crossterm::{cursor, queue, style::Print, terminal};
 
 use crate::prompts::{
-    confirm::Confirm,
-    multi_select::MultiSelect,
-    number::{Num, Number},
-    password::Password,
-    select::Select,
-    text::Text,
-    toggle::Toggle,
+    confirm::Confirm, multi_select::MultiSelect, number::Number, password::Password,
+    select::Select, text::Text, toggle::Toggle,
 };
+
+use super::num::Num;
 
 #[derive(PartialEq, Debug)]
 pub enum DrawTime {
@@ -65,7 +62,7 @@ impl<W: io::Write> Renderer<W> {
             &self.draw_time,
             &state.input.value,
             &state.placeholder,
-            &state.default_value.as_ref().map(|x| x.as_str()),
+            &state.default_value.as_deref(),
             &state.validator_result,
         );
 
@@ -187,7 +184,7 @@ impl<W: io::Write> Renderer<W> {
 }
 
 impl Renderer<io::Stdout> {
-    pub fn new() -> Renderer<io::Stdout> {
+    pub fn new() -> Self {
         Renderer {
             draw_time: DrawTime::First,
             out: io::stdout(),

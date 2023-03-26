@@ -11,16 +11,14 @@ use crate::utils::{
 pub struct Confirm<'a> {
     pub(crate) message: &'a str,
     pub(crate) active: bool,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a> Confirm<'a> {
-    pub fn new(message: &str) -> Confirm {
+    pub fn new(message: &'a str) -> Self {
         Confirm {
             message,
             active: false,
-            submit: false,
             theme: &DefaultTheme,
         }
     }
@@ -39,36 +37,36 @@ impl<'a> Confirm<'a> {
         key_listener::listen(self)?;
         Ok(self.active)
     }
+}
 
-    fn update_and_submit(&mut self, active: bool) {
+impl Confirm<'_> {
+    fn update_and_submit(&mut self, active: bool) -> bool {
         self.active = active;
-        self.submit = true;
+        true
     }
 }
 
 impl KeyHandler for Confirm<'_> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.confirm(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
+        let mut submit = false;
+
         match key.code {
-            // submit focused/initial
-            KeyCode::Enter | KeyCode::Backspace => self.submit = true,
-            // focus left
+            // update value
             KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            // focus right
             KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
-            // submit yes
-            KeyCode::Char('y' | 'Y') => self.update_and_submit(true),
-            // submit no
-            KeyCode::Char('n' | 'N') => self.update_and_submit(false),
+            // update value and submit
+            KeyCode::Char('y' | 'Y') => submit = self.update_and_submit(true),
+            KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
+            // submit current/initial value
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
             _ => (),
         }
+
+        submit
     }
 }
 
@@ -95,10 +93,10 @@ mod tests {
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
             prompt.initial(!expected);
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
 
             assert_eq!(prompt.active, expected);
-            assert_eq!(prompt.submit, true);
+            assert!(submit);
         }
     }
 
@@ -110,9 +108,9 @@ mod tests {
             let mut prompt = Confirm::new("");
             let simulated_key = KeyEvent::from(event);
 
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
             assert!(!prompt.active);
-            assert_eq!(prompt.submit, true);
+            assert!(submit);
         }
     }
 
@@ -132,10 +130,10 @@ mod tests {
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
 
             assert_eq!(prompt.active, expected);
-            assert_eq!(prompt.submit, false);
+            assert!(!submit);
         }
     }
 }

@@ -8,22 +8,21 @@ use crate::utils::{
     theme::{DefaultTheme, Theme},
 };
 
-use super::text::{Direction, TextInput};
+use super::text::{Direction, InputValidator, TextInput};
 
 pub struct Password<'a> {
     pub(crate) message: &'a str,
     pub(crate) input: TextInput,
     pub(crate) placeholder: Option<&'a str>,
     pub(crate) default_value: Option<&'a str>,
-    pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &'a str>>>,
+    pub(crate) validator: Option<Box<InputValidator<'a>>>,
     pub(crate) validator_result: Result<(), &'a str>,
     pub(crate) hidden: bool,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a> Password<'a> {
-    pub fn new(message: &str) -> Password {
+    pub fn new(message: &'a str) -> Self {
         Password {
             message,
             input: TextInput::new(),
@@ -32,14 +31,8 @@ impl<'a> Password<'a> {
             validator: None,
             validator_result: Ok(()),
             hidden: false,
-            submit: false,
             theme: &DefaultTheme,
         }
-    }
-
-    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
-        self.hidden = hidden;
-        self
     }
 
     pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
@@ -59,9 +52,14 @@ impl<'a> Password<'a> {
 
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'static,
+        F: Fn(&str) -> Result<(), &'a str> + 'a,
     {
         self.validator = Some(Box::new(validator));
+        self
+    }
+
+    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
+        self.hidden = hidden;
         self
     }
 
@@ -74,7 +72,9 @@ impl<'a> Password<'a> {
         key_listener::listen(self)?;
         Ok(self.get_value().to_owned())
     }
+}
 
+impl Password<'_> {
     fn get_value(&self) -> &str {
         match self.input.value.is_empty() {
             true => self.default_value.unwrap_or_default(),
@@ -84,7 +84,7 @@ impl<'a> Password<'a> {
 
     fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
-            self.validator_result = validator(&self.get_value());
+            self.validator_result = validator(self.get_value());
         }
 
         self.validator_result.is_ok()
@@ -92,19 +92,15 @@ impl<'a> Password<'a> {
 }
 
 impl KeyHandler for Password<'_> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         if self.hidden && renderer.draw_time == DrawTime::Update {
             return Ok(());
         }
 
-        renderer.password(&self)
+        renderer.password(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -121,7 +117,7 @@ impl KeyHandler for Password<'_> {
             _ => (),
         };
 
-        self.submit = submit;
+        submit
     }
 }
 

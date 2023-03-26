@@ -1,28 +1,31 @@
-use std::{fmt::Display, io, str::FromStr};
+use std::{io, str::FromStr};
 
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, KeyHandler},
+    num::Num,
     renderer::Renderer,
     theme::{DefaultTheme, Theme},
 };
 
 use super::text::{Direction, TextInput};
 
+type InputValidator<'a, T> =
+    dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
+
 pub struct Number<'a, T: Num> {
     pub(crate) message: &'a str,
     pub(crate) input: TextInput,
     pub(crate) placeholder: Option<&'a str>,
     pub(crate) default_value: Option<String>,
-    pub(crate) validator: Option<Box<dyn Fn(&str, Result<T, T::Err>) -> Result<(), &'a str>>>,
+    pub(crate) validator: Option<Box<InputValidator<'a, T>>>,
     pub(crate) validator_result: Result<(), &'a str>,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a, T: Num> Number<'a, T> {
-    pub fn new(message: &'a str) -> Number<T> {
+    pub fn new(message: &'a str) -> Self {
         Number {
             message,
             input: TextInput::new(),
@@ -30,7 +33,6 @@ impl<'a, T: Num> Number<'a, T> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            submit: false,
             theme: &DefaultTheme,
         }
     }
@@ -67,7 +69,9 @@ impl<'a, T: Num> Number<'a, T> {
         key_listener::listen(self)?;
         Ok(self.get_value())
     }
+}
 
+impl<T: Num> Number<'_, T> {
     fn get_value(&self) -> Result<T, T::Err> {
         match self.input.value.is_empty() {
             true => self.default_value.clone().unwrap_or_default().parse(),
@@ -79,7 +83,7 @@ impl<'a, T: Num> Number<'a, T> {
         let is_valid = match ch {
             '-' | '+' => T::is_signed() && self.input.col == 0,
             '.' => T::is_float() && !self.input.value.contains('.'),
-            _ => ch.is_digit(10),
+            _ => ch.is_ascii_digit(),
         };
 
         if is_valid {
@@ -97,15 +101,11 @@ impl<'a, T: Num> Number<'a, T> {
 }
 
 impl<T: Num> KeyHandler for Number<'_, T> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
     fn draw<W: std::io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.number(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -122,81 +122,7 @@ impl<T: Num> KeyHandler for Number<'_, T> {
             _ => (),
         }
 
-        self.submit = submit;
-    }
-}
-
-/// A utilitiy trait to allow only number types
-pub trait Num: Default + Display + FromStr {
-    fn is_float() -> bool {
-        false
-    }
-
-    fn is_signed() -> bool {
-        false
-    }
-}
-
-impl Num for u8 {}
-impl Num for u16 {}
-impl Num for u32 {}
-impl Num for u64 {}
-impl Num for u128 {}
-impl Num for usize {}
-
-impl Num for i8 {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for i16 {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for i32 {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for i64 {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for i128 {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for isize {
-    fn is_signed() -> bool {
-        true
-    }
-}
-
-impl Num for f32 {
-    fn is_signed() -> bool {
-        true
-    }
-
-    fn is_float() -> bool {
-        true
-    }
-}
-
-impl Num for f64 {
-    fn is_signed() -> bool {
-        true
-    }
-
-    fn is_float() -> bool {
-        true
+        submit
     }
 }
 
@@ -301,10 +227,14 @@ mod tests {
         let mut prompt = Number::<i32>::new("");
 
         // try to type a character
-        ('a'..='z').for_each(|c| prompt.handle_key(KeyEvent::from(KeyCode::Char(c))));
+        ('a'..='z').for_each(|c| {
+            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+        });
 
         // try to type digits
-        ('0'..='9').for_each(|c| prompt.handle_key(KeyEvent::from(KeyCode::Char(c))));
+        ('0'..='9').for_each(|c| {
+            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+        });
 
         assert_eq!(prompt.input.value, "0123456789");
     }
@@ -313,16 +243,18 @@ mod tests {
     fn allow_decimal_in_floats() {
         let mut prompt = Number::<f32>::new("");
 
-        "1.".chars()
-            .for_each(|c| prompt.handle_key(KeyEvent::from(KeyCode::Char(c))));
+        "1.".chars().for_each(|c| {
+            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+        });
 
         assert_eq!(prompt.input.value, "1.");
 
         // not allow in integers
         let mut prompt = Number::<i32>::new("");
 
-        "2.".chars()
-            .for_each(|c| prompt.handle_key(KeyEvent::from(KeyCode::Char(c))));
+        "2.".chars().for_each(|c| {
+            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+        });
 
         assert_eq!(prompt.input.value, "2");
     }

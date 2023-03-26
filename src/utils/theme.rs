@@ -178,12 +178,10 @@ impl DefaultTheme {
 
     #[inline]
     fn text_error(&self, validator_result: &Result<(), &str>) -> String {
-        let error = match validator_result {
+        match validator_result {
             Ok(_) => String::new(),
             Err(e) => format!("{}\n", e.red()),
-        };
-
-        error.to_string()
+        }
     }
 
     #[inline]
@@ -383,8 +381,8 @@ impl Theme for DefaultTheme {
         format!(
             "{}\n{}  {}\n",
             self.message(message, draw_time),
-            self.toggle_option(options.0, active == false),
-            self.toggle_option(options.1, active == true),
+            self.toggle_option(options.0, !active),
+            self.toggle_option(options.1, active),
         )
     }
 

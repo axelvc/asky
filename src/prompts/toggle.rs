@@ -11,7 +11,6 @@ use crate::utils::{
 pub struct Toggle<'a> {
     pub(crate) message: &'a str,
     pub(crate) options: (&'a str, &'a str),
-    pub(crate) submit: bool,
     pub(crate) active: bool,
     pub(crate) theme: &'a dyn Theme,
 }
@@ -22,7 +21,6 @@ impl<'a> Toggle<'a> {
             message,
             options,
             active: false,
-            submit: false,
             theme: &DefaultTheme,
         }
     }
@@ -42,7 +40,9 @@ impl<'a> Toggle<'a> {
 
         Ok(String::from(self.get_value()))
     }
+}
 
+impl Toggle<'_> {
     fn get_value(&self) -> &str {
         if self.active {
             self.options.1
@@ -53,28 +53,23 @@ impl<'a> Toggle<'a> {
 }
 
 impl KeyHandler for Toggle<'_> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.toggle(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
-            // submit focused/initial
+            // submit focused/initial option
             KeyCode::Enter | KeyCode::Backspace => submit = true,
-            // focus left
+            // update focus option
             KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            // focus right
             KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
             _ => (),
         }
 
-        self.submit = submit
+        submit
     }
 }
 
@@ -100,9 +95,9 @@ mod tests {
             let mut prompt = Toggle::new("", ("foo", "bar"));
             let simulated_key = KeyEvent::from(event);
 
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
             assert_eq!(prompt.get_value(), "foo");
-            assert_eq!(prompt.submit, true);
+            assert!(submit);
         }
     }
 
@@ -122,10 +117,10 @@ mod tests {
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
-            prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(simulated_key);
 
             assert_eq!(prompt.get_value(), expected);
-            assert_eq!(prompt.submit, false);
+            assert!(!submit);
         }
     }
 }

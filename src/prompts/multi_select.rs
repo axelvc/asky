@@ -13,7 +13,6 @@ use super::select::{Direction, SelectInput, SelectOption};
 pub struct MultiSelect<'a, T> {
     pub(crate) message: &'a str,
     pub(crate) input: SelectInput<'a, T>,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
     pub(crate) min: Option<usize>,
     pub(crate) max: Option<usize>,
@@ -21,11 +20,10 @@ pub struct MultiSelect<'a, T> {
 }
 
 impl<'a, T> MultiSelect<'a, T> {
-    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> MultiSelect<'a, T> {
+    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         MultiSelect {
             message,
             input: SelectInput::new(options),
-            submit: false,
             theme: &DefaultTheme,
             min: None,
             max: None,
@@ -44,16 +42,6 @@ impl<'a, T> MultiSelect<'a, T> {
         self
     }
 
-    pub fn min(&mut self, min: usize) -> &mut Self {
-        self.min = Some(min);
-        self
-    }
-
-    pub fn max(&mut self, max: usize) -> &mut Self {
-        self.max = Some(max);
-        self
-    }
-
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
         self.input.set_loop_mode(is_loop);
         self
@@ -61,6 +49,16 @@ impl<'a, T> MultiSelect<'a, T> {
 
     pub fn items_per_page(&mut self, items_per_page: usize) -> &mut Self {
         self.input.set_items_per_page(items_per_page);
+        self
+    }
+
+    pub fn min(&mut self, min: usize) -> &mut Self {
+        self.min = Some(min);
+        self
+    }
+
+    pub fn max(&mut self, max: usize) -> &mut Self {
+        self.max = Some(max);
         self
     }
 
@@ -77,7 +75,9 @@ impl<'a, T> MultiSelect<'a, T> {
 
         Ok(selected)
     }
+}
 
+impl<T> MultiSelect<'_, T> {
     fn toggle_focused(&mut self) {
         let selected = self.input.focused;
         let focused = &self.input.options[selected];
@@ -111,16 +111,12 @@ impl<'a, T> MultiSelect<'a, T> {
     }
 }
 
-impl<'a, T> KeyHandler for MultiSelect<'a, T> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
+impl<T> KeyHandler for MultiSelect<'_, T> {
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.multi_select(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -136,7 +132,7 @@ impl<'a, T> KeyHandler for MultiSelect<'a, T> {
             _ => (),
         }
 
-        self.submit = submit
+        submit
     }
 }
 
@@ -210,8 +206,8 @@ mod tests {
             );
             let simulated_key = KeyEvent::from(event);
 
-            prompt.handle_key(simulated_key);
-            assert_eq!(prompt.submit, true);
+            let submit = prompt.handle_key(simulated_key);
+            assert!(submit);
         }
     }
 
@@ -227,14 +223,14 @@ mod tests {
         );
 
         prompt.min(1);
-        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert!(!prompt.submit);
+        assert!(!submit);
 
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
-        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert!(prompt.submit);
+        assert!(submit);
     }
 
     #[test]

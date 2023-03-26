@@ -55,19 +55,20 @@ impl TextInput {
     }
 }
 
+pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
+
 pub struct Text<'a> {
     pub(crate) message: &'a str,
     pub(crate) input: TextInput,
     pub(crate) placeholder: Option<&'a str>,
     pub(crate) default_value: Option<&'a str>,
-    pub(crate) validator: Option<Box<dyn Fn(&str) -> Result<(), &'a str>>>,
+    pub(crate) validator: Option<Box<InputValidator<'a>>>,
     pub(crate) validator_result: Result<(), &'a str>,
-    pub(crate) submit: bool,
     pub(crate) theme: &'a dyn Theme,
 }
 
 impl<'a> Text<'a> {
-    pub fn new(message: &str) -> Text<'_> {
+    pub fn new(message: &'a str) -> Self {
         Text {
             message,
             input: TextInput::new(),
@@ -75,7 +76,6 @@ impl<'a> Text<'a> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            submit: false,
             theme: &DefaultTheme,
         }
     }
@@ -97,7 +97,7 @@ impl<'a> Text<'a> {
 
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'static,
+        F: Fn(&str) -> Result<(), &'a str> + 'a,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -112,7 +112,9 @@ impl<'a> Text<'a> {
         key_listener::listen(self)?;
         Ok(self.get_value().to_owned())
     }
+}
 
+impl Text<'_> {
     fn get_value(&self) -> &str {
         match self.input.value.is_empty() {
             true => self.default_value.unwrap_or_default(),
@@ -122,7 +124,7 @@ impl<'a> Text<'a> {
 
     fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
-            self.validator_result = validator(&self.get_value());
+            self.validator_result = validator(self.get_value());
         }
 
         self.validator_result.is_ok()
@@ -130,15 +132,11 @@ impl<'a> Text<'a> {
 }
 
 impl KeyHandler for Text<'_> {
-    fn submit(&self) -> bool {
-        self.submit
-    }
-
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
         renderer.text(self)
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -155,7 +153,7 @@ impl KeyHandler for Text<'_> {
             _ => (),
         };
 
-        self.submit = submit;
+        submit
     }
 }
 
@@ -245,16 +243,16 @@ mod tests {
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
 
         // invalid value
-        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert_eq!(prompt.submit, false);
+        assert!(!submit);
         assert_eq!(prompt.validator_result, Err(err_str));
 
         // valid value
         prompt.input.set_value("foo");
-        prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert_eq!(prompt.submit, true);
+        assert!(submit);
         assert_eq!(prompt.validator_result, Ok(()));
     }
 

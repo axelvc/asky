@@ -8,9 +8,8 @@ use crossterm::{
 use super::renderer::Renderer;
 
 pub trait KeyHandler {
-    fn submit(&self) -> bool;
     fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()>;
-    fn handle_key(&mut self, key: KeyEvent);
+    fn handle_key(&mut self, key: KeyEvent) -> bool;
 }
 
 pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
@@ -18,8 +17,9 @@ pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
 
     handler.draw(&mut renderer)?;
     renderer.update_draw_time();
+    let mut submit = false;
 
-    while !handler.submit() {
+    while !submit {
         terminal::enable_raw_mode()?;
         let k = read()?;
         terminal::disable_raw_mode()?;
@@ -31,7 +31,7 @@ pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
                 abort()?;
             }
 
-            handler.handle_key(key);
+            submit = handler.handle_key(key);
             handler.draw(&mut renderer)?;
         }
     }
@@ -43,17 +43,17 @@ pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
 }
 
 fn is_abort(ev: KeyEvent) -> bool {
-    match ev {
+    matches!(
+        ev,
         KeyEvent {
-            code: KeyCode::Esc, ..
-        }
-        | KeyEvent {
+            code: KeyCode::Esc,
+            ..
+        } | KeyEvent {
             code: KeyCode::Char('c' | 'd'),
             modifiers: KeyModifiers::CONTROL,
             ..
-        } => true,
-        _ => false,
-    }
+        }
+    )
 }
 
 fn abort() -> io::Result<()> {
