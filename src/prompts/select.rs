@@ -1,14 +1,11 @@
-use std::{
-    io,
-    ops::{Deref, DerefMut},
-};
+use std::io;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
 pub enum Direction {
@@ -18,43 +15,24 @@ pub enum Direction {
     Right,
 }
 
-pub struct SelectOption<'a, T> {
-    pub(crate) value: T,
-    pub(crate) data: SelectOptionData<'a>,
-}
+// region: SelectOption
 
-/// Helper struct to pass SelectOption data to theme trait
-pub struct SelectOptionData<'a> {
+pub struct SelectOption<'a, T> {
+    pub value: T,
     pub title: &'a str,
     pub description: Option<&'a str>,
     pub disabled: bool,
     pub active: bool,
 }
 
-impl<'a, T> Deref for SelectOption<'a, T> {
-    type Target = SelectOptionData<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.data
-    }
-}
-
-impl<'a, T> DerefMut for SelectOption<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
-    }
-}
-
 impl<'a, T> SelectOption<'a, T> {
     pub fn new(value: T, title: &'a str) -> Self {
         SelectOption {
             value,
-            data: SelectOptionData {
-                title,
-                description: None,
-                disabled: false,
-                active: false,
-            },
+            title,
+            description: None,
+            disabled: false,
+            active: false,
         }
     }
 
@@ -71,37 +49,35 @@ impl<'a, T> SelectOption<'a, T> {
     }
 }
 
-pub struct SelectInput<'a, T> {
+// endregion: SelectOption
+
+// region: SelectCursor
+
+pub struct SelectCursor {
     pub focused: usize,
     pub items_per_page: usize,
-    pub(crate) options: Vec<SelectOption<'a, T>>,
-    pub(crate) loop_mode: bool,
+    pub loop_mode: bool,
+    total_items: usize,
 }
 
-impl<'a, T> SelectInput<'a, T> {
+impl SelectCursor {
     pub fn count_pages(&self) -> usize {
-        let total = self.options.len();
+        let total = self.total_items;
         let per_page = self.items_per_page;
-        let mut pages = total / per_page;
+        let rem = total % per_page;
 
-        if total % per_page != 0 {
-            pages += 1
-        }
-
-        pages
+        total / per_page + (rem != 0) as usize
     }
 
-    pub fn page(&self) -> usize {
+    pub fn get_page(&self) -> usize {
         self.focused / self.items_per_page
     }
+}
 
-    pub fn get_options_data(&self) -> Vec<&SelectOptionData> {
-        self.options.iter().map(|x| &x.data).collect()
-    }
-
-    pub(crate) fn new(options: Vec<SelectOption<'a, T>>) -> Self {
-        SelectInput {
-            options,
+impl SelectCursor {
+    pub(crate) fn new(options: usize) -> Self {
+        SelectCursor {
+            total_items: options,
             focused: 0,
             items_per_page: 10,
             loop_mode: true,
@@ -122,11 +98,11 @@ impl<'a, T> SelectInput<'a, T> {
     }
 
     pub(crate) fn set_items_per_page(&mut self, item_per_page: usize) {
-        self.items_per_page = item_per_page.min(self.options.len());
+        self.items_per_page = item_per_page.min(self.total_items);
     }
 
     fn prev_item(&mut self) {
-        let max = self.options.len() - 1;
+        let max = self.total_items - 1;
 
         self.focused = match self.loop_mode {
             true => self.focused.checked_sub(1).unwrap_or(max),
@@ -135,7 +111,7 @@ impl<'a, T> SelectInput<'a, T> {
     }
 
     fn next_item(&mut self) {
-        let max = self.options.len() - 1;
+        let max = self.total_items - 1;
         let new_value = self.focused + 1;
 
         self.focused = match (new_value > max, self.loop_mode) {
@@ -150,52 +126,63 @@ impl<'a, T> SelectInput<'a, T> {
     }
 
     fn next_page(&mut self) {
-        let max = self.options.len() - 1;
+        let max = self.total_items - 1;
         let new_value = self.focused + self.items_per_page;
 
         self.focused = new_value.min(max)
     }
 }
 
+// endregion: SelectCursor
+
+type Formatter<'a, T> = dyn Fn(&Select<T>, &Renderer) -> String + 'a;
+
 pub struct Select<'a, T> {
-    pub(crate) message: &'a str,
-    pub(crate) input: SelectInput<'a, T>,
-    pub(crate) theme: &'a dyn Theme,
+    pub message: &'a str,
+    pub options: Vec<SelectOption<'a, T>>,
+    pub cursor: SelectCursor,
+    formatter: Box<Formatter<'a, T>>,
 }
 
-impl<'a, T> Select<'a, T> {
+impl<'a, T: 'a> Select<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+        let options_len = options.len();
+
         Select {
             message,
-            input: SelectInput::new(options),
-            theme: &DefaultTheme,
+            options,
+            cursor: SelectCursor::new(options_len),
+            formatter: Box::new(theme::fmt_select),
         }
     }
 
     pub fn selected(&mut self, value: usize) -> &mut Self {
-        self.input.focused = value.min(self.input.options.len() - 1);
+        self.cursor.focused = value.min(self.options.len() - 1);
         self
     }
 
     pub fn in_loop(&mut self, loop_mode: bool) -> &mut Self {
-        self.input.set_loop_mode(loop_mode);
+        self.cursor.set_loop_mode(loop_mode);
         self
     }
 
     pub fn items_per_page(&mut self, item_per_page: usize) -> &mut Self {
-        self.input.set_items_per_page(item_per_page);
+        self.cursor.set_items_per_page(item_per_page);
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Select<T>, &Renderer) -> String + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self)?;
 
-        let selected = self.input.options.remove(self.input.focused);
+        let selected = self.options.remove(self.cursor.focused);
 
         Ok(selected.value)
     }
@@ -204,17 +191,13 @@ impl<'a, T> Select<'a, T> {
 impl<T> Select<'_, T> {
     /// Only submit if the option isn't disabled
     fn validate_to_submit(&self) -> bool {
-        let focused = &self.input.options[self.input.focused];
+        let focused = &self.options[self.cursor.focused];
 
         !focused.disabled
     }
 }
 
-impl<T> KeyHandler for Select<'_, T> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.select(self)
-    }
-
+impl<T> Typeable for Select<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -222,14 +205,21 @@ impl<T> KeyHandler for Select<'_, T> {
             // submit
             KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.cursor.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.cursor.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.cursor.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.cursor.move_cursor(Direction::Right),
             _ => (),
         }
 
         submit
+    }
+}
+
+impl<T> Printable for Select<'_, T> {
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer);
+        renderer.print(&text)
     }
 }
 
@@ -247,9 +237,9 @@ mod tests {
             ],
         );
 
-        assert_eq!(prompt.input.focused, 0);
+        assert_eq!(prompt.cursor.focused, 0);
         prompt.selected(1);
-        assert_eq!(prompt.input.focused, 1);
+        assert_eq!(prompt.cursor.focused, 1);
     }
 
     #[test]
@@ -263,9 +253,22 @@ mod tests {
         );
 
         prompt.in_loop(false);
-        assert!(!prompt.input.loop_mode);
+        assert!(!prompt.cursor.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.input.loop_mode);
+        assert!(prompt.cursor.loop_mode);
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Select<u8> = Select::new("", vec![]);
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &Select<u8>, _: &Renderer| String::from(EXPECTED_VALUE);
+
+        prompt.format(formatter);
+
+        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
     }
 
     #[test]
@@ -285,7 +288,7 @@ mod tests {
             prompt.selected(1);
 
             let submit = prompt.handle_key(simulated_key);
-            assert_eq!(prompt.input.focused, 1);
+            assert_eq!(prompt.cursor.focused, 1);
             assert!(submit);
         }
     }
@@ -334,7 +337,7 @@ mod tests {
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.input.focused, expected);
+                assert_eq!(prompt.cursor.focused, expected);
             }
         }
 
@@ -352,7 +355,7 @@ mod tests {
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.input.focused, expected);
+                assert_eq!(prompt.cursor.focused, expected);
             }
         }
     }

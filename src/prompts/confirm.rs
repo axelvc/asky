@@ -3,15 +3,17 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
+type Formatter<'a> = dyn Fn(&Confirm, &Renderer) -> String + 'a;
+
 pub struct Confirm<'a> {
-    pub(crate) message: &'a str,
-    pub(crate) active: bool,
-    pub(crate) theme: &'a dyn Theme,
+    pub message: &'a str,
+    pub active: bool,
+    formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Confirm<'a> {
@@ -19,7 +21,7 @@ impl<'a> Confirm<'a> {
         Confirm {
             message,
             active: false,
-            theme: &DefaultTheme,
+            formatter: Box::new(theme::fmt_confirm),
         }
     }
 
@@ -28,8 +30,11 @@ impl<'a> Confirm<'a> {
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Confirm, &Renderer) -> String + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
@@ -46,11 +51,7 @@ impl Confirm<'_> {
     }
 }
 
-impl KeyHandler for Confirm<'_> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.confirm(self)
-    }
-
+impl Typeable for Confirm<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -70,6 +71,13 @@ impl KeyHandler for Confirm<'_> {
     }
 }
 
+impl Printable for Confirm<'_> {
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer);
+        renderer.print(&text)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,6 +90,19 @@ mod tests {
         assert!(!prompt.active);
         prompt.initial(true);
         assert!(prompt.active);
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Confirm = Confirm::new("");
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &Confirm, _: &Renderer| String::from(EXPECTED_VALUE);
+
+        prompt.format(formatter);
+
+        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
     }
 
     #[test]
@@ -136,4 +157,5 @@ mod tests {
             assert!(!submit);
         }
     }
+
 }

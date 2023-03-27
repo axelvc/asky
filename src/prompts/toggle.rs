@@ -3,16 +3,18 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
+type Formatter<'a> = dyn Fn(&Toggle, &Renderer) -> String + 'a;
+
 pub struct Toggle<'a> {
-    pub(crate) message: &'a str,
-    pub(crate) options: (&'a str, &'a str),
-    pub(crate) active: bool,
-    pub(crate) theme: &'a dyn Theme,
+    pub message: &'a str,
+    pub options: (&'a str, &'a str),
+    pub active: bool,
+    formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Toggle<'a> {
@@ -21,7 +23,7 @@ impl<'a> Toggle<'a> {
             message,
             options,
             active: false,
-            theme: &DefaultTheme,
+            formatter: Box::new(theme::fmt_toggle),
         }
     }
 
@@ -30,14 +32,16 @@ impl<'a> Toggle<'a> {
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Toggle, &Renderer) -> String + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self)?;
-
         Ok(String::from(self.get_value()))
     }
 }
@@ -52,11 +56,7 @@ impl Toggle<'_> {
     }
 }
 
-impl KeyHandler for Toggle<'_> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.toggle(self)
-    }
-
+impl Typeable for Toggle<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -70,6 +70,13 @@ impl KeyHandler for Toggle<'_> {
         }
 
         submit
+    }
+}
+
+impl Printable for Toggle<'_> {
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer);
+        renderer.print(&text)
     }
 }
 

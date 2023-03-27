@@ -3,22 +3,24 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::{DrawTime, Renderer},
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
 use super::text::{Direction, InputValidator, TextInput};
 
+type Formatter<'a> = dyn Fn(&Password, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
+
 pub struct Password<'a> {
-    pub(crate) message: &'a str,
-    pub(crate) input: TextInput,
-    pub(crate) placeholder: Option<&'a str>,
-    pub(crate) default_value: Option<&'a str>,
-    pub(crate) validator: Option<Box<InputValidator<'a>>>,
-    pub(crate) validator_result: Result<(), &'a str>,
-    pub(crate) hidden: bool,
-    pub(crate) theme: &'a dyn Theme,
+    pub message: &'a str,
+    pub input: TextInput,
+    pub placeholder: Option<&'a str>,
+    pub default_value: Option<&'a str>,
+    pub hidden: bool,
+    pub validator_result: Result<(), &'a str>,
+    validator: Option<Box<InputValidator<'a>>>,
+    formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Password<'a> {
@@ -28,10 +30,10 @@ impl<'a> Password<'a> {
             input: TextInput::new(),
             placeholder: None,
             default_value: None,
+            hidden: false,
             validator: None,
             validator_result: Ok(()),
-            hidden: false,
-            theme: &DefaultTheme,
+            formatter: Box::new(theme::fmt_password),
         }
     }
 
@@ -50,6 +52,11 @@ impl<'a> Password<'a> {
         self
     }
 
+    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
+        self.hidden = hidden;
+        self
+    }
+
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
         F: Fn(&str) -> Result<(), &'a str> + 'a,
@@ -58,13 +65,11 @@ impl<'a> Password<'a> {
         self
     }
 
-    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
-        self.hidden = hidden;
-        self
-    }
-
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Password, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
@@ -91,15 +96,7 @@ impl Password<'_> {
     }
 }
 
-impl KeyHandler for Password<'_> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        if self.hidden && renderer.draw_time == DrawTime::Update {
-            return Ok(());
-        }
-
-        renderer.password(self)
-    }
-
+impl Typeable for Password<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -118,6 +115,16 @@ impl KeyHandler for Password<'_> {
         };
 
         submit
+    }
+}
+
+impl Printable for Password<'_> {
+    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer);
+        let cursor_col = if self.hidden { 0 } else { self.input.col };
+
+        renderer.print(&text)?;
+        renderer.update_cursor(cursor_col, cursor)
     }
 }
 
@@ -157,6 +164,22 @@ mod tests {
                 value: String::from("foo"),
                 col: 3,
             }
+        );
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Password = Password::new("");
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &Password, _: &Renderer| (String::from(EXPECTED_VALUE), None);
+
+        prompt.format(formatter);
+
+        assert_eq!(
+            (prompt.formatter)(&prompt, &renderer),
+            (String::from(EXPECTED_VALUE), None)
         );
     }
 

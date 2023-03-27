@@ -3,15 +3,17 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
 pub enum Direction {
     Left,
     Right,
 }
+
+// region: TextPrompt
 
 #[derive(Debug, PartialEq, Default)]
 pub struct TextInput {
@@ -23,31 +25,33 @@ impl TextInput {
     pub fn new() -> Self {
         TextInput::default()
     }
+}
 
-    pub fn set_value(&mut self, value: &str) {
+impl TextInput {
+    pub(crate) fn set_value(&mut self, value: &str) {
         self.value = String::from(value);
         self.col = value.len();
     }
 
-    pub fn insert(&mut self, ch: char) {
+    pub(crate) fn insert(&mut self, ch: char) {
         self.value.insert(self.col, ch);
         self.col += 1;
     }
 
-    pub fn backspace(&mut self) {
+    pub(crate) fn backspace(&mut self) {
         if !self.value.is_empty() && self.col > 0 {
             self.col -= 1;
             self.value.remove(self.col);
         }
     }
 
-    pub fn delete(&mut self) {
+    pub(crate) fn delete(&mut self) {
         if !self.value.is_empty() && self.col < self.value.len() {
             self.value.remove(self.col);
         }
     }
 
-    pub fn move_cursor(&mut self, position: Direction) {
+    pub(crate) fn move_cursor(&mut self, position: Direction) {
         self.col = match position {
             Direction::Left => self.col.saturating_sub(1),
             Direction::Right => (self.col + 1).min(self.value.len()),
@@ -55,16 +59,19 @@ impl TextInput {
     }
 }
 
+// endregion
+
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
+type Formatter<'a> = dyn Fn(&Text, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
 
 pub struct Text<'a> {
-    pub(crate) message: &'a str,
-    pub(crate) input: TextInput,
-    pub(crate) placeholder: Option<&'a str>,
-    pub(crate) default_value: Option<&'a str>,
-    pub(crate) validator: Option<Box<InputValidator<'a>>>,
-    pub(crate) validator_result: Result<(), &'a str>,
-    pub(crate) theme: &'a dyn Theme,
+    pub input: TextInput,
+    pub message: &'a str,
+    pub placeholder: Option<&'a str>,
+    pub default_value: Option<&'a str>,
+    pub validator_result: Result<(), &'a str>,
+    validator: Option<Box<InputValidator<'a>>>,
+    formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Text<'a> {
@@ -76,7 +83,7 @@ impl<'a> Text<'a> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            theme: &DefaultTheme,
+            formatter: Box::new(theme::fmt_text),
         }
     }
 
@@ -103,8 +110,11 @@ impl<'a> Text<'a> {
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Text, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
@@ -131,11 +141,7 @@ impl Text<'_> {
     }
 }
 
-impl KeyHandler for Text<'_> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.text(self)
-    }
-
+impl Typeable for Text<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -154,6 +160,14 @@ impl KeyHandler for Text<'_> {
         };
 
         submit
+    }
+}
+
+impl Printable for Text<'_> {
+    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer);
+        renderer.print(&text)?;
+        renderer.update_cursor(self.input.col, cursor)
     }
 }
 
@@ -191,6 +205,22 @@ mod tests {
                 value: String::from("foo"),
                 col: 3,
             }
+        );
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Text = Text::new("");
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &Text, _: &Renderer| (String::from(EXPECTED_VALUE), None);
+
+        prompt.format(formatter);
+
+        assert_eq!(
+            (prompt.formatter)(&prompt, &renderer),
+            (String::from(EXPECTED_VALUE), None)
         );
     }
 

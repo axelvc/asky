@@ -3,37 +3,43 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    key_listener::{self, Typeable},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
-use super::select::{Direction, SelectInput, SelectOption};
+use super::select::{Direction, SelectCursor, SelectOption};
+
+type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, &Renderer) -> String + 'a;
 
 pub struct MultiSelect<'a, T> {
-    pub(crate) message: &'a str,
-    pub(crate) input: SelectInput<'a, T>,
-    pub(crate) theme: &'a dyn Theme,
-    pub(crate) min: Option<usize>,
-    pub(crate) max: Option<usize>,
-    selected_count: usize,
+    pub message: &'a str,
+    pub options: Vec<SelectOption<'a, T>>,
+    pub min: Option<usize>,
+    pub max: Option<usize>,
+    pub selected_count: usize,
+    pub cursor: SelectCursor,
+    formatter: Box<Formatter<'a, T>>,
 }
 
-impl<'a, T> MultiSelect<'a, T> {
+impl<'a, T: 'a> MultiSelect<'a, T> {
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+        let options_len = options.len();
+
         MultiSelect {
             message,
-            input: SelectInput::new(options),
-            theme: &DefaultTheme,
+            options,
             min: None,
             max: None,
             selected_count: 0,
+            cursor: SelectCursor::new(options_len),
+            formatter: Box::new(theme::fmt_multi_select),
         }
     }
 
     pub fn selected(&mut self, selected: &[usize]) -> &mut Self {
         for i in selected {
-            if let Some(option) = self.input.options.get_mut(*i) {
+            if let Some(option) = self.options.get_mut(*i) {
                 option.active = true;
                 self.selected_count += 1;
             }
@@ -43,12 +49,12 @@ impl<'a, T> MultiSelect<'a, T> {
     }
 
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
-        self.input.set_loop_mode(is_loop);
+        self.cursor.set_loop_mode(is_loop);
         self
     }
 
     pub fn items_per_page(&mut self, items_per_page: usize) -> &mut Self {
-        self.input.set_items_per_page(items_per_page);
+        self.cursor.set_items_per_page(items_per_page);
         self
     }
 
@@ -62,15 +68,18 @@ impl<'a, T> MultiSelect<'a, T> {
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&MultiSelect<T>, &Renderer) -> String + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self)?;
 
-        let (selected, _): (Vec<_>, Vec<_>) = self.input.options.drain(..).partition(|x| x.active);
+        let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
         let selected = selected.into_iter().map(|x| x.value).collect();
 
         Ok(selected)
@@ -79,8 +88,8 @@ impl<'a, T> MultiSelect<'a, T> {
 
 impl<T> MultiSelect<'_, T> {
     fn toggle_focused(&mut self) {
-        let selected = self.input.focused;
-        let focused = &self.input.options[selected];
+        let selected = self.cursor.focused;
+        let focused = &self.options[selected];
 
         if focused.disabled {
             return;
@@ -91,7 +100,7 @@ impl<T> MultiSelect<'_, T> {
             Some(max) => self.selected_count < max,
         };
 
-        let focused = &mut self.input.options[selected];
+        let focused = &mut self.options[selected];
 
         if focused.active {
             focused.active = false;
@@ -111,11 +120,7 @@ impl<T> MultiSelect<'_, T> {
     }
 }
 
-impl<T> KeyHandler for MultiSelect<'_, T> {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.multi_select(self)
-    }
-
+impl<T> Typeable for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -125,14 +130,21 @@ impl<T> KeyHandler for MultiSelect<'_, T> {
             // select/unselect
             KeyCode::Char(' ') => self.toggle_focused(),
             // update focus
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.cursor.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.cursor.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.cursor.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.cursor.move_cursor(Direction::Right),
             _ => (),
         }
 
         submit
+    }
+}
+
+impl<T> Printable for MultiSelect<'_, T> {
+    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer);
+        renderer.print(&text)
     }
 }
 
@@ -152,8 +164,8 @@ mod tests {
         );
 
         prompt.selected(&[0, 2]);
-        assert!(prompt.input.options[0].active);
-        assert!(prompt.input.options[2].active);
+        assert!(prompt.options[0].active);
+        assert!(prompt.options[2].active);
     }
 
     #[test]
@@ -186,9 +198,22 @@ mod tests {
         );
 
         prompt.in_loop(false);
-        assert!(!prompt.input.loop_mode);
+        assert!(!prompt.cursor.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.input.loop_mode);
+        assert!(prompt.cursor.loop_mode);
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: MultiSelect<u8> = MultiSelect::new("", vec![]);
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &MultiSelect<u8>, _: &Renderer| String::from(EXPECTED_VALUE);
+
+        prompt.format(formatter);
+
+        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
     }
 
     #[test]
@@ -250,40 +275,40 @@ mod tests {
         prompt.in_loop(false);
 
         for key in next_keys {
-            prompt.input.focused = 0;
+            prompt.cursor.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.input.focused, 1);
+            assert_eq!(prompt.cursor.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in next_keys {
-            prompt.input.focused = 2;
+            prompt.cursor.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.input.focused, 0);
+            assert_eq!(prompt.cursor.focused, 0);
         }
 
         // move next
         prompt.in_loop(false);
 
         for key in prev_keys {
-            prompt.input.focused = 2;
+            prompt.cursor.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.input.focused, 1);
+            assert_eq!(prompt.cursor.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in prev_keys {
-            prompt.input.focused = 0;
+            prompt.cursor.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.input.focused, 2);
+            assert_eq!(prompt.cursor.focused, 2);
         }
     }
 
@@ -300,17 +325,18 @@ mod tests {
 
         prompt.max(1);
 
-        assert!(!prompt.input.options[1].active);
-        assert!(!prompt.input.options[2].active);
+        assert!(!prompt.options[1].active);
+        assert!(!prompt.options[2].active);
 
-        prompt.input.focused = 1;
+        prompt.cursor.focused = 1;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
         // must not update over limit
-        prompt.input.focused = 2;
+        prompt.cursor.focused = 2;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
-        assert!(prompt.input.options[1].active);
-        assert!(!prompt.input.options[2].active);
+        assert!(prompt.options[1].active);
+        assert!(!prompt.options[2].active);
     }
+
 }

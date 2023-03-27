@@ -5,14 +5,13 @@ use crossterm::{
     terminal,
 };
 
-use super::renderer::Renderer;
+use super::renderer::{Printable, Renderer};
 
-pub trait KeyHandler {
-    fn draw<W: io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()>;
+pub trait Typeable {
     fn handle_key(&mut self, key: KeyEvent) -> bool;
 }
 
-pub fn listen(handler: &mut impl KeyHandler) -> io::Result<()> {
+pub fn listen(handler: &mut (impl Printable + Typeable)) -> io::Result<()> {
     let mut renderer = Renderer::new();
 
     handler.draw(&mut renderer)?;

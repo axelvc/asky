@@ -3,28 +3,29 @@ use std::{io, str::FromStr};
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
-    key_listener::{self, KeyHandler},
+    key_listener::{self, Typeable},
     num::Num,
-    renderer::Renderer,
-    theme::{DefaultTheme, Theme},
+    renderer::{Printable, Renderer},
+    theme,
 };
 
 use super::text::{Direction, TextInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
+type Formatter<'a, T> = dyn Fn(&Number<T>, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
 
 pub struct Number<'a, T: Num> {
-    pub(crate) message: &'a str,
-    pub(crate) input: TextInput,
-    pub(crate) placeholder: Option<&'a str>,
-    pub(crate) default_value: Option<String>,
-    pub(crate) validator: Option<Box<InputValidator<'a, T>>>,
-    pub(crate) validator_result: Result<(), &'a str>,
-    pub(crate) theme: &'a dyn Theme,
+    pub message: &'a str,
+    pub input: TextInput,
+    pub placeholder: Option<&'a str>,
+    pub default_value: Option<String>,
+    pub validator_result: Result<(), &'a str>,
+    validator: Option<Box<InputValidator<'a, T>>>,
+    formatter: Box<Formatter<'a, T>>,
 }
 
-impl<'a, T: Num> Number<'a, T> {
+impl<'a, T: Num + 'a> Number<'a, T> {
     pub fn new(message: &'a str) -> Self {
         Number {
             message,
@@ -33,7 +34,7 @@ impl<'a, T: Num> Number<'a, T> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            theme: &DefaultTheme,
+            formatter: Box::new(theme::fmt_number),
         }
     }
 
@@ -60,8 +61,11 @@ impl<'a, T: Num> Number<'a, T> {
         self
     }
 
-    pub fn theme(&mut self, theme: &'a dyn Theme) -> &mut Self {
-        self.theme = theme;
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Number<T>, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+    {
+        self.formatter = Box::new(formatter);
         self
     }
 
@@ -100,11 +104,7 @@ impl<T: Num> Number<'_, T> {
     }
 }
 
-impl<T: Num> KeyHandler for Number<'_, T> {
-    fn draw<W: std::io::Write>(&self, renderer: &mut Renderer<W>) -> io::Result<()> {
-        renderer.number(self)
-    }
-
+impl<T: Num> Typeable for Number<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -123,6 +123,14 @@ impl<T: Num> KeyHandler for Number<'_, T> {
         }
 
         submit
+    }
+}
+
+impl<T: Num> Printable for Number<'_, T> {
+    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer);
+        renderer.print(&text)?;
+        renderer.update_cursor(self.input.col, cursor)
     }
 }
 
@@ -162,6 +170,22 @@ mod tests {
                 value: String::from("10"),
                 col: 2,
             }
+        );
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Number<u8> = Number::new("");
+        let renderer = Renderer::new();
+
+        const EXPECTED_VALUE: &str = "foo";
+        let formatter = |_: &Number<u8>, _: &Renderer| (String::from(EXPECTED_VALUE), None);
+
+        prompt.format(formatter);
+
+        assert_eq!(
+            (prompt.formatter)(&prompt, &renderer),
+            (String::from(EXPECTED_VALUE), None)
         );
     }
 

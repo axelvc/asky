@@ -2,12 +2,9 @@ use std::io;
 
 use crossterm::{cursor, queue, style::Print, terminal};
 
-use crate::prompts::{
-    confirm::Confirm, multi_select::MultiSelect, number::Number, password::Password,
-    select::Select, text::Text, toggle::Toggle,
-};
-
-use super::num::Num;
+pub trait Printable {
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
+}
 
 #[derive(PartialEq, Debug)]
 pub enum DrawTime {
@@ -16,105 +13,17 @@ pub enum DrawTime {
     Last,
 }
 
-pub struct Renderer<W: io::Write> {
+pub struct Renderer {
     pub draw_time: DrawTime,
-    out: W,
+    out: Box<dyn io::Write>,
 }
 
-impl<W: io::Write> Renderer<W> {
-    pub fn text(&mut self, state: &Text) -> io::Result<()> {
-        let (text, cursor) = state.theme.fmt_text(
-            state.message,
-            &self.draw_time,
-            &state.input.value,
-            &state.placeholder,
-            &state.default_value,
-            &state.validator_result,
-        );
-
-        self.print(&text)?;
-        self.update_cursor(state.input.col, cursor)
-    }
-
-    pub fn password(&mut self, state: &Password) -> io::Result<()> {
-        let (text, cursor) = state.theme.fmt_password(
-            state.message,
-            &self.draw_time,
-            &state.input.value,
-            &state.placeholder,
-            &state.default_value,
-            &state.validator_result,
-            state.hidden,
-        );
-
-        let cursor_col = match state.hidden {
-            true => 0,
-            false => state.input.col,
-        };
-
-        self.print(&text)?;
-        self.update_cursor(cursor_col, cursor)
-    }
-
-    pub fn number<T: Num>(&mut self, state: &Number<T>) -> io::Result<()> {
-        let (text, cursor) = state.theme.fmt_number(
-            state.message,
-            &self.draw_time,
-            &state.input.value,
-            &state.placeholder,
-            &state.default_value.as_deref(),
-            &state.validator_result,
-        );
-
-        self.print(&text)?;
-        self.update_cursor(state.input.col, cursor)
-    }
-
-    pub fn toggle(&mut self, state: &Toggle) -> io::Result<()> {
-        let text =
-            state
-                .theme
-                .fmt_toggle(state.message, &self.draw_time, state.active, state.options);
-
-        self.print(&text)
-    }
-
-    pub fn confirm(&mut self, state: &Confirm) -> io::Result<()> {
-        let text = state
-            .theme
-            .fmt_confirm(state.message, &self.draw_time, state.active);
-
-        self.print(&text)
-    }
-
-    pub fn select<T>(&mut self, state: &Select<T>) -> io::Result<()> {
-        let text = state.theme.fmt_select(
-            state.message,
-            &self.draw_time,
-            state.input.get_options_data(),
-            state.input.focused,
-            state.input.items_per_page,
-            state.input.page(),
-            state.input.count_pages(),
-        );
-
-        self.print(&text)
-    }
-
-    pub fn multi_select<T>(&mut self, state: &MultiSelect<T>) -> io::Result<()> {
-        let text = state.theme.fmt_multi_select(
-            state.message,
-            &self.draw_time,
-            state.input.get_options_data(),
-            state.input.focused,
-            state.min,
-            state.max,
-            state.input.items_per_page,
-            state.input.page(),
-            state.input.count_pages(),
-        );
-
-        self.print(&text)
+impl Renderer {
+    pub fn new() -> Self {
+        Renderer {
+            draw_time: DrawTime::First,
+            out: Box::new(io::stdout()),
+        }
     }
 
     pub fn update_draw_time(&mut self) {
@@ -124,7 +33,7 @@ impl<W: io::Write> Renderer<W> {
         }
     }
 
-    fn print(&mut self, text: &str) -> io::Result<()> {
+    pub fn print(&mut self, text: &str) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -156,7 +65,7 @@ impl<W: io::Write> Renderer<W> {
         self.out.flush()
     }
 
-    fn update_cursor(
+    pub fn update_cursor(
         &mut self,
         cursor_col: usize,
         initial_position: Option<(u16, u16)>,
@@ -180,14 +89,5 @@ impl<W: io::Write> Renderer<W> {
         }
 
         self.out.flush()
-    }
-}
-
-impl Renderer<io::Stdout> {
-    pub fn new() -> Self {
-        Renderer {
-            draw_time: DrawTime::First,
-            out: io::stdout(),
-        }
     }
 }
