@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 use crossterm::{cursor, queue, style::Print, terminal};
 
@@ -15,14 +15,14 @@ pub enum DrawTime {
 
 pub struct Renderer {
     pub draw_time: DrawTime,
-    out: Box<dyn io::Write>,
+    out: io::Stdout,
 }
 
 impl Renderer {
     pub fn new() -> Self {
         Renderer {
             draw_time: DrawTime::First,
-            out: Box::new(io::stdout()),
+            out: io::stdout(),
         }
     }
 
