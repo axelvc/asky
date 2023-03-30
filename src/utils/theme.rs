@@ -5,7 +5,7 @@ use crate::prompts::{
     multi_select::MultiSelect,
     number::Number,
     password::Password,
-    select::{Select, SelectOption},
+    select::{Select, SelectCursor, SelectOption},
     text::Text,
     toggle::Toggle,
 };
@@ -15,213 +15,288 @@ use super::{
     renderer::{DrawTime, Renderer},
 };
 
+const LINE_CURSOR: Option<(u16, u16)> = Some((1, 2));
+
+pub fn fmt_confirm(prompt: &Confirm, renderer: &Renderer) -> String {
+    if renderer.draw_time == DrawTime::Last {
+        return fmt_last_message(prompt.message, if prompt.active { "Yes" } else { "No" });
+    }
+
+    [
+        fmt_message(prompt.message),
+        fmt_toggle_options(("No", "Yes"), prompt.active),
+        String::new(),
+    ]
+    .join("\n")
+}
+
+pub fn fmt_toggle(prompt: &Toggle, renderer: &Renderer) -> String {
+    if renderer.draw_time == DrawTime::Last {
+        return fmt_last_message(
+            prompt.message,
+            if prompt.active {
+                prompt.options.1
+            } else {
+                prompt.options.0
+            },
+        );
+    }
+
+    [
+        fmt_message(prompt.message),
+        fmt_toggle_options(prompt.options, prompt.active),
+        String::new(),
+    ]
+    .join("\n")
+}
+
+pub fn fmt_select<T>(prompt: &Select<T>, renderer: &Renderer) -> String {
+    if renderer.draw_time == DrawTime::Last {
+        return fmt_last_message(prompt.message, prompt.options[prompt.cursor.focused].title);
+    }
+
+    [
+        fmt_message(prompt.message),
+        fmt_select_page_options(&prompt.options, &prompt.cursor, false),
+        fmt_select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
+    ]
+    .join("\n")
+}
+
+pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, renderer: &Renderer) -> String {
+    if renderer.draw_time == DrawTime::Last {
+        return fmt_last_message(
+            prompt.message,
+            &format!(
+                "[{}]",
+                prompt
+                    .options
+                    .iter()
+                    .filter(|opt| opt.active)
+                    .map(|opt| opt.title)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+        );
+    }
+
+    [
+        fmt_multi_select_message(prompt.message, prompt.min, prompt.max),
+        fmt_select_page_options(&prompt.options, &prompt.cursor, true),
+        fmt_select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
+    ]
+    .join("\n")
+}
+
 pub fn fmt_text(prompt: &Text, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
+    if renderer.draw_time == DrawTime::Last {
+        return (fmt_last_message(prompt.message, &prompt.input.value), None);
+    }
+
     (
-        format!(
-            "{} {}\n{} {}\n{}",
-            message(prompt.message, &renderer.draw_time),
-            text_default_value(&prompt.default_value),
-            text_prefix(&prompt.validator_result),
-            text_input(&prompt.input.value, &prompt.placeholder, false),
-            text_error(&prompt.validator_result),
-        ),
-        Some((1, 2)),
+        [
+            fmt_line_message(prompt.message, &prompt.default_value),
+            fmt_line_input(
+                &prompt.input.value,
+                &prompt.placeholder,
+                &prompt.validator_result,
+                false,
+            ),
+            fmt_line_validator(&prompt.validator_result),
+        ]
+        .join("\n"),
+        LINE_CURSOR,
     )
 }
 
 pub fn fmt_password(prompt: &Password, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
+    if renderer.draw_time == DrawTime::Last {
+        return (fmt_last_message(prompt.message, "…"), None);
+    }
+
     let text = match prompt.hidden {
         true => String::new(),
         false => "*".repeat(prompt.input.value.len()),
     };
 
     (
-        format!(
-            "{} {}\n{} {}\n{}",
-            message(prompt.message, &renderer.draw_time),
-            text_default_value(&prompt.default_value),
-            text_prefix(&prompt.validator_result),
-            text_input(&text, &prompt.placeholder, false),
-            text_error(&prompt.validator_result),
-        ),
-        Some((1, 2)),
+        [
+            fmt_line_message(prompt.message, &prompt.default_value),
+            fmt_line_input(&text, &prompt.placeholder, &prompt.validator_result, false),
+            fmt_line_validator(&prompt.validator_result),
+        ]
+        .join("\n"),
+        LINE_CURSOR,
     )
 }
 
 pub fn fmt_number<T: Num>(prompt: &Number<T>, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
+    if renderer.draw_time == DrawTime::Last {
+        return (fmt_last_message(prompt.message, &prompt.input.value), None);
+    }
+
     (
-        format!(
-            "{} {}\n{} {}\n{}",
-            message(prompt.message, &renderer.draw_time),
-            text_default_value(&prompt.default_value.as_deref()),
-            text_prefix(&prompt.validator_result),
-            text_input(&prompt.input.value, &prompt.placeholder, true),
-            text_error(&prompt.validator_result),
-        ),
-        Some((1, 2)),
+        [
+            fmt_line_message(prompt.message, &prompt.default_value.as_deref()),
+            fmt_line_input(
+                &prompt.input.value,
+                &prompt.placeholder,
+                &prompt.validator_result,
+                true,
+            ),
+            fmt_line_validator(&prompt.validator_result),
+        ]
+        .join("\n"),
+        LINE_CURSOR,
     )
 }
 
-pub fn fmt_toggle(prompt: &Toggle, renderer: &Renderer) -> String {
-    format!(
-        "{}\n{}  {}\n",
-        message(prompt.message, &renderer.draw_time),
-        toggle_option(prompt.options.0, !prompt.active),
-        toggle_option(prompt.options.1, prompt.active),
-    )
+// region: general
+
+fn fmt_message(message: &str) -> String {
+    format!("{} {}", "▣".blue(), message)
 }
 
-pub fn fmt_confirm(prompt: &Confirm, renderer: &Renderer) -> String {
-    format!(
-        "{}\n{}  {}\n",
-        message(prompt.message, &renderer.draw_time),
-        toggle_option("No", !prompt.active),
-        toggle_option("Yes", prompt.active),
-    )
+fn fmt_last_message(message: &str, answer: &str) -> String {
+    format!("{} {} {}\n", "■".green(), message, answer.purple())
 }
 
-pub fn fmt_select<T>(prompt: &Select<T>, renderer: &Renderer) -> String {
-    let page_options: Vec<String> = select_format_options(
-        &prompt.options,
-        prompt.cursor.get_page(),
-        prompt.cursor.items_per_page,
-        prompt.cursor.focused,
-        select_option,
-    );
+// endregion: general
 
-    format!(
-        "{}\n{}{}{}\n",
-        message(prompt.message, &renderer.draw_time),
-        page_options.join("\n"),
-        "\n".repeat(prompt.cursor.items_per_page - page_options.len()),
-        select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
-    )
-}
+// region: toggle
 
-pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, renderer: &Renderer) -> String {
-    let page_options: Vec<String> = select_format_options(
-        &prompt.options,
-        prompt.cursor.get_page(),
-        prompt.cursor.items_per_page,
-        prompt.cursor.focused,
-        multi_select_option,
-    );
-
-    format!(
-        "{} {}\n{}{}{}\n",
-        message(prompt.message, &renderer.draw_time),
-        min_max_message(prompt.min, prompt.max),
-        page_options.join("\n"),
-        "\n".repeat(prompt.cursor.items_per_page - page_options.len()),
-        select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
-    )
-}
-
-// region: utils
-
-#[inline]
-fn text_prefix(validator_result: &Result<(), &str>) -> String {
-    let error = match validator_result {
-        Ok(_) => "›".blue(),
-        Err(_) => "›".red(),
+fn fmt_toggle_options(options: (&str, &str), active: bool) -> String {
+    let fmt_option = |opt, active| {
+        let opt = format!(" {} ", opt);
+        match active {
+            true => opt.black().on_blue(),
+            false => opt.white().on_bright_black(),
+        }
     };
 
-    error.to_string()
+    format!(
+        "{}  {}",
+        fmt_option(options.0, !active),
+        fmt_option(options.1, active)
+    )
 }
 
-#[inline]
-fn text_default_value(default_value: &Option<&str>) -> String {
+// endregion: toggle
+
+// region: line
+
+fn fmt_line_message(msg: &str, default_value: &Option<&str>) -> String {
     let value = match default_value {
         Some(value) => format!("Default: {}", value).bright_black(),
         None => "".normal(),
     };
 
-    value.to_string()
+    format!("{} {}", fmt_message(msg), value)
 }
 
-#[inline]
-fn text_error(validator_result: &Result<(), &str>) -> String {
+fn fmt_line_input(
+    input: &str,
+    placeholder: &Option<&str>,
+    validator_result: &Result<(), &str>,
+    is_number: bool,
+) -> String {
+    let prefix = match validator_result {
+        Ok(_) => "›".blue(),
+        Err(_) => "›".red(),
+    };
+
+    let input = match (input.is_empty(), is_number) {
+        (true, _) => placeholder.unwrap_or_default().bright_black(),
+        (false, true) => input.yellow(),
+        (false, false) => input.normal(),
+    };
+
+    format!("{} {}", prefix, input)
+}
+
+fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
     match validator_result {
         Ok(_) => String::new(),
         Err(e) => format!("{}\n", e.red()),
     }
 }
 
-#[inline]
-fn text_input(input: &str, placeholder: &Option<&str>, is_number: bool) -> String {
-    let input = match (input.is_empty(), is_number) {
-        (true, _) => placeholder.unwrap_or_default().bright_black(),
-        (false, false) => input.normal(),
-        (false, true) => input.yellow(),
-    };
+// endregion: line
 
-    input.to_string()
-}
+// region: select
 
-#[inline]
-fn select_prefix(selected: bool) -> &'static str {
-    match selected {
-        true => "● ",
-        false => "○ ",
-    }
-}
-
-#[inline]
-fn message(message: &str, draw_time: &DrawTime) -> String {
-    let prefix = match draw_time {
-        DrawTime::Last => "✓ ".green(),
-        _ => "? ".blue(),
-    };
-
-    format!("{}{}", prefix, message)
-}
-
-#[inline]
-fn min_max_message(min: Option<usize>, max: Option<usize>) -> String {
-    match (min, max) {
+fn fmt_multi_select_message(msg: &str, min: Option<usize>, max: Option<usize>) -> String {
+    let min_max = match (min, max) {
         (None, None) => String::new(),
         (None, Some(max)) => format!("Max: {}", max),
         (Some(min), None) => format!("Min: {}", min),
         (Some(min), Some(max)) => format!("Min: {} · Max: {}", min, max),
     }
-    .bright_black()
-    .to_string()
+    .bright_black();
+
+    format!("{} {}", fmt_message(msg), min_max)
 }
 
-#[inline]
-fn toggle_option(option: &str, active: bool) -> String {
-    let option = format!(" {} ", option);
-    let option = match active {
-        true => option.black().on_blue(),
-        false => option.white().on_bright_black(),
-    };
-
-    option.to_string()
-}
-
-#[inline]
-fn select_format_options<T, F>(
+fn fmt_select_page_options<T>(
     options: &Vec<SelectOption<T>>,
-    page: usize,
-    items_per_page: usize,
-    focused: usize,
-    formatter: F,
-) -> Vec<String>
-where
-    F: Fn(&SelectOption<T>, bool) -> String,
-{
-    let page_start_idx = page * items_per_page;
-    let page_end_idx = (page_start_idx + items_per_page).min(options.len());
-    let selected = focused % items_per_page;
+    cursor: &SelectCursor,
+    is_multiple: bool,
+) -> String {
+    let items_per_page = cursor.items_per_page;
+    let options_len = options.len();
 
-    options[page_start_idx..page_end_idx]
+    let page_len = items_per_page.min(options_len);
+    let page_start = cursor.get_page() * items_per_page;
+    let page_end = (page_start + page_len).min(options_len);
+    let page_focused = cursor.focused % items_per_page;
+
+    let mut page_options: Vec<String> = options[page_start..page_end]
         .iter()
         .enumerate()
-        .map(|(i, option)| formatter(option, selected == i))
-        .collect()
+        .map(|(i, option)| fmt_select_option(option, page_focused == i, is_multiple))
+        .collect();
+
+    page_options.resize(page_len, String::new());
+    page_options.join("\n")
 }
 
-fn select_option_title<T>(option: &SelectOption<T>, focused: bool) -> String {
+fn fmt_select_pagination(page: usize, pages: usize) -> String {
+    if pages == 1 {
+        return String::new();
+    }
+
+    let icon = "•";
+
+    format!(
+        "\n  {}{}{}\n",
+        icon.repeat(page).bright_black(),
+        icon,
+        icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
+    )
+}
+
+fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool) -> String {
+    let prefix = if multiple {
+        let prefix = match (option.active, focused) {
+            (true, true) => "◉",
+            (true, false) => "●",
+            _ => "○",
+        };
+
+        match (focused, option.active, option.disabled) {
+            (true, _, true) => prefix.red(),
+            (true, _, false) => prefix.blue(),
+            (false, true, _) => prefix.normal(),
+            (false, false, _) => prefix.bright_black(),
+        }
+    } else {
+        match (focused, option.disabled) {
+            (false, _) => "○".bright_black(),
+            (true, true) => "○".red(),
+            (true, false) => "●".blue(),
+        }
+    };
+
     let title = option.title;
     let title = match (option.disabled, focused) {
         (true, _) => title.bright_black().strikethrough(),
@@ -236,48 +311,7 @@ fn select_option_title<T>(option: &SelectOption<T>, focused: bool) -> String {
         _ => "".normal(),
     };
 
-    format!("{} {}", title, description)
+    format!("{} {} {}", prefix, title, description)
 }
 
-#[inline]
-fn select_option<T>(option: &SelectOption<T>, focused: bool) -> String {
-    let prefix = select_prefix(focused);
-    let prefix = match (focused, option.disabled) {
-        (false, _) => prefix.bright_black(),
-        (true, true) => prefix.yellow(),
-        (true, false) => prefix.blue(),
-    };
-
-    format!("{}{}", prefix, select_option_title(option, focused))
-}
-
-#[inline]
-fn multi_select_option<T>(option: &SelectOption<T>, focused: bool) -> String {
-    let prefix = select_prefix(option.active);
-    let prefix = match (focused, option.disabled, option.active) {
-        (true, true, _) => prefix.yellow(),
-        (true, false, _) => prefix.blue(),
-        (false, _, true) => prefix.normal(),
-        (false, _, false) => prefix.bright_black(),
-    };
-
-    format!("{}{}", prefix, select_option_title(option, focused))
-}
-
-#[inline]
-fn select_pagination(page: usize, pages: usize) -> String {
-    if pages == 1 {
-        return String::new();
-    }
-
-    let icon = "•";
-
-    format!(
-        "\n\n  {}{}{}",
-        icon.repeat(page).bright_black(),
-        icon,
-        icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
-    )
-}
-
-// endregion: utils
+// endregion: select
