@@ -4,13 +4,13 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
 use super::select::{Direction, SelectCursor, SelectOption};
 
-type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, &Renderer) -> String + 'a;
+type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime) -> String + 'a;
 
 pub struct MultiSelect<'a, T> {
     pub message: &'a str,
@@ -70,7 +70,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&MultiSelect<T>, &Renderer) -> String + 'a,
+        F: Fn(&MultiSelect<T>, DrawTime) -> String + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -142,8 +142,8 @@ impl<T> Typeable for MultiSelect<'_, T> {
 }
 
 impl<T> Printable for MultiSelect<'_, T> {
-    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer);
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)
     }
 }
@@ -206,14 +206,12 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: MultiSelect<u8> = MultiSelect::new("", vec![]);
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &MultiSelect<u8>, _: &Renderer| String::from(EXPECTED_VALUE);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| String::from(EXPECTED_VALUE));
 
-        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
+        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
     }
 
     #[test]
@@ -338,5 +336,4 @@ mod tests {
         assert!(prompt.options[1].active);
         assert!(!prompt.options[2].active);
     }
-
 }

@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils::{
     key_listener::{self, Typeable},
     num::Num,
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
@@ -13,7 +13,7 @@ use super::text::{Direction, TextInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
-type Formatter<'a, T> = dyn Fn(&Number<T>, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
 
 pub struct Number<'a, T: Num> {
     pub message: &'a str,
@@ -63,7 +63,7 @@ impl<'a, T: Num + 'a> Number<'a, T> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Number<T>, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Number<T>, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -127,8 +127,8 @@ impl<T: Num> Typeable for Number<'_, T> {
 }
 
 impl<T: Num> Printable for Number<'_, T> {
-    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer);
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)?;
         renderer.update_cursor(self.input.col, cursor)
     }
@@ -176,15 +176,13 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: Number<u8> = Number::new("");
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &Number<u8>, _: &Renderer| (String::from(EXPECTED_VALUE), None);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
 
         assert_eq!(
-            (prompt.formatter)(&prompt, &renderer),
+            (prompt.formatter)(&prompt, draw_time),
             (String::from(EXPECTED_VALUE), None)
         );
     }

@@ -4,13 +4,13 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
 use super::text::{Direction, InputValidator, TextInput};
 
-type Formatter<'a> = dyn Fn(&Password, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
 
 pub struct Password<'a> {
     pub message: &'a str,
@@ -67,7 +67,7 @@ impl<'a> Password<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Password, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Password, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -119,8 +119,8 @@ impl Typeable for Password<'_> {
 }
 
 impl Printable for Password<'_> {
-    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer);
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         let cursor_col = if self.hidden { 0 } else { self.input.col };
 
         renderer.print(&text)?;
@@ -170,15 +170,13 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: Password = Password::new("");
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &Password, _: &Renderer| (String::from(EXPECTED_VALUE), None);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
 
         assert_eq!(
-            (prompt.formatter)(&prompt, &renderer),
+            (prompt.formatter)(&prompt, draw_time),
             (String::from(EXPECTED_VALUE), None)
         );
     }

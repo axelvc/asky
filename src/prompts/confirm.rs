@@ -4,11 +4,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-type Formatter<'a> = dyn Fn(&Confirm, &Renderer) -> String + 'a;
+type Formatter<'a> = dyn Fn(&Confirm, DrawTime) -> String + 'a;
 
 pub struct Confirm<'a> {
     pub message: &'a str,
@@ -32,7 +32,7 @@ impl<'a> Confirm<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Confirm, &Renderer) -> String + 'a,
+        F: Fn(&Confirm, DrawTime) -> String + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -73,7 +73,7 @@ impl Typeable for Confirm<'_> {
 
 impl Printable for Confirm<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer);
+        let text = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)
     }
 }
@@ -95,14 +95,12 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: Confirm = Confirm::new("");
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &Confirm, _: &Renderer| String::from(EXPECTED_VALUE);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| String::from(EXPECTED_VALUE));
 
-        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
+        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
     }
 
     #[test]
@@ -157,5 +155,4 @@ mod tests {
             assert!(!submit);
         }
     }
-
 }

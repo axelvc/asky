@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
@@ -62,7 +62,7 @@ impl TextInput {
 // endregion
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, &Renderer) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
 
 pub struct Text<'a> {
     pub input: TextInput,
@@ -112,7 +112,7 @@ impl<'a> Text<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, &Renderer) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Text, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -164,8 +164,8 @@ impl Typeable for Text<'_> {
 }
 
 impl Printable for Text<'_> {
-    fn draw(&self, renderer: &mut crate::utils::renderer::Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer);
+    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)?;
         renderer.update_cursor(self.input.col, cursor)
     }
@@ -211,15 +211,13 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: Text = Text::new("");
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &Text, _: &Renderer| (String::from(EXPECTED_VALUE), None);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
 
         assert_eq!(
-            (prompt.formatter)(&prompt, &renderer),
+            (prompt.formatter)(&prompt, draw_time),
             (String::from(EXPECTED_VALUE), None)
         );
     }

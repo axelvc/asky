@@ -10,15 +10,12 @@ use crate::prompts::{
     toggle::Toggle,
 };
 
-use super::{
-    num::Num,
-    renderer::{DrawTime, Renderer},
-};
+use super::{num::Num, renderer::DrawTime};
 
 const LINE_CURSOR: Option<(u16, u16)> = Some((1, 2));
 
-pub fn fmt_confirm(prompt: &Confirm, renderer: &Renderer) -> String {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
+    if draw_time == DrawTime::Last {
         return fmt_last_message(prompt.message, if prompt.active { "Yes" } else { "No" });
     }
 
@@ -30,8 +27,8 @@ pub fn fmt_confirm(prompt: &Confirm, renderer: &Renderer) -> String {
     .join("\n")
 }
 
-pub fn fmt_toggle(prompt: &Toggle, renderer: &Renderer) -> String {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
+    if draw_time == DrawTime::Last {
         return fmt_last_message(
             prompt.message,
             if prompt.active {
@@ -50,8 +47,8 @@ pub fn fmt_toggle(prompt: &Toggle, renderer: &Renderer) -> String {
     .join("\n")
 }
 
-pub fn fmt_select<T>(prompt: &Select<T>, renderer: &Renderer) -> String {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
+    if draw_time == DrawTime::Last {
         return fmt_last_message(prompt.message, prompt.options[prompt.cursor.focused].title);
     }
 
@@ -63,8 +60,8 @@ pub fn fmt_select<T>(prompt: &Select<T>, renderer: &Renderer) -> String {
     .join("\n")
 }
 
-pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, renderer: &Renderer) -> String {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> String {
+    if draw_time == DrawTime::Last {
         return fmt_last_message(
             prompt.message,
             &format!(
@@ -88,8 +85,8 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, renderer: &Renderer) -> Stri
     .join("\n")
 }
 
-pub fn fmt_text(prompt: &Text, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+    if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, &prompt.input.value), None);
     }
 
@@ -109,8 +106,8 @@ pub fn fmt_text(prompt: &Text, renderer: &Renderer) -> (String, Option<(u16, u16
     )
 }
 
-pub fn fmt_password(prompt: &Password, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+    if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, "…"), None);
     }
 
@@ -130,8 +127,8 @@ pub fn fmt_password(prompt: &Password, renderer: &Renderer) -> (String, Option<(
     )
 }
 
-pub fn fmt_number<T: Num>(prompt: &Number<T>, renderer: &Renderer) -> (String, Option<(u16, u16)>) {
-    if renderer.draw_time == DrawTime::Last {
+pub fn fmt_number<T: Num>(prompt: &Number<T>, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+    if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, &prompt.input.value), None);
     }
 

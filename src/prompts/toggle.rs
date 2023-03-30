@@ -4,11 +4,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-type Formatter<'a> = dyn Fn(&Toggle, &Renderer) -> String + 'a;
+type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
 
 pub struct Toggle<'a> {
     pub message: &'a str,
@@ -34,7 +34,7 @@ impl<'a> Toggle<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Toggle, &Renderer) -> String + 'a,
+        F: Fn(&Toggle, DrawTime) -> String + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -75,7 +75,7 @@ impl Typeable for Toggle<'_> {
 
 impl Printable for Toggle<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer);
+        let text = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)
     }
 }
@@ -92,6 +92,17 @@ mod tests {
         assert_eq!(prompt.get_value(), "foo");
         prompt.initial(true);
         assert_eq!(prompt.get_value(), "bar");
+    }
+
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt = Toggle::new("", ("foo", "bar"));
+        let draw_time = DrawTime::First;
+        const EXPECTED_VALUE: &str = "foo";
+
+        prompt.format(|_, _| String::from(EXPECTED_VALUE));
+
+        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
     }
 
     #[test]

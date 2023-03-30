@@ -6,7 +6,7 @@ pub trait Printable {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum DrawTime {
     First,
     Update,

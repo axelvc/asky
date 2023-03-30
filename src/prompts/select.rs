@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    renderer::{Printable, Renderer},
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
@@ -135,7 +135,7 @@ impl SelectCursor {
 
 // endregion: SelectCursor
 
-type Formatter<'a, T> = dyn Fn(&Select<T>, &Renderer) -> String + 'a;
+type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
 
 pub struct Select<'a, T> {
     pub message: &'a str,
@@ -173,7 +173,7 @@ impl<'a, T: 'a> Select<'a, T> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Select<T>, &Renderer) -> String + 'a,
+        F: Fn(&Select<T>, DrawTime) -> String + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -218,7 +218,7 @@ impl<T> Typeable for Select<'_, T> {
 
 impl<T> Printable for Select<'_, T> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer);
+        let text = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)
     }
 }
@@ -261,14 +261,12 @@ mod tests {
     #[test]
     fn set_custom_formatter() {
         let mut prompt: Select<u8> = Select::new("", vec![]);
-        let renderer = Renderer::new();
-
+        let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let formatter = |_: &Select<u8>, _: &Renderer| String::from(EXPECTED_VALUE);
 
-        prompt.format(formatter);
+        prompt.format(|_, _| String::from(EXPECTED_VALUE));
 
-        assert_eq!((prompt.formatter)(&prompt, &renderer), EXPECTED_VALUE);
+        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
     }
 
     #[test]
