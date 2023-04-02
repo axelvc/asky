@@ -12,8 +12,6 @@ use crate::prompts::{
 
 use super::{num::Num, renderer::DrawTime};
 
-const LINE_CURSOR: Option<(u16, u16)> = Some((1, 2));
-
 pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
         return fmt_last_message(prompt.message, if prompt.active { "Yes" } else { "No" });
@@ -85,7 +83,7 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
     .join("\n")
 }
 
-pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, Option<[u16; 2]>) {
     if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, &prompt.input.value), None);
     }
@@ -102,11 +100,11 @@ pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, Option<(u16, u16
             fmt_line_validator(&prompt.validator_result),
         ]
         .join("\n"),
-        LINE_CURSOR,
+        get_cursor_position(prompt.input.col),
     )
 }
 
-pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, Option<[u16; 2]>) {
     if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, "…"), None);
     }
@@ -116,6 +114,8 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, Option<(
         false => "*".repeat(prompt.input.value.len()),
     };
 
+    let cursor_col = if prompt.hidden { 0 } else { prompt.input.col };
+
     (
         [
             fmt_line_message(prompt.message, &prompt.default_value),
@@ -123,11 +123,11 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, Option<(
             fmt_line_validator(&prompt.validator_result),
         ]
         .join("\n"),
-        LINE_CURSOR,
+        get_cursor_position(cursor_col),
     )
 }
 
-pub fn fmt_number<T: Num>(prompt: &Number<T>, draw_time: DrawTime) -> (String, Option<(u16, u16)>) {
+pub fn fmt_number<T: Num>(prompt: &Number<T>, draw_time: DrawTime) -> (String, Option<[u16; 2]>) {
     if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, &prompt.input.value), None);
     }
@@ -144,7 +144,7 @@ pub fn fmt_number<T: Num>(prompt: &Number<T>, draw_time: DrawTime) -> (String, O
             fmt_line_validator(&prompt.validator_result),
         ]
         .join("\n"),
-        LINE_CURSOR,
+        get_cursor_position(prompt.input.col),
     )
 }
 
@@ -216,6 +216,13 @@ fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
         Ok(_) => String::new(),
         Err(e) => format!("{}\n", e.red()),
     }
+}
+
+fn get_cursor_position(cursor_col: usize) -> Option<[u16; 2]> {
+    let x = 2 + cursor_col as u16;
+    let y = 1;
+
+    Some([x, y])
 }
 
 // endregion: line

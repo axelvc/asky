@@ -62,7 +62,7 @@ impl TextInput {
 // endregion
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
 
 pub struct Text<'a> {
     pub input: TextInput,
@@ -112,7 +112,7 @@ impl<'a> Text<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Text, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -167,7 +167,7 @@ impl Printable for Text<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)?;
-        renderer.update_cursor(self.input.col, cursor)
+        renderer.set_cursor(cursor)
     }
 }
 

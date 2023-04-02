@@ -13,7 +13,7 @@ use super::text::{Direction, TextInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
-type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
 
 pub struct Number<'a, T: Num> {
     pub message: &'a str,
@@ -63,7 +63,7 @@ impl<'a, T: Num + 'a> Number<'a, T> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Number<T>, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Number<T>, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -130,7 +130,7 @@ impl<T: Num> Printable for Number<'_, T> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         renderer.print(&text)?;
-        renderer.update_cursor(self.input.col, cursor)
+        renderer.set_cursor(cursor)
     }
 }
 

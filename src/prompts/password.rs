@@ -10,7 +10,7 @@ use crate::utils::{
 
 use super::text::{Direction, InputValidator, TextInput};
 
-type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, Option<(u16, u16)>) + 'a;
+type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
 
 pub struct Password<'a> {
     pub message: &'a str,
@@ -67,7 +67,7 @@ impl<'a> Password<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Password, DrawTime) -> (String, Option<(u16, u16)>) + 'a,
+        F: Fn(&Password, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -121,10 +121,9 @@ impl Typeable for Password<'_> {
 impl Printable for Password<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
-        let cursor_col = if self.hidden { 0 } else { self.input.col };
 
         renderer.print(&text)?;
-        renderer.update_cursor(cursor_col, cursor)
+        renderer.set_cursor(cursor)
     }
 }
 
