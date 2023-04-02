@@ -74,7 +74,7 @@ impl Typeable for Confirm<'_> {
 impl Printable for Confirm<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let text = (self.formatter)(self, renderer.draw_time);
-        renderer.print(&text)
+        renderer.print(text)
     }
 }
 

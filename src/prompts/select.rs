@@ -219,7 +219,7 @@ impl<T> Typeable for Select<'_, T> {
 impl<T> Printable for Select<'_, T> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let text = (self.formatter)(self, renderer.draw_time);
-        renderer.print(&text)
+        renderer.print(text)
     }
 }
 

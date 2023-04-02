@@ -72,7 +72,7 @@ impl Typeable for Toggle<'_> {
 impl Printable for Toggle<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let text = (self.formatter)(self, renderer.draw_time);
-        renderer.print(&text)
+        renderer.print(text)
     }
 }
 

@@ -33,13 +33,17 @@ impl Renderer {
         }
     }
 
-    pub fn print(&mut self, text: &str) -> io::Result<()> {
+    pub fn print(&mut self, mut text: String) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
                 cursor::RestorePosition,
                 terminal::Clear(terminal::ClearType::FromCursorDown),
             )?;
+        }
+
+        if !text.ends_with('\n') {
+            text.push('\n')
         }
 
         queue!(self.out, Print(&text))?;

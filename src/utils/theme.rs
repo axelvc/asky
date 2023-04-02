@@ -22,7 +22,6 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
     [
         fmt_message(prompt.message),
         fmt_toggle_options(options, prompt.active),
-        String::new(),
     ]
     .join("\n")
 }
@@ -35,7 +34,6 @@ pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
     [
         fmt_message(prompt.message),
         fmt_toggle_options(prompt.options, prompt.active),
-        String::new(),
     ]
     .join("\n")
 }
@@ -150,7 +148,7 @@ fn fmt_message(message: &str) -> String {
 }
 
 fn fmt_last_message(message: &str, answer: &str) -> String {
-    format!("{} {} {}\n", "■".green(), message, answer.purple())
+    format!("{} {} {}", "■".green(), message, answer.purple())
 }
 
 // endregion: general
@@ -209,7 +207,7 @@ fn fmt_line_input(
 fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
     match validator_result {
         Ok(_) => String::new(),
-        Err(e) => format!("{}\n", e.red()),
+        Err(e) => format!("{}", e.red()),
     }
 }
 
@@ -267,7 +265,7 @@ fn fmt_select_pagination(page: usize, pages: usize) -> String {
     let icon = "•";
 
     format!(
-        "\n  {}{}{}\n",
+        "\n  {}{}{}",
         icon.repeat(page).bright_black(),
         icon,
         icon.repeat(pages.saturating_sub(page + 1)).bright_black(),

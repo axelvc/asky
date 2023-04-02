@@ -129,7 +129,7 @@ impl<T: Num> Typeable for Number<'_, T> {
 impl<T: Num> Printable for Number<'_, T> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
-        renderer.print(&text)?;
+        renderer.print(text)?;
         renderer.set_cursor(cursor)
     }
 }

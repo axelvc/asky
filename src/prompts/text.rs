@@ -166,7 +166,7 @@ impl Typeable for Text<'_> {
 impl Printable for Text<'_> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
-        renderer.print(&text)?;
+        renderer.print(text)?;
         renderer.set_cursor(cursor)
     }
 }
