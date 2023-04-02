@@ -24,12 +24,7 @@ pub fn listen(handler: &mut (impl Printable + Typeable)) -> io::Result<()> {
         terminal::disable_raw_mode()?;
 
         if let Event::Key(key) = k {
-            if is_abort(key) {
-                renderer.update_draw_time();
-                handler.draw(&mut renderer)?;
-                abort()?;
-            }
-
+            handle_abort(key);
             submit = handler.handle_key(key);
             handler.draw(&mut renderer)?;
         }
@@ -41,8 +36,8 @@ pub fn listen(handler: &mut (impl Printable + Typeable)) -> io::Result<()> {
     Ok(())
 }
 
-fn is_abort(ev: KeyEvent) -> bool {
-    matches!(
+fn handle_abort(ev: KeyEvent) {
+    let is_abort = matches!(
         ev,
         KeyEvent {
             code: KeyCode::Esc,
@@ -52,10 +47,9 @@ fn is_abort(ev: KeyEvent) -> bool {
             modifiers: KeyModifiers::CONTROL,
             ..
         }
-    )
-}
+    );
 
-fn abort() -> io::Result<()> {
-    terminal::disable_raw_mode()?;
-    std::process::exit(0)
+    if is_abort {
+        std::process::exit(1)
+    }
 }
