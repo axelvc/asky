@@ -10,7 +10,7 @@ use crate::utils::{
 
 use super::text::{Direction, InputValidator, TextInput};
 
-type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
+type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a;
 
 pub struct Password<'a> {
     pub message: &'a str,
@@ -67,7 +67,7 @@ impl<'a> Password<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Password, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
+        F: Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -171,11 +171,11 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
 
         assert_eq!(
             (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), None)
+            (String::from(EXPECTED_VALUE), [0, 0])
         );
     }
 

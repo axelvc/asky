@@ -69,21 +69,19 @@ impl Renderer {
         self.out.flush()
     }
 
-    pub fn set_cursor(&mut self, cursor: Option<[u16; 2]>) -> io::Result<()> {
+    pub fn set_cursor(&mut self, [x, y]: [u16; 2]) -> io::Result<()> {
         if self.draw_time == DrawTime::Last {
             return Ok(());
         }
 
-        if let Some([x, y]) = cursor {
-            queue!(self.out, cursor::RestorePosition)?;
+        queue!(self.out, cursor::RestorePosition)?;
 
-            if y > 0 {
-                queue!(self.out, cursor::MoveDown(y))?;
-            }
+        if y > 0 {
+            queue!(self.out, cursor::MoveDown(y))?;
+        }
 
-            if x > 0 {
-                queue!(self.out, cursor::MoveRight(x))?;
-            }
+        if x > 0 {
+            queue!(self.out, cursor::MoveRight(x))?;
         }
 
         self.out.flush()

@@ -62,7 +62,7 @@ impl TextInput {
 // endregion
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
+type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a;
 
 pub struct Text<'a> {
     pub input: TextInput,
@@ -112,7 +112,7 @@ impl<'a> Text<'a> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
+        F: Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -214,11 +214,11 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
 
         assert_eq!(
             (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), None)
+            (String::from(EXPECTED_VALUE), [0, 0])
         );
     }
 

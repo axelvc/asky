@@ -13,7 +13,7 @@ use super::text::{Direction, TextInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
-type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, Option<[u16; 2]>) + 'a;
+type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a;
 
 pub struct Number<'a, T: Num> {
     pub message: &'a str,
@@ -63,7 +63,7 @@ impl<'a, T: Num + 'a> Number<'a, T> {
 
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Number<T>, DrawTime) -> (String, Option<[u16; 2]>) + 'a,
+        F: Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -179,11 +179,11 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), None));
+        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
 
         assert_eq!(
             (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), None)
+            (String::from(EXPECTED_VALUE), [0, 0])
         );
     }
 
