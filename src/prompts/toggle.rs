@@ -12,13 +12,13 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
 
 pub struct Toggle<'a> {
     pub message: &'a str,
-    pub options: (&'a str, &'a str),
+    pub options: [&'a str; 2],
     pub active: bool,
     formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Toggle<'a> {
-    pub fn new(message: &'a str, options: (&'a str, &'a str)) -> Self {
+    pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
         Toggle {
             message,
             options,
@@ -48,11 +48,7 @@ impl<'a> Toggle<'a> {
 
 impl Toggle<'_> {
     fn get_value(&self) -> &str {
-        if self.active {
-            self.options.1
-        } else {
-            self.options.0
-        }
+        self.options[self.active as usize]
     }
 }
 
@@ -86,7 +82,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Toggle::new("", ("foo", "bar"));
+        let mut prompt = Toggle::new("", ["foo", "bar"]);
 
         prompt.initial(false);
         assert_eq!(prompt.get_value(), "foo");
@@ -96,7 +92,7 @@ mod tests {
 
     #[test]
     fn set_custom_formatter() {
-        let mut prompt = Toggle::new("", ("foo", "bar"));
+        let mut prompt = Toggle::new("", ["foo", "bar"]);
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
@@ -110,7 +106,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Toggle::new("", ("foo", "bar"));
+            let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(simulated_key);
@@ -131,7 +127,7 @@ mod tests {
         ];
 
         for (key, initial, expected) in events {
-            let mut prompt = Toggle::new("", ("foo", "bar"));
+            let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);

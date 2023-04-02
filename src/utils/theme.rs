@@ -13,13 +13,15 @@ use crate::prompts::{
 use super::{num::Num, renderer::DrawTime};
 
 pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
+    let options = ["No", "Yes"];
+
     if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, if prompt.active { "Yes" } else { "No" });
+        return fmt_last_message(prompt.message, options[prompt.active as usize]);
     }
 
     [
         fmt_message(prompt.message),
-        fmt_toggle_options(("No", "Yes"), prompt.active),
+        fmt_toggle_options(options, prompt.active),
         String::new(),
     ]
     .join("\n")
@@ -27,14 +29,7 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
 
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
-        return fmt_last_message(
-            prompt.message,
-            if prompt.active {
-                prompt.options.1
-            } else {
-                prompt.options.0
-            },
-        );
+        return fmt_last_message(prompt.message, prompt.options[prompt.active as usize]);
     }
 
     [
@@ -162,7 +157,7 @@ fn fmt_last_message(message: &str, answer: &str) -> String {
 
 // region: toggle
 
-fn fmt_toggle_options(options: (&str, &str), active: bool) -> String {
+fn fmt_toggle_options(options: [&str; 2], active: bool) -> String {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {
@@ -173,8 +168,8 @@ fn fmt_toggle_options(options: (&str, &str), active: bool) -> String {
 
     format!(
         "{}  {}",
-        fmt_option(options.0, !active),
-        fmt_option(options.1, active)
+        fmt_option(options[0], !active),
+        fmt_option(options[1], active)
     )
 }
 
