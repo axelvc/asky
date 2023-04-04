@@ -17,15 +17,30 @@ pub enum Direction {
 
 // region: SelectOption
 
+/// Utility struct to create items for select-like prompts (like [`Select`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SelectOption<'a, T> {
+    /// Value that will be returned by the prompt when the user selects the option.
     pub value: T,
+    /// String that will be displayed in the prompt.
     pub title: &'a str,
+    /// Description text to show in the prompt when focus the option.
     pub description: Option<&'a str>,
+    /// Indicate if the option is disabled.
     pub disabled: bool,
+    /// Indicate if the option is active..
+    ///
+    /// **Note**: This field is only used for [`MultiSelect`] prompt, not for [`Select`] prompt.
+    ///
+    /// [`MultiSelect`]: crate::MultiSelect
     pub active: bool,
 }
 
 impl<'a, T> SelectOption<'a, T> {
+    /// Create a new option.
+    ///
+    /// * `value`: value that will be returned by the prompt when the user selects the option.
+    /// * `title`: string that will be displayed in the prompt.
     pub fn new(value: T, title: &'a str) -> Self {
         SelectOption {
             value,
@@ -36,13 +51,13 @@ impl<'a, T> SelectOption<'a, T> {
         }
     }
 
-    /// Description text to show in the prompt when focus the option
+    /// Description text to show in the prompt when focus the option.
     pub fn description(mut self, description: &'a str) -> Self {
         self.description = Some(description);
         self
     }
 
-    /// If it is disabled, the option cannot be selected by the user
+    /// Set whether the user can choose this option
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -53,14 +68,22 @@ impl<'a, T> SelectOption<'a, T> {
 
 // region: SelectCursor
 
-pub struct SelectCursor {
+/// State of the input for select-like prompts (like [`Select`]).
+///
+/// **Note**: This structure is not expected to be created, but it can be consumed when using a custom formatter.
+pub struct SelectInput {
+    /// Focused index of the list.
     pub focused: usize,
+    /// Number of items that must be displayed per page.
     pub items_per_page: usize,
+    /// Indicate if the loop mode is enabled in the prompt.
     pub loop_mode: bool,
-    total_items: usize,
+    /// Number of total items in the prompt.
+    pub total_items: usize,
 }
 
-impl SelectCursor {
+impl SelectInput {
+    /// Returns the number of pages in the list.
     pub fn count_pages(&self) -> usize {
         let total = self.total_items;
         let per_page = self.items_per_page;
@@ -69,15 +92,16 @@ impl SelectCursor {
         total / per_page + (rem != 0) as usize
     }
 
+    /// Returns the index of the current page.
     pub fn get_page(&self) -> usize {
         self.focused / self.items_per_page
     }
 }
 
-impl SelectCursor {
-    pub(crate) fn new(options: usize) -> Self {
-        SelectCursor {
-            total_items: options,
+impl SelectInput {
+    pub(crate) fn new(total_items: usize) -> Self {
+        SelectInput {
+            total_items,
             focused: 0,
             items_per_page: 10,
             loop_mode: true,
@@ -137,40 +161,82 @@ impl SelectCursor {
 
 type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
 
+/// Prompt to select an item from a list.
+///
+/// To allow choosing multiple items, use the [`MultiSelect`] struct instead.
+/// # Key Events
+///
+/// | Key                  | Action                       |
+/// | -------------------- | ---------------------------- |
+/// | `Enter`, `Backspace` | Submit current/initial value |
+/// | `Up`, `k`, `K`       | Focus next item              |
+/// | `Down`, `j`, `J`     | Focus previous item          |
+/// | `Left`, `h`, `H`     | Focus next page              |
+/// | `Right`, `l`, `L`    | Focus previous page          |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::{Select, SelectOption};
+///
+/// # fn main() -> std::io::Result<()> {
+/// let options = vec![
+///     SelectOption::new(1, "Horror"),
+///     SelectOption::new(2, "Romance"),
+///     SelectOption::new(3, "Action"),
+///     SelectOption::new(4, "Comedy"),
+/// ];
+///
+/// let answer = Select::new("What genre do you like?", options).prompt()?;
+///
+/// # Ok(())
+/// # }
+/// ```
+/// [`MultiSelect`]: crate::MultiSelect
 pub struct Select<'a, T> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
+    /// List of options.
     pub options: Vec<SelectOption<'a, T>>,
-    pub cursor: SelectCursor,
+    /// Input state.
+    pub input: SelectInput,
     formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> Select<'a, T> {
+    /// Create a new select prompt.
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
         Select {
             message,
             options,
-            cursor: SelectCursor::new(options_len),
+            input: SelectInput::new(options_len),
             formatter: Box::new(theme::fmt_select),
         }
     }
 
-    pub fn selected(&mut self, value: usize) -> &mut Self {
-        self.cursor.focused = value.min(self.options.len() - 1);
+    /// Set initial selected index.
+    pub fn selected(&mut self, index: usize) -> &mut Self {
+        self.input.focused = index.min(self.options.len() - 1);
         self
     }
 
+    /// Set whether the cursor should go to the first option when it reaches the last option and vice-versa.
     pub fn in_loop(&mut self, loop_mode: bool) -> &mut Self {
-        self.cursor.set_loop_mode(loop_mode);
+        self.input.set_loop_mode(loop_mode);
         self
     }
 
+    /// Set number of items per page to display.
     pub fn items_per_page(&mut self, item_per_page: usize) -> &mut Self {
-        self.cursor.set_items_per_page(item_per_page);
+        self.input.set_items_per_page(item_per_page);
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Select<T>, DrawTime) -> String + 'a,
@@ -179,19 +245,20 @@ impl<'a, T: 'a> Select<'a, T> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self)?;
 
-        let selected = self.options.remove(self.cursor.focused);
+        let selected = self.options.remove(self.input.focused);
 
         Ok(selected.value)
     }
 }
 
 impl<T> Select<'_, T> {
-    /// Only submit if the option isn't disabled
+    /// Only submit if the option isn't disabled.
     fn validate_to_submit(&self) -> bool {
-        let focused = &self.options[self.cursor.focused];
+        let focused = &self.options[self.input.focused];
 
         !focused.disabled
     }
@@ -205,10 +272,10 @@ impl<T> Typeable for Select<'_, T> {
             // submit
             KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.cursor.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.cursor.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.cursor.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.cursor.move_cursor(Direction::Right),
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -237,9 +304,9 @@ mod tests {
             ],
         );
 
-        assert_eq!(prompt.cursor.focused, 0);
+        assert_eq!(prompt.input.focused, 0);
         prompt.selected(1);
-        assert_eq!(prompt.cursor.focused, 1);
+        assert_eq!(prompt.input.focused, 1);
     }
 
     #[test]
@@ -253,9 +320,9 @@ mod tests {
         );
 
         prompt.in_loop(false);
-        assert!(!prompt.cursor.loop_mode);
+        assert!(!prompt.input.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.cursor.loop_mode);
+        assert!(prompt.input.loop_mode);
     }
 
     #[test]
@@ -286,13 +353,13 @@ mod tests {
             prompt.selected(1);
 
             let submit = prompt.handle_key(simulated_key);
-            assert_eq!(prompt.cursor.focused, 1);
+            assert_eq!(prompt.input.focused, 1);
             assert!(submit);
         }
     }
 
     #[test]
-    fn not_sumit_disabled() {
+    fn not_submit_disabled() {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
@@ -335,7 +402,7 @@ mod tests {
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.cursor.focused, expected);
+                assert_eq!(prompt.input.focused, expected);
             }
         }
 
@@ -353,7 +420,7 @@ mod tests {
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
                 prompt.handle_key(simulated_key);
-                assert_eq!(prompt.cursor.focused, expected);
+                assert_eq!(prompt.input.focused, expected);
             }
         }
     }

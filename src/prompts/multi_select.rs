@@ -8,21 +8,60 @@ use crate::utils::{
     theme,
 };
 
-use super::select::{Direction, SelectCursor, SelectOption};
+use super::select::{Direction, SelectInput, SelectOption};
 
 type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime) -> String + 'a;
 
+/// Prompt to select multiple items from a list.
+///
+/// To allow only one item to be selected, it is recommended to use [`Select`] struct instead.
+/// # Key Events
+///
+/// | Key                  | Action                          |
+/// | -------------------- | ------------------------------- |
+/// | `Enter`, `Backspace` | Submit current/initial value    |
+/// | `Space`              | Toggle selected in focused item |
+/// | `Up`, `k`, `K`       | Focus next item                 |
+/// | `Down`, `j`, `J`     | Focus previous item             |
+/// | `Left`, `h`, `H`     | Focus next page                 |
+/// | `Right`, `l`, `L`    | Focus previous page             |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::{MultiSelect, SelectOption};
+///
+/// # fn main() -> std::io::Result<()> {
+/// let options = vec![
+///     SelectOption::new(1, "Horror"),
+///     SelectOption::new(2, "Romance"),
+///     SelectOption::new(3, "Action"),
+///     SelectOption::new(4, "Comedy"),
+/// ];
+///
+/// let answer = MultiSelect::new("What genres do you like?", options).prompt()?;
+///
+/// # Ok(())
+/// # }
+/// ```
+/// [`Select`]: crate::Select
 pub struct MultiSelect<'a, T> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
+    /// List of options.
     pub options: Vec<SelectOption<'a, T>>,
+    /// Minimum number of items required to be selected.
     pub min: Option<usize>,
+    /// Maximum number of items allowed to be selected.
     pub max: Option<usize>,
-    pub selected_count: usize,
-    pub cursor: SelectCursor,
+    /// Input state.
+    pub input: SelectInput,
+    selected_count: usize,
     formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> MultiSelect<'a, T> {
+    /// Create a new multi-select prompt.
     pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
@@ -32,13 +71,14 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
             min: None,
             max: None,
             selected_count: 0,
-            cursor: SelectCursor::new(options_len),
+            input: SelectInput::new(options_len),
             formatter: Box::new(theme::fmt_multi_select),
         }
     }
 
-    pub fn selected(&mut self, selected: &[usize]) -> &mut Self {
-        for i in selected {
+    /// Set initial selected indices.
+    pub fn selected(&mut self, indices: &[usize]) -> &mut Self {
+        for i in indices {
             if let Some(option) = self.options.get_mut(*i) {
                 option.active = true;
                 self.selected_count += 1;
@@ -48,26 +88,33 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
         self
     }
 
+    /// Set whether the cursor should go to the first option when it reaches the last option and vice-versa.
     pub fn in_loop(&mut self, is_loop: bool) -> &mut Self {
-        self.cursor.set_loop_mode(is_loop);
+        self.input.set_loop_mode(is_loop);
         self
     }
 
+    /// Set number of items per page to display.
     pub fn items_per_page(&mut self, items_per_page: usize) -> &mut Self {
-        self.cursor.set_items_per_page(items_per_page);
+        self.input.set_items_per_page(items_per_page);
         self
     }
 
+    /// Set minimum number of items required to be selected.
     pub fn min(&mut self, min: usize) -> &mut Self {
         self.min = Some(min);
         self
     }
 
+    /// Set maximum number of items allowed to be selected.
     pub fn max(&mut self, max: usize) -> &mut Self {
         self.max = Some(max);
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&MultiSelect<T>, DrawTime) -> String + 'a,
@@ -76,6 +123,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self)?;
 
@@ -88,7 +136,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
 
 impl<T> MultiSelect<'_, T> {
     fn toggle_focused(&mut self) {
-        let selected = self.cursor.focused;
+        let selected = self.input.focused;
         let focused = &self.options[selected];
 
         if focused.disabled {
@@ -111,7 +159,7 @@ impl<T> MultiSelect<'_, T> {
         }
     }
 
-    /// Only submit if the minimun are selected
+    /// Only submit if the minimum are selected
     fn validate_to_submit(&self) -> bool {
         match self.min {
             None => true,
@@ -130,10 +178,10 @@ impl<T> Typeable for MultiSelect<'_, T> {
             // select/unselect
             KeyCode::Char(' ') => self.toggle_focused(),
             // update focus
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.cursor.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.cursor.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.cursor.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.cursor.move_cursor(Direction::Right),
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -198,9 +246,9 @@ mod tests {
         );
 
         prompt.in_loop(false);
-        assert!(!prompt.cursor.loop_mode);
+        assert!(!prompt.input.loop_mode);
         prompt.in_loop(true);
-        assert!(prompt.cursor.loop_mode);
+        assert!(prompt.input.loop_mode);
     }
 
     #[test]
@@ -273,40 +321,40 @@ mod tests {
         prompt.in_loop(false);
 
         for key in next_keys {
-            prompt.cursor.focused = 0;
+            prompt.input.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.cursor.focused, 1);
+            assert_eq!(prompt.input.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in next_keys {
-            prompt.cursor.focused = 2;
+            prompt.input.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.cursor.focused, 0);
+            assert_eq!(prompt.input.focused, 0);
         }
 
         // move next
         prompt.in_loop(false);
 
         for key in prev_keys {
-            prompt.cursor.focused = 2;
+            prompt.input.focused = 2;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.cursor.focused, 1);
+            assert_eq!(prompt.input.focused, 1);
         }
 
         // move next in loop
         prompt.in_loop(true);
 
         for key in prev_keys {
-            prompt.cursor.focused = 0;
+            prompt.input.focused = 0;
             prompt.handle_key(KeyEvent::from(key));
 
-            assert_eq!(prompt.cursor.focused, 2);
+            assert_eq!(prompt.input.focused, 2);
         }
     }
 
@@ -326,11 +374,11 @@ mod tests {
         assert!(!prompt.options[1].active);
         assert!(!prompt.options[2].active);
 
-        prompt.cursor.focused = 1;
+        prompt.input.focused = 1;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
         // must not update over limit
-        prompt.cursor.focused = 2;
+        prompt.input.focused = 2;
         prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
 
         assert!(prompt.options[1].active);

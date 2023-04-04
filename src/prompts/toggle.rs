@@ -10,14 +10,40 @@ use crate::utils::{
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
 
+/// Prompt to choose between two options.
+///
+/// # Key Events
+///
+/// | Key                  | Action                       |
+/// | -------------------- | ---------------------------- |
+/// | `Enter`, `Backspace` | Submit current/initial value |
+/// | `Left`, `h`, `H`     | Focus `false`                |
+/// | `Right`, `l`, `L`    | Focus `true`                 |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::Toggle;
+///
+/// # fn main() -> std::io::Result<()> {
+/// let os = Toggle::new("What is your favorite OS?", ["Android", "IOS"]).prompt()?;
+///
+/// println!("{os} is the best!");
+/// # Ok(())
+/// # }
+/// ```
 pub struct Toggle<'a> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
+    /// Options to display in the prompt.
     pub options: [&'a str; 2],
+    /// Current state of the prompt.
     pub active: bool,
     formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Toggle<'a> {
+    /// Create a new toggle prompt.
     pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
         Toggle {
             message,
@@ -27,11 +53,15 @@ impl<'a> Toggle<'a> {
         }
     }
 
+    /// Set whether the prompt should be active at start.
     pub fn initial(&mut self, value: bool) -> &mut Self {
         self.active = value;
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Toggle, DrawTime) -> String + 'a,
@@ -40,6 +70,7 @@ impl<'a> Toggle<'a> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self)?;
         Ok(String::from(self.get_value()))

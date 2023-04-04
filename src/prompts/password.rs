@@ -8,26 +8,59 @@ use crate::utils::{
     theme,
 };
 
-use super::text::{Direction, InputValidator, TextInput};
+use super::text::{Direction, InputValidator, LineInput};
 
 type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a;
 
+/// Prompt to get one-line user input as password.
+///
+/// Similar to [`Text`] prompt, but replace input characters with `*`.
+/// Also allow to hide user input completely.
+///
+/// # Key Events
+///
+/// | Key         | Action                       |
+/// | ----------- | ---------------------------- |
+/// | `Enter`     | Submit current/initial value |
+/// | `Backspace` | Delete previous character    |
+/// | `Delete`    | Delete current character     |
+/// | `Left`      | Move cursor left             |
+/// | `Right`     | Move cursor right            |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::Password;
+///
+/// # fn main() -> std::io::Result<()> {
+/// let password = Password::new("Your IG Password:").prompt()?;
+/// # Ok(())
+/// # }
+/// ```
+/// [`Text`]: crate::Text
 pub struct Password<'a> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
-    pub input: TextInput,
+    /// Input state for the prompt.
+    pub input: LineInput,
+    /// Placeholder to show when the input is empty.
     pub placeholder: Option<&'a str>,
+    /// Default value to submit when the input is empty.
     pub default_value: Option<&'a str>,
+    /// Must hide user input or show `*` characters
     pub hidden: bool,
+    /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
     formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Password<'a> {
+    /// Create a new password prompt.
     pub fn new(message: &'a str) -> Self {
         Password {
             message,
-            input: TextInput::new(),
+            input: LineInput::new(),
             placeholder: None,
             default_value: None,
             hidden: false,
@@ -37,26 +70,33 @@ impl<'a> Password<'a> {
         }
     }
 
+    /// Set text to show when the input is empty.
+    ///
+    /// This not will not be submitted when the input is empty.
     pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
         self.placeholder = Some(value);
         self
     }
 
+    /// Set default value to submit when the input is empty.
     pub fn default(&mut self, value: &'a str) -> &mut Self {
         self.default_value = Some(value);
         self
     }
 
+    /// Set initial value, could be deleted by the user.
     pub fn initial(&mut self, value: &str) -> &mut Self {
         self.input.set_value(value);
         self
     }
 
+    /// Set whether to hide user input or show `*` characters
     pub fn hidden(&mut self, hidden: bool) -> &mut Self {
         self.hidden = hidden;
         self
     }
 
+    /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
         F: Fn(&str) -> Result<(), &'a str> + 'a,
@@ -65,6 +105,9 @@ impl<'a> Password<'a> {
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a,
@@ -73,6 +116,7 @@ impl<'a> Password<'a> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self)?;
         Ok(self.get_value().to_owned())
@@ -152,13 +196,13 @@ mod tests {
     fn set_initial_value() {
         let mut prompt = Password::new("");
 
-        assert_eq!(prompt.input, TextInput::new());
+        assert_eq!(prompt.input, LineInput::new());
 
         prompt.initial("foo");
 
         assert_eq!(
             prompt.input,
-            TextInput {
+            LineInput {
                 value: String::from("foo"),
                 col: 3,
             }

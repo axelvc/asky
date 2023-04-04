@@ -1,60 +1,65 @@
 use std::{fmt::Display, str::FromStr};
 
-/// A utilitiy trait to allow only number types in [`crate::prompts::number::Number`] prompt
-pub trait Num: Default + Display + FromStr {
+/// A utility trait to allow only numbers in [`Number`] prompt.
+/// Also allows to custom handle they based on the type.
+///
+/// [`Number`]: crate::Number
+pub trait NumLike: Default + Display + FromStr {
+    /// Check if it is a floating point number.
     fn is_float() -> bool {
         false
     }
 
+    /// Check if it is a signed number.
     fn is_signed() -> bool {
         false
     }
 }
 
-impl Num for u8 {}
-impl Num for u16 {}
-impl Num for u32 {}
-impl Num for u64 {}
-impl Num for u128 {}
-impl Num for usize {}
+impl NumLike for u8 {}
+impl NumLike for u16 {}
+impl NumLike for u32 {}
+impl NumLike for u64 {}
+impl NumLike for u128 {}
+impl NumLike for usize {}
 
-impl Num for i8 {
+impl NumLike for i8 {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for i16 {
+impl NumLike for i16 {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for i32 {
+impl NumLike for i32 {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for i64 {
+impl NumLike for i64 {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for i128 {
+impl NumLike for i128 {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for isize {
+impl NumLike for isize {
     fn is_signed() -> bool {
         true
     }
 }
 
-impl Num for f32 {
+impl NumLike for f32 {
     fn is_signed() -> bool {
         true
     }
@@ -64,7 +69,7 @@ impl Num for f32 {
     }
 }
 
-impl Num for f64 {
+impl NumLike for f64 {
     fn is_signed() -> bool {
         true
     }

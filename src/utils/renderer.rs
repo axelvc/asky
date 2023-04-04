@@ -6,10 +6,15 @@ pub trait Printable {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+/// Enum that indicates the current draw time to format closures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DrawTime {
+    /// First time that a prompt is displayed.
+    #[default]
     First,
+    /// The prompt state has been updated.
     Update,
+    /// The last time that a prompt is displayed.
     Last,
 }
 
@@ -69,6 +74,8 @@ impl Renderer {
         self.out.flush()
     }
 
+    /// Utility function for line input
+    /// Set initial position based on the position after drawing
     pub fn set_cursor(&mut self, [x, y]: [u16; 2]) -> io::Result<()> {
         if self.draw_time == DrawTime::Last {
             return Ok(());
@@ -85,5 +92,11 @@ impl Renderer {
         }
 
         self.out.flush()
+    }
+}
+
+impl Default for Renderer {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -13,21 +13,26 @@ pub enum Direction {
     Right,
 }
 
-// region: TextPrompt
+// region: TextInput
 
-#[derive(Debug, PartialEq, Default)]
-pub struct TextInput {
+/// State of the user input for read-line text prompts (like [`Text`]).
+///
+/// **Note**: This structure is not expected to be created, but it can be consumed when using a custom formatter.
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct LineInput {
+    /// Current value of the input.
     pub value: String,
+    /// Current position of the cursor.
     pub col: usize,
 }
 
-impl TextInput {
-    pub fn new() -> Self {
-        TextInput::default()
+impl LineInput {
+    pub(crate) fn new() -> Self {
+        LineInput::default()
     }
 }
 
-impl TextInput {
+impl LineInput {
     pub(crate) fn set_value(&mut self, value: &str) {
         self.value = String::from(value);
         self.col = value.len();
@@ -59,26 +64,57 @@ impl TextInput {
     }
 }
 
-// endregion
+// endregion: TextInput
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
 type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a;
 
+/// Prompt to get one-line user input.
+///
+/// # Key Events
+///
+/// | Key         | Action                       |
+/// | ----------- | ---------------------------- |
+/// | `Enter`     | Submit current/initial value |
+/// | `Backspace` | Delete previous character    |
+/// | `Delete`    | Delete current character     |
+/// | `Left`      | Move cursor left             |
+/// | `Right`     | Move cursor right            |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::Text;
+///
+/// # fn main() -> std::io::Result<()> {
+/// let name = Text::new("What is your name?").prompt()?;
+///
+/// println!("Hello, {}!", name);
+///
+/// # Ok(())
+/// # }
+/// ```
 pub struct Text<'a> {
-    pub input: TextInput,
+    /// Message used to display in the prompt
     pub message: &'a str,
+    /// Input state for the prompt
+    pub input: LineInput,
+    /// Placeholder to show when the input is empty
     pub placeholder: Option<&'a str>,
+    /// Default value to submit when the input is empty
     pub default_value: Option<&'a str>,
+    /// State of the validation of the user input
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
     formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Text<'a> {
+    /// Create a new text prompt.
     pub fn new(message: &'a str) -> Self {
         Text {
             message,
-            input: TextInput::new(),
+            input: LineInput::new(),
             placeholder: None,
             default_value: None,
             validator: None,
@@ -87,21 +123,27 @@ impl<'a> Text<'a> {
         }
     }
 
+    /// Set text to show when the input is empty.
+    ///
+    /// This not will not be submitted when the input is empty.
     pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
         self.placeholder = Some(value);
         self
     }
 
+    /// Set default value to submit when the input is empty.
     pub fn default(&mut self, value: &'a str) -> &mut Self {
         self.default_value = Some(value);
         self
     }
 
+    /// Set initial value, could be deleted by the user.
     pub fn initial(&mut self, value: &str) -> &mut Self {
         self.input.set_value(value);
         self
     }
 
+    /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
         F: Fn(&str) -> Result<(), &'a str> + 'a,
@@ -110,6 +152,9 @@ impl<'a> Text<'a> {
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a,
@@ -118,6 +163,7 @@ impl<'a> Text<'a> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self)?;
         Ok(self.get_value().to_owned())
@@ -195,13 +241,13 @@ mod tests {
     fn set_initial_value() {
         let mut prompt = Text::new("");
 
-        assert_eq!(prompt.input, TextInput::new());
+        assert_eq!(prompt.input, LineInput::new());
 
         prompt.initial("foo");
 
         assert_eq!(
             prompt.input,
-            TextInput {
+            LineInput {
                 value: String::from("foo"),
                 col: 3,
             }

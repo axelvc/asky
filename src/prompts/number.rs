@@ -4,32 +4,70 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::{
     key_listener::{self, Typeable},
-    num::Num,
+    num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use super::text::{Direction, TextInput};
+use super::text::{Direction, LineInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
 type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a;
 
-pub struct Number<'a, T: Num> {
+/// Prompt to get one-line user input of numbers.
+///
+/// Similar to [`Text`] prompt, but only accept numbers, decimal point [^decimal], and sign symbol [^sign].
+///
+/// # Key Events
+///
+/// | Key         | Action                       |
+/// | ----------- | ---------------------------- |
+/// | `Enter`     | Submit current/initial value |
+/// | `Backspace` | Delete previous character    |
+/// | `Delete`    | Delete current character     |
+/// | `Left`      | Move cursor left             |
+/// | `Right`     | Move cursor right            |
+/// | `Backspace` | Delete previous character    |
+/// | `.`         | Add decimal point [^decimal]  |
+/// | `-`, `+`    | Add sign to the input [^sign] |
+///
+/// [^decimal]: Only for floating values.
+///
+/// [^sign]:  Only for signed values and when cursor is at start of the input.
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::Password;
+///
+/// # fn main() -> std::io::Result<()> {
+/// let password = Password::new("Your IG Password:").prompt()?;
+/// # Ok(())
+/// # }
+/// ```
+/// [`Text`]: crate::Text
+pub struct Number<'a, T: NumLike> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
-    pub input: TextInput,
+    /// Input state for the prompt.
+    pub input: LineInput,
+    /// Placeholder to show when the input is empty.
     pub placeholder: Option<&'a str>,
+    /// Default value to submit when the input is empty.
     pub default_value: Option<String>,
+    /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a, T>>>,
     formatter: Box<Formatter<'a, T>>,
 }
 
-impl<'a, T: Num + 'a> Number<'a, T> {
+impl<'a, T: NumLike + 'a> Number<'a, T> {
+    /// Create a new number prompt.
     pub fn new(message: &'a str) -> Self {
         Number {
             message,
-            input: TextInput::new(),
+            input: LineInput::new(),
             placeholder: None,
             default_value: None,
             validator: None,
@@ -38,21 +76,27 @@ impl<'a, T: Num + 'a> Number<'a, T> {
         }
     }
 
+    /// Set text to show when the input is empty.
+    ///
+    /// This not will not be submitted when the input is empty.
     pub fn placeholder(&mut self, value: &'a str) -> &mut Self {
         self.placeholder = Some(value);
         self
     }
 
+    /// Set default value to submit when the input is empty.
     pub fn default(&mut self, value: T) -> &mut Self {
         self.default_value = Some(value.to_string());
         self
     }
 
+    /// Set initial value, could be deleted by the user.
     pub fn initial(&mut self, value: T) -> &mut Self {
         self.input.set_value(&value.to_string());
         self
     }
 
+    /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
         F: Fn(&str, Result<T, T::Err>) -> Result<(), &'a str> + 'static,
@@ -61,6 +105,9 @@ impl<'a, T: Num + 'a> Number<'a, T> {
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a,
@@ -69,13 +116,14 @@ impl<'a, T: Num + 'a> Number<'a, T> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Result<T, T::Err>> {
         key_listener::listen(self)?;
         Ok(self.get_value())
     }
 }
 
-impl<T: Num> Number<'_, T> {
+impl<T: NumLike> Number<'_, T> {
     fn get_value(&self) -> Result<T, T::Err> {
         match self.input.value.is_empty() {
             true => self.default_value.clone().unwrap_or_default().parse(),
@@ -104,7 +152,7 @@ impl<T: Num> Number<'_, T> {
     }
 }
 
-impl<T: Num> Typeable for Number<'_, T> {
+impl<T: NumLike> Typeable for Number<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -126,11 +174,17 @@ impl<T: Num> Typeable for Number<'_, T> {
     }
 }
 
-impl<T: Num> Printable for Number<'_, T> {
+impl<T: NumLike> Printable for Number<'_, T> {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time);
         renderer.print(text)?;
         renderer.set_cursor(cursor)
+    }
+}
+
+impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
+    fn default() -> Self {
+        Self::new("")
     }
 }
 
@@ -160,13 +214,13 @@ mod tests {
     fn set_initial_value() {
         let mut prompt = Number::<i32>::new("");
 
-        assert_eq!(prompt.input, TextInput::new());
+        assert_eq!(prompt.input, LineInput::new());
 
         prompt.initial(10);
 
         assert_eq!(
             prompt.input,
-            TextInput {
+            LineInput {
                 value: String::from("10"),
                 col: 2,
             }

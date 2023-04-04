@@ -10,13 +10,42 @@ use crate::utils::{
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime) -> String + 'a;
 
+/// Prompt to ask yes/no questions.
+///
+/// # Key Events
+///
+/// | Key                  | Action                       |
+/// | -------------------- | ---------------------------- |
+/// | `Enter`, `Backspace` | Submit current/initial value |
+/// | `y`, `Y`             | Submit `true`                |
+/// | `n`, `N`             | Submit `false`               |
+/// | `Left`, `h`, `H`     | Focus `false`                |
+/// | `Right`, `l`, `L`    | Focus `true`                 |
+///
+/// # Examples
+///
+/// ```no_run
+/// use asky::Confirm;
+///
+/// # fn main() -> std::io::Result<()> {
+/// if Confirm::new("Do you like the pizza?").prompt()? {
+///     println!("Great!");
+/// } else {
+///     println!("Interesting!");
+/// }
+/// # Ok(())
+/// # }
+/// ```
 pub struct Confirm<'a> {
+    /// Message used to display in the prompt.
     pub message: &'a str,
+    /// Current state of the prompt.
     pub active: bool,
     formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Confirm<'a> {
+    /// Create a new confirm prompt.
     pub fn new(message: &'a str) -> Self {
         Confirm {
             message,
@@ -25,11 +54,15 @@ impl<'a> Confirm<'a> {
         }
     }
 
+    /// Set whether the prompt should be active at start.
     pub fn initial(&mut self, active: bool) -> &mut Self {
         self.active = active;
         self
     }
 
+    /// Set custom closure to format the prompt.
+    ///
+    /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
         F: Fn(&Confirm, DrawTime) -> String + 'a,
@@ -38,6 +71,7 @@ impl<'a> Confirm<'a> {
         self
     }
 
+    /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<bool> {
         key_listener::listen(self)?;
         Ok(self.active)
@@ -120,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn sumit_focused() {
+    fn submit_focused() {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {

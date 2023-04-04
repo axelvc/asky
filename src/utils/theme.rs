@@ -5,12 +5,12 @@ use crate::prompts::{
     multi_select::MultiSelect,
     number::Number,
     password::Password,
-    select::{Select, SelectCursor, SelectOption},
+    select::{Select, SelectInput, SelectOption},
     text::Text,
     toggle::Toggle,
 };
 
-use super::{num::Num, renderer::DrawTime};
+use super::{num_like::NumLike, renderer::DrawTime};
 
 pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
     let options = ["No", "Yes"];
@@ -40,13 +40,13 @@ pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
 
 pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, prompt.options[prompt.cursor.focused].title);
+        return fmt_last_message(prompt.message, prompt.options[prompt.input.focused].title);
     }
 
     [
         fmt_message(prompt.message),
-        fmt_select_page_options(&prompt.options, &prompt.cursor, false),
-        fmt_select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
+        fmt_select_page_options(&prompt.options, &prompt.input, false),
+        fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages()),
     ]
     .join("\n")
 }
@@ -70,8 +70,8 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
 
     [
         fmt_multi_select_message(prompt.message, prompt.min, prompt.max),
-        fmt_select_page_options(&prompt.options, &prompt.cursor, true),
-        fmt_select_pagination(prompt.cursor.get_page(), prompt.cursor.count_pages()),
+        fmt_select_page_options(&prompt.options, &prompt.input, true),
+        fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages()),
     ]
     .join("\n")
 }
@@ -123,7 +123,7 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [u16; 2]
     )
 }
 
-pub fn fmt_number<T: Num>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [u16; 2]) {
+pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [u16; 2]) {
     if draw_time == DrawTime::Last {
         return (
             fmt_last_message(prompt.message, &prompt.input.value),
@@ -241,17 +241,17 @@ fn fmt_multi_select_message(msg: &str, min: Option<usize>, max: Option<usize>) -
 }
 
 fn fmt_select_page_options<T>(
-    options: &Vec<SelectOption<T>>,
-    cursor: &SelectCursor,
+    options: &[SelectOption<T>],
+    input: &SelectInput,
     is_multiple: bool,
 ) -> String {
-    let items_per_page = cursor.items_per_page;
-    let options_len = options.len();
+    let items_per_page = input.items_per_page;
+    let total = input.total_items;
 
-    let page_len = items_per_page.min(options_len);
-    let page_start = cursor.get_page() * items_per_page;
-    let page_end = (page_start + page_len).min(options_len);
-    let page_focused = cursor.focused % items_per_page;
+    let page_len = items_per_page.min(total);
+    let page_start = input.get_page() * items_per_page;
+    let page_end = (page_start + page_len).min(total);
+    let page_focused = input.focused % items_per_page;
 
     let mut page_options: Vec<String> = options[page_start..page_end]
         .iter()

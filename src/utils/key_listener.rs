@@ -7,33 +7,36 @@ use crossterm::{
 
 use super::renderer::{Printable, Renderer};
 
+/// Trait used for the prompts to handle key events
 pub trait Typeable {
+    /// Returns `true` if it should end to listen for more key events
     fn handle_key(&mut self, key: KeyEvent) -> bool;
 }
 
-pub fn listen(handler: &mut (impl Printable + Typeable)) -> io::Result<()> {
+/// Helper function to listen for key events and draw the prompt
+pub fn listen(prompt: &mut (impl Printable + Typeable)) -> io::Result<()> {
     let mut renderer = Renderer::new();
 
-    handler.draw(&mut renderer)?;
+    prompt.draw(&mut renderer)?;
     renderer.update_draw_time();
+
     let mut submit = false;
 
     while !submit {
+        // raw mode to listen each key
         terminal::enable_raw_mode()?;
-        let k = read()?;
+        let key = read()?;
         terminal::disable_raw_mode()?;
 
-        if let Event::Key(key) = k {
+        if let Event::Key(key) = key {
             handle_abort(key);
-            submit = handler.handle_key(key);
-            handler.draw(&mut renderer)?;
+            submit = prompt.handle_key(key);
+            prompt.draw(&mut renderer)?;
         }
     }
 
     renderer.update_draw_time();
-    handler.draw(&mut renderer)?;
-
-    Ok(())
+    prompt.draw(&mut renderer)
 }
 
 fn handle_abort(ev: KeyEvent) {
