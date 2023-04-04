@@ -247,7 +247,7 @@ impl<'a, T: 'a> Select<'a, T> {
 
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<T> {
-        key_listener::listen(self)?;
+        key_listener::listen(self, true)?;
 
         let selected = self.options.remove(self.input.focused);
 

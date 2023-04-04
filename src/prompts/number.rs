@@ -118,7 +118,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
 
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Result<T, T::Err>> {
-        key_listener::listen(self)?;
+        key_listener::listen(self, false)?;
         Ok(self.get_value())
     }
 }

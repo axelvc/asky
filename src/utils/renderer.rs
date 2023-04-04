@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crossterm::{cursor, queue, style::Print, terminal};
+use crossterm::{cursor, queue, style::Print, terminal, execute};
 
 pub trait Printable {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
@@ -92,6 +92,14 @@ impl Renderer {
         }
 
         self.out.flush()
+    }
+
+    pub fn hide_cursor(&mut self) -> io::Result<()> {
+        execute!(self.out, cursor::Hide)
+    }
+
+    pub fn show_cursor(&mut self) -> io::Result<()> {
+        execute!(self.out, cursor::Show)
     }
 }
 

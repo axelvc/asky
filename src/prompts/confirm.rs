@@ -73,7 +73,7 @@ impl<'a> Confirm<'a> {
 
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<bool> {
-        key_listener::listen(self)?;
+        key_listener::listen(self, true)?;
         Ok(self.active)
     }
 }

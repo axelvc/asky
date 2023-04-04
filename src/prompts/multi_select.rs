@@ -125,7 +125,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
 
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
-        key_listener::listen(self)?;
+        key_listener::listen(self, true)?;
 
         let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
         let selected = selected.into_iter().map(|x| x.value).collect();

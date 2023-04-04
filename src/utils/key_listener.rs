@@ -14,10 +14,15 @@ pub trait Typeable {
 }
 
 /// Helper function to listen for key events and draw the prompt
-pub fn listen(prompt: &mut (impl Printable + Typeable)) -> io::Result<()> {
+pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io::Result<()> {
     let mut renderer = Renderer::new();
 
     prompt.draw(&mut renderer)?;
+
+    if hide_cursor {
+        renderer.hide_cursor()?;
+    }
+
     renderer.update_draw_time();
 
     let mut submit = false;
@@ -29,17 +34,22 @@ pub fn listen(prompt: &mut (impl Printable + Typeable)) -> io::Result<()> {
         terminal::disable_raw_mode()?;
 
         if let Event::Key(key) = key {
-            handle_abort(key);
+            handle_abort(key, &mut renderer);
             submit = prompt.handle_key(key);
             prompt.draw(&mut renderer)?;
         }
     }
 
     renderer.update_draw_time();
+
+    if hide_cursor {
+        renderer.show_cursor()?;
+    }
+
     prompt.draw(&mut renderer)
 }
 
-fn handle_abort(ev: KeyEvent) {
+fn handle_abort(ev: KeyEvent, renderer: &mut Renderer) {
     let is_abort = matches!(
         ev,
         KeyEvent {
@@ -53,6 +63,7 @@ fn handle_abort(ev: KeyEvent) {
     );
 
     if is_abort {
+        renderer.show_cursor().ok();
         std::process::exit(1)
     }
 }

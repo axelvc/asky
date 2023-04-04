@@ -165,7 +165,7 @@ impl<'a> Text<'a> {
 
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self)?;
+        key_listener::listen(self, false)?;
         Ok(self.get_value().to_owned())
     }
 }
