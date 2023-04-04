@@ -39,10 +39,10 @@ type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Password;
+/// use asky::Number;
 ///
 /// # fn main() -> std::io::Result<()> {
-/// let password = Password::new("Your IG Password:").prompt()?;
+/// let number = Number::<u8>::new("How many pets do you have?").prompt()?;
 /// # Ok(())
 /// # }
 /// ```
