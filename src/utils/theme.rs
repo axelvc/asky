@@ -76,7 +76,7 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
     .join("\n")
 }
 
-pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [u16; 2]) {
+pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (
             fmt_last_message(prompt.message, &prompt.input.value),
@@ -100,7 +100,7 @@ pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [u16; 2]) {
     )
 }
 
-pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [u16; 2]) {
+pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, "…"), [0, 0]);
     }
@@ -123,7 +123,7 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [u16; 2]
     )
 }
 
-pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [u16; 2]) {
+pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (
             fmt_last_message(prompt.message, &prompt.input.value),
@@ -217,8 +217,8 @@ fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
     }
 }
 
-fn get_cursor_position(cursor_col: usize) -> [u16; 2] {
-    let x = 2 + cursor_col as u16;
+fn get_cursor_position(cursor_col: usize) -> [usize; 2] {
+    let x = 2 + cursor_col;
     let y = 1;
 
     [x, y]

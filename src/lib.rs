@@ -77,7 +77,7 @@
 //!         let cursor_col = prompt.input.col;
 //!         let prefix = "> ";
 //!
-//!         let x = (prefix.len() + cursor_col) as u16;
+//!         let x = (prefix.len() + cursor_col);
 //!         let y = 1;
 //!
 //!         (

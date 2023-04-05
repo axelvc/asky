@@ -10,7 +10,7 @@ use crate::utils::{
 
 use super::text::{Direction, InputValidator, LineInput};
 
-type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a;
+type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a;
 
 /// Prompt to get one-line user input as password.
 ///
@@ -110,7 +110,7 @@ impl<'a> Password<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Password, DrawTime) -> (String, [u16; 2]) + 'a,
+        F: Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self

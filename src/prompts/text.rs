@@ -67,7 +67,7 @@ impl LineInput {
 // endregion: TextInput
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a;
+type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a;
 
 /// Prompt to get one-line user input.
 ///
@@ -157,7 +157,7 @@ impl<'a> Text<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, DrawTime) -> (String, [u16; 2]) + 'a,
+        F: Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self

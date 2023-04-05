@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crossterm::{cursor, queue, style::Print, terminal, execute};
+use crossterm::{cursor, execute, queue, style::Print, terminal};
 
 pub trait Printable {
     fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
@@ -76,7 +76,7 @@ impl Renderer {
 
     /// Utility function for line input
     /// Set initial position based on the position after drawing
-    pub fn set_cursor(&mut self, [x, y]: [u16; 2]) -> io::Result<()> {
+    pub fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
         if self.draw_time == DrawTime::Last {
             return Ok(());
         }
@@ -84,11 +84,11 @@ impl Renderer {
         queue!(self.out, cursor::RestorePosition)?;
 
         if y > 0 {
-            queue!(self.out, cursor::MoveDown(y))?;
+            queue!(self.out, cursor::MoveDown(y as u16))?;
         }
 
         if x > 0 {
-            queue!(self.out, cursor::MoveRight(x))?;
+            queue!(self.out, cursor::MoveRight(x as u16))?;
         }
 
         self.out.flush()

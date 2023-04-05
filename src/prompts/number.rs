@@ -13,7 +13,7 @@ use super::text::{Direction, LineInput};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
-type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a;
+type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [usize; 2]) + 'a;
 
 /// Prompt to get one-line user input of numbers.
 ///
@@ -110,7 +110,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Number<T>, DrawTime) -> (String, [u16; 2]) + 'a,
+        F: Fn(&Number<T>, DrawTime) -> (String, [usize; 2]) + 'a,
     {
         self.formatter = Box::new(formatter);
         self
