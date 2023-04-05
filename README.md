@@ -151,11 +151,7 @@ fn main() -> std::io::Result<()> {
 use asky::Select;
 
 fn main() -> std::io::Result<()> {
-    let opts = 1..=30;
-    let opts: Vec<_> = opts.map(|s| s.to_string()).collect();
-    let opts: Vec<_> = opts.iter().map(|s| SelectOption::new(s, s)).collect();
-
-    let choice = Select::new("Choose number", opts).prompt()?;
+    let choice = Select::new("Choose number", 1..=30).prompt()?;
     println!("{choice}, Interesting choice");
 
     // ...
@@ -179,8 +175,6 @@ use asky::MultiSelect;
 
 fn main() -> std::io::Result<()> {
     let opts = ["Dog", "Cat", "Fish", "Bird", "Other"];
-    let opts: Vec<_> = opts.iter().map(|s| SelectOption::new(s, s)).collect();
-
     let choices = MultiSelect::new("What kind of pets do you have?", opts).prompt()?;
 
     if choices.len() > 2 {

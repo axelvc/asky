@@ -40,7 +40,7 @@ pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
 
 pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, prompt.options[prompt.input.focused].title);
+        return fmt_last_message(prompt.message, &prompt.options[prompt.input.focused].title);
     }
 
     [
@@ -61,7 +61,7 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
                     .options
                     .iter()
                     .filter(|opt| opt.active)
-                    .map(|opt| opt.title)
+                    .map(|opt| opt.title.as_str())
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
@@ -300,7 +300,7 @@ fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool)
         }
     };
 
-    let title = option.title;
+    let title = &option.title;
     let title = match (option.disabled, focused) {
         (true, _) => title.bright_black().strikethrough(),
         (false, true) => title.blue(),

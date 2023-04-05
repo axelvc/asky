@@ -18,12 +18,12 @@ pub enum Direction {
 // region: SelectOption
 
 /// Utility struct to create items for select-like prompts (like [`Select`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SelectOption<'a, T> {
     /// Value that will be returned by the prompt when the user selects the option.
     pub value: T,
     /// String that will be displayed in the prompt.
-    pub title: &'a str,
+    pub title: String,
     /// Description text to show in the prompt when focus the option.
     pub description: Option<&'a str>,
     /// Indicate if the option is disabled.
@@ -36,12 +36,13 @@ pub struct SelectOption<'a, T> {
     pub active: bool,
 }
 
-impl<'a, T> SelectOption<'a, T> {
+impl<'a, T: ToString> SelectOption<'a, T> {
     /// Create a new option.
     ///
     /// * `value`: value that will be returned by the prompt when the user selects the option.
-    /// * `title`: string that will be displayed in the prompt.
-    pub fn new(value: T, title: &'a str) -> Self {
+    pub fn new(value: T) -> Self {
+        let title = value.to_string();
+
         SelectOption {
             value,
             title,
@@ -49,6 +50,15 @@ impl<'a, T> SelectOption<'a, T> {
             disabled: false,
             active: false,
         }
+    }
+
+    /// Create a new option with a custom title.
+    ///
+    /// * `value`: value that will be returned by the prompt when the user selects the option.
+    /// * `title`: string that will be displayed in the prompt.
+    pub fn title(mut self, title: &'a str) -> Self {
+        self.title = title.to_string();
+        self
     }
 
     /// Description text to show in the prompt when focus the option.
@@ -177,18 +187,11 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::{Select, SelectOption};
+/// use asky::Select;
 ///
 /// # fn main() -> std::io::Result<()> {
-/// let options = vec![
-///     SelectOption::new(1, "Horror"),
-///     SelectOption::new(2, "Romance"),
-///     SelectOption::new(3, "Action"),
-///     SelectOption::new(4, "Comedy"),
-/// ];
-///
-/// let answer = Select::new("What genre do you like?", options).prompt()?;
-///
+/// let languages = ["Rust", "Go", "Python", "Javascript", "Brainfuck", "Other"];
+/// let answer = Select::new("What is your favorite language?", languages).prompt()?;
 /// # Ok(())
 /// # }
 /// ```
@@ -205,7 +208,34 @@ pub struct Select<'a, T> {
 
 impl<'a, T: 'a> Select<'a, T> {
     /// Create a new select prompt.
-    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new<I>(message: &'a str, iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: ToString,
+    {
+        let options = iter.into_iter().map(|o| SelectOption::new(o)).collect();
+        Self::new_complex(message, options)
+    }
+
+    /// Create a new select prompt with custom [`SelectOption`] items.
+    ///
+    /// Example:
+    ///
+    /// ```no_run
+    /// use asky::{Select, SelectOption};
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let options = vec![
+    ///     SelectOption::new(1),
+    ///     SelectOption::new(2),
+    ///     SelectOption::new(3),
+    ///     SelectOption::new(4).title("Fish"),
+    /// ];
+    ///
+    /// Select::new_complex("Choose a number", options).prompt()?;
+    /// # Ok(())
+    /// # }
+    pub fn new_complex(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
         Select {
@@ -296,13 +326,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Select::new(
-            "",
-            vec![
-                SelectOption::new("foo", "foo"),
-                SelectOption::new("bar", "bar"),
-            ],
-        );
+        let mut prompt = Select::new("", ["foo", "bar"]);
 
         assert_eq!(prompt.input.focused, 0);
         prompt.selected(1);
@@ -311,13 +335,7 @@ mod tests {
 
     #[test]
     fn set_loop_mode() {
-        let mut prompt = Select::new(
-            "",
-            vec![
-                SelectOption::new("foo", "foo"),
-                SelectOption::new("bar", "bar"),
-            ],
-        );
+        let mut prompt = Select::new("", ["foo", "bar"]);
 
         prompt.in_loop(false);
         assert!(!prompt.input.loop_mode);
@@ -327,7 +345,7 @@ mod tests {
 
     #[test]
     fn set_custom_formatter() {
-        let mut prompt: Select<u8> = Select::new("", vec![]);
+        let mut prompt = Select::new("", ["foo", "bar"]);
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
@@ -341,13 +359,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Select::new(
-                "",
-                vec![
-                    SelectOption::new("foo", "foo"),
-                    SelectOption::new("bar", "bar"),
-                ],
-            );
+            let mut prompt = Select::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(event);
 
             prompt.selected(1);
@@ -363,7 +375,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Select::new("", vec![SelectOption::new("foo", "foo").disabled(true)]);
+            let mut prompt = Select::new_complex("", vec![SelectOption::new("foo").disabled(true)]);
 
             let submit = prompt.handle_key(KeyEvent::from(event));
             assert!(!submit);
@@ -390,13 +402,7 @@ mod tests {
 
         for key in up_keys {
             for (in_loop, initial, expected) in up_cases {
-                let mut prompt = Select::new(
-                    "",
-                    vec![
-                        SelectOption::new("foo", "foo"),
-                        SelectOption::new("bar", "bar"),
-                    ],
-                );
+                let mut prompt = Select::new("", ["foo", "bar"]);
                 let simulated_key = KeyEvent::from(key);
 
                 prompt.selected(initial);
@@ -408,13 +414,7 @@ mod tests {
 
         for key in down_keys {
             for (in_loop, initial, expected) in down_cases {
-                let mut prompt = Select::new(
-                    "",
-                    vec![
-                        SelectOption::new("foo", "foo"),
-                        SelectOption::new("bar", "bar"),
-                    ],
-                );
+                let mut prompt = Select::new("", ["foo", "bar"]);
                 let simulated_key = KeyEvent::from(key);
 
                 prompt.selected(initial);

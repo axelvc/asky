@@ -29,18 +29,11 @@ type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime) -> String + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::{MultiSelect, SelectOption};
+/// use asky::MultiSelect;
 ///
 /// # fn main() -> std::io::Result<()> {
-/// let options = vec![
-///     SelectOption::new(1, "Horror"),
-///     SelectOption::new(2, "Romance"),
-///     SelectOption::new(3, "Action"),
-///     SelectOption::new(4, "Comedy"),
-/// ];
-///
-/// let answer = MultiSelect::new("What genres do you like?", options).prompt()?;
-///
+/// let options = ["Horror", "Romance", "Action", "Comedy"];
+/// let answer = MultiSelect::new("What genre do you like?", options).prompt()?;
 /// # Ok(())
 /// # }
 /// ```
@@ -62,7 +55,34 @@ pub struct MultiSelect<'a, T> {
 
 impl<'a, T: 'a> MultiSelect<'a, T> {
     /// Create a new multi-select prompt.
-    pub fn new(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new<I>(message: &'a str, iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: ToString,
+    {
+        let options = iter.into_iter().map(|o| SelectOption::new(o)).collect();
+        Self::new_complex(message, options)
+    }
+
+    /// Create a new multi-select prompt with custom [`SelectOption`] items.
+    ///
+    /// Example:
+    ///
+    /// ```no_run
+    /// use asky::{MultiSelect, SelectOption};
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let options = vec![
+    ///     SelectOption::new("Reading"),
+    ///     SelectOption::new("Watching TV"),
+    ///     SelectOption::new("Playing video games"),
+    ///     SelectOption::new("Sleeping"),
+    /// ];
+    ///
+    /// MultiSelect::new_complex("How do you like to spend your free time?", options).prompt()?;
+    /// # Ok(())
+    /// # }
+    pub fn new_complex(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
         MultiSelect {
@@ -202,14 +222,7 @@ mod tests {
 
     #[test]
     fn set_selected_values() {
-        let mut prompt = MultiSelect::new(
-            "",
-            vec![
-                SelectOption::new("a", "a"),
-                SelectOption::new("b", "b"),
-                SelectOption::new("c", "c"),
-            ],
-        );
+        let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
 
         prompt.selected(&[0, 2]);
         assert!(prompt.options[0].active);
@@ -236,14 +249,7 @@ mod tests {
 
     #[test]
     fn set_in_loop() {
-        let mut prompt = MultiSelect::new(
-            "",
-            vec![
-                SelectOption::new("a", "a"),
-                SelectOption::new("b", "b"),
-                SelectOption::new("c", "c"),
-            ],
-        );
+        let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
 
         prompt.in_loop(false);
         assert!(!prompt.input.loop_mode);
@@ -267,14 +273,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = MultiSelect::new(
-                "",
-                vec![
-                    SelectOption::new("a", "a"),
-                    SelectOption::new("b", "b"),
-                    SelectOption::new("c", "c"),
-                ],
-            );
+            let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(simulated_key);
@@ -284,14 +283,7 @@ mod tests {
 
     #[test]
     fn not_submit_without_min() {
-        let mut prompt = MultiSelect::new(
-            "",
-            vec![
-                SelectOption::new("a", "a"),
-                SelectOption::new("b", "b"),
-                SelectOption::new("c", "c"),
-            ],
-        );
+        let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
 
         prompt.min(1);
         let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
@@ -306,14 +298,7 @@ mod tests {
 
     #[test]
     fn move_cursor() {
-        let mut prompt = MultiSelect::new(
-            "",
-            vec![
-                SelectOption::new("a", "a"),
-                SelectOption::new("b", "b"),
-                SelectOption::new("c", "c"),
-            ],
-        );
+        let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
         let prev_keys = [KeyCode::Up, KeyCode::Char('k'), KeyCode::Char('K')];
         let next_keys = [KeyCode::Down, KeyCode::Char('j'), KeyCode::Char('j')];
 
@@ -360,14 +345,7 @@ mod tests {
 
     #[test]
     fn update_focused_selected() {
-        let mut prompt = MultiSelect::new(
-            "",
-            vec![
-                SelectOption::new("a", "a"),
-                SelectOption::new("b", "b"),
-                SelectOption::new("c", "c"),
-            ],
-        );
+        let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
 
         prompt.max(1);
 
