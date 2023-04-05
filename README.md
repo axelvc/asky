@@ -6,13 +6,13 @@ Good looking prompts for the terminal.
 
 ## Usage
 
-First of all, this is a crate, so you need to add this to your project
+First of all, this is a library, so you need to add this to your project
 
 ```bash
 cargo add asky
 ```
 
-Then, you can see the crate documentation here: **TODO**
+Then, you can [see the documentation](https://docs.rs/asky/).
 
 ## Demos
 

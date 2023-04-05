@@ -1,6 +1,6 @@
 [package]
 name = "asky"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "Libray to create good looking prompts in the terminal"
