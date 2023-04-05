@@ -27,14 +27,13 @@ Then, you can see the crate documentation here: **TODO**
 use asky::Confirm;
 
 fn main() -> std::io::Result<()> {
-if Confirm::new("Do you like coffe?").prompt()? {
-println!("Great, me too!");
-}
+    if Confirm::new("Do you like coffe?").prompt()? {
+        println!("Great, me too!");
+    }
 
-    //...
+    // ...
 
     Ok(())
-
 }
 
 ```
@@ -52,9 +51,7 @@ println!("Great, me too!");
 use asky::Toggle;
 
 fn main() -> std::io::Result<()> {
-
     let tabs = Toggle::new("Which is better?", ["Tabs", "Spaces"]).prompt()?;
-
     println!("Great choice");
 
     // ...
@@ -77,7 +74,6 @@ use asky::Text;
 
 fn main() -> std::io::Result<()> {
     let color = Text::new("What's your favorite color?").prompt()?;
-
     println!("{color} is a beautiful color");
 
     // ...
@@ -202,4 +198,8 @@ Alternatives:
 
 - [Dialoguer](https://github.com/console-rs/dialoguer) - A command line prompting library.
 - [Inquire](https://github.com/mikaelmello/inquire) - A library for building interactive prompts on terminals.
-- [Requestty](https://crates.io/crates/requestty) - An easy-to-use collection of interactive cli prompts.
+- [Requestty](https://github.com/Lutetium-Vanadium/requestty) - An easy-to-use collection of interactive cli prompts.
+
+---
+
+License: [MIT](LICENSE)
