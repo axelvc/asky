@@ -95,8 +95,6 @@ fn main() -> std::io::Result<()> {
 use asky::Number;
 
 fn main() -> std::io::Result<()> {
-    let age:  = Number::<u8>::new("How old are you?").prompt()?;
-
     if let Ok(age) = Number::<u8>::new("How old are you?").prompt()? {
         if age <= 60 {
             println!("Pretty young");
