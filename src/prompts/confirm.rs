@@ -91,7 +91,7 @@ impl Confirm<'_> {
 }
 
 #[cfg(feature="terminal")]
-impl Typeable for Confirm<'_> {
+impl Typeable<KeyEvent> for Confirm<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 

@@ -22,6 +22,7 @@ pub enum DrawTime {
 
 pub trait Renderer {
     fn draw_time(&self) -> DrawTime;
+    fn update_draw_time(&mut self);
     fn print(&mut self, text: String) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
@@ -38,7 +39,7 @@ pub struct TermRenderer {
 #[cfg(feature="terminal")]
 impl TermRenderer {
     pub fn new() -> Self {
-        Renderer {
+        TermRenderer {
             draw_time: DrawTime::First,
             out: io::stdout(),
         }
@@ -52,14 +53,14 @@ impl Renderer for TermRenderer {
         self.draw_time
     }
 
-    pub fn update_draw_time(&mut self) {
+    fn update_draw_time(&mut self) {
         self.draw_time = match self.draw_time {
             DrawTime::First => DrawTime::Update,
             _ => DrawTime::Last,
         }
     }
 
-    pub fn print(&mut self, mut text: String) -> io::Result<()> {
+    fn print(&mut self, mut text: String) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -97,7 +98,7 @@ impl Renderer for TermRenderer {
 
     /// Utility function for line input
     /// Set initial position based on the position after drawing
-    pub fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
+    fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
         if self.draw_time == DrawTime::Last {
             return Ok(());
         }
@@ -115,11 +116,11 @@ impl Renderer for TermRenderer {
         self.out.flush()
     }
 
-    pub fn hide_cursor(&mut self) -> io::Result<()> {
+    fn hide_cursor(&mut self) -> io::Result<()> {
         execute!(self.out, cursor::Hide)
     }
 
-    pub fn show_cursor(&mut self) -> io::Result<()> {
+    fn show_cursor(&mut self) -> io::Result<()> {
         execute!(self.out, cursor::Show)
     }
 }

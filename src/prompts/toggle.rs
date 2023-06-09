@@ -87,7 +87,7 @@ impl Toggle<'_> {
 }
 
 #[cfg(feature="terminal")]
-impl Typeable for Toggle<'_> {
+impl Typeable<KeyEvent> for Toggle<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 

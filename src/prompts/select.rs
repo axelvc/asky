@@ -298,7 +298,7 @@ impl<T> Select<'_, T> {
 }
 
 #[cfg(feature="terminal")]
-impl<T> Typeable for Select<'_, T> {
+impl<T> Typeable<KeyEvent> for Select<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 

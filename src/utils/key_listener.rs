@@ -18,7 +18,7 @@ pub trait Typeable<T> {
 #[cfg(feature="terminal")]
 /// Helper function to listen for key events and draw the prompt
 pub fn listen(prompt: &mut (impl Printable + Typeable<KeyEvent>), hide_cursor: bool) -> io::Result<()> {
-    let mut renderer = Renderer::new();
+    let mut renderer = super::renderer::TermRenderer::new();
 
     prompt.draw(&mut renderer)?;
 
@@ -53,7 +53,7 @@ pub fn listen(prompt: &mut (impl Printable + Typeable<KeyEvent>), hide_cursor: b
 }
 
 #[cfg(feature="terminal")]
-fn handle_abort(ev: KeyEvent, renderer: &mut Renderer) {
+fn handle_abort<R: Renderer>(ev: KeyEvent, renderer: &mut R) {
     let is_abort = matches!(
         ev,
         KeyEvent {
