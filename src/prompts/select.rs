@@ -1,9 +1,11 @@
 use std::io;
 
+#[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+#[cfg(feature="terminal")]
+use crate::utils::key_listener::{self, Typeable};
 use crate::utils::{
-    key_listener::{self, Typeable},
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
@@ -275,6 +277,7 @@ impl<'a, T: 'a> Select<'a, T> {
         self
     }
 
+    #[cfg(feature="terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self, true)?;
@@ -294,6 +297,7 @@ impl<T> Select<'_, T> {
     }
 }
 
+#[cfg(feature="terminal")]
 impl<T> Typeable for Select<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
@@ -314,8 +318,8 @@ impl<T> Typeable for Select<'_, T> {
 }
 
 impl<T> Printable for Select<'_, T> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer.draw_time());
         renderer.print(text)
     }
 }

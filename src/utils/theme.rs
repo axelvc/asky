@@ -1,3 +1,4 @@
+
 use colored::Colorize;
 
 use crate::prompts::{
@@ -16,11 +17,11 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
     let options = ["No", "Yes"];
 
     if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, options[prompt.active as usize]);
+        return fmt_last_message(&prompt.message, options[prompt.active as usize]);
     }
 
     [
-        fmt_message(prompt.message),
+        fmt_message(&prompt.message),
         fmt_toggle_options(options, prompt.active),
     ]
     .join("\n")

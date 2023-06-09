@@ -1,9 +1,11 @@
 use std::io;
 
+#[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+#[cfg(feature="terminal")]
+use crate::utils::key_listener::{self, Typeable};
 use crate::utils::{
-    key_listener::{self, Typeable},
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
@@ -70,6 +72,7 @@ impl<'a> Toggle<'a> {
         self
     }
 
+    #[cfg(feature="terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self, true)?;
@@ -83,6 +86,7 @@ impl Toggle<'_> {
     }
 }
 
+#[cfg(feature="terminal")]
 impl Typeable for Toggle<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
@@ -101,8 +105,8 @@ impl Typeable for Toggle<'_> {
 }
 
 impl Printable for Toggle<'_> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer.draw_time());
         renderer.print(text)
     }
 }

@@ -1,9 +1,12 @@
 use std::io;
 
+#[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
+use std::borrow::Cow;
 
+#[cfg(feature="terminal")]
+use crate::utils::key_listener::{self, Typeable};
 use crate::utils::{
-    key_listener::{self, Typeable},
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
@@ -38,7 +41,8 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime) -> String + 'a;
 /// ```
 pub struct Confirm<'a> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    // pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Current state of the prompt.
     pub active: bool,
     formatter: Box<Formatter<'a>>,
@@ -46,9 +50,9 @@ pub struct Confirm<'a> {
 
 impl<'a> Confirm<'a> {
     /// Create a new confirm prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new<T:Into<Cow<'a, str>>>(message: T) -> Self {
         Confirm {
-            message,
+            message: message.into(),
             active: false,
             formatter: Box::new(theme::fmt_confirm),
         }
@@ -71,6 +75,7 @@ impl<'a> Confirm<'a> {
         self
     }
 
+    #[cfg(feature="terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<bool> {
         key_listener::listen(self, true)?;
@@ -85,6 +90,7 @@ impl Confirm<'_> {
     }
 }
 
+#[cfg(feature="terminal")]
 impl Typeable for Confirm<'_> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
@@ -106,8 +112,8 @@ impl Typeable for Confirm<'_> {
 }
 
 impl Printable for Confirm<'_> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer.draw_time());
         renderer.print(text)
     }
 }

@@ -1,5 +1,7 @@
+#[cfg(feature="terminal")]
 use std::io;
 
+#[cfg(feature="terminal")]
 use crossterm::{
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal,
@@ -8,13 +10,14 @@ use crossterm::{
 use super::renderer::{Printable, Renderer};
 
 /// Trait used for the prompts to handle key events
-pub trait Typeable {
+pub trait Typeable<T> {
     /// Returns `true` if it should end to listen for more key events
-    fn handle_key(&mut self, key: KeyEvent) -> bool;
+    fn handle_key(&mut self, key: T) -> bool;
 }
 
+#[cfg(feature="terminal")]
 /// Helper function to listen for key events and draw the prompt
-pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io::Result<()> {
+pub fn listen(prompt: &mut (impl Printable + Typeable<KeyEvent>), hide_cursor: bool) -> io::Result<()> {
     let mut renderer = Renderer::new();
 
     prompt.draw(&mut renderer)?;
@@ -49,6 +52,7 @@ pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io
     prompt.draw(&mut renderer)
 }
 
+#[cfg(feature="terminal")]
 fn handle_abort(ev: KeyEvent, renderer: &mut Renderer) {
     let is_abort = matches!(
         ev,

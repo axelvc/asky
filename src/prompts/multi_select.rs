@@ -1,9 +1,12 @@
 use std::io;
 
+#[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+#[cfg(feature="terminal")]
+use crate::utils::key_listener::{self, Typeable};
+
 use crate::utils::{
-    key_listener::{self, Typeable},
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
@@ -143,6 +146,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
         self
     }
 
+    #[cfg(feature="terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self, true)?;
@@ -188,7 +192,8 @@ impl<T> MultiSelect<'_, T> {
     }
 }
 
-impl<T> Typeable for MultiSelect<'_, T> {
+#[cfg(feature="terminal")]
+impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
 
@@ -210,8 +215,8 @@ impl<T> Typeable for MultiSelect<'_, T> {
 }
 
 impl<T> Printable for MultiSelect<'_, T> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let text = (self.formatter)(self, renderer.draw_time());
         renderer.print(text)
     }
 }

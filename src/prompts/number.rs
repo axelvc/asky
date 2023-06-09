@@ -1,9 +1,11 @@
 use std::{io, str::FromStr};
 
+#[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+#[cfg(feature="terminal")]
+use crate::utils::key_listener::{self, Typeable};
 use crate::utils::{
-    key_listener::{self, Typeable},
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -116,6 +118,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self
     }
 
+    #[cfg(feature="terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Result<T, T::Err>> {
         key_listener::listen(self, false)?;
@@ -152,6 +155,7 @@ impl<T: NumLike> Number<'_, T> {
     }
 }
 
+#[cfg(feature="terminal")]
 impl<T: NumLike> Typeable for Number<'_, T> {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         let mut submit = false;
@@ -175,8 +179,8 @@ impl<T: NumLike> Typeable for Number<'_, T> {
 }
 
 impl<T: NumLike> Printable for Number<'_, T> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let (text, cursor) = (self.formatter)(self, renderer.draw_time());
         renderer.print(text)?;
         renderer.set_cursor(cursor)
     }

@@ -1,9 +1,11 @@
+// #[cfg(feature="terminal")]
 use std::io::{self, Write};
 
+#[cfg(feature="terminal")]
 use crossterm::{cursor, execute, queue, style::Print, terminal};
 
 pub trait Printable {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()>;
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()>;
 }
 
 /// Enum that indicates the current draw time to format closures.
@@ -18,17 +20,36 @@ pub enum DrawTime {
     Last,
 }
 
-pub struct Renderer {
+pub trait Renderer {
+    fn draw_time(&self) -> DrawTime;
+    fn print(&mut self, text: String) -> io::Result<()>;
+    fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
+    fn hide_cursor(&mut self) -> io::Result<()>;
+    fn show_cursor(&mut self) -> io::Result<()>;
+
+}
+
+#[cfg(feature="terminal")]
+pub struct TermRenderer {
     pub draw_time: DrawTime,
     out: io::Stdout,
 }
 
-impl Renderer {
+#[cfg(feature="terminal")]
+impl TermRenderer {
     pub fn new() -> Self {
         Renderer {
             draw_time: DrawTime::First,
             out: io::stdout(),
         }
+    }
+}
+
+#[cfg(feature="terminal")]
+impl Renderer for TermRenderer {
+
+    fn draw_time(&self) -> DrawTime {
+        self.draw_time
     }
 
     pub fn update_draw_time(&mut self) {
@@ -103,7 +124,8 @@ impl Renderer {
     }
 }
 
-impl Default for Renderer {
+#[cfg(feature="terminal")]
+impl Default for TermRenderer {
     fn default() -> Self {
         Self::new()
     }
