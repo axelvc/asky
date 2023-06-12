@@ -1,5 +1,5 @@
 
-use colored::Colorize;
+use colored::{Colorize, ColoredString, ColoredStrings};
 
 use crate::prompts::{
     confirm::Confirm,
@@ -13,18 +13,17 @@ use crate::prompts::{
 
 use super::{num_like::NumLike, renderer::DrawTime};
 
-pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime) -> String {
+pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
     let options = ["No", "Yes"];
 
     if draw_time == DrawTime::Last {
-        return fmt_last_message(&prompt.message, options[prompt.active as usize]);
+        fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
+        return
     }
 
-    [
-        fmt_message(&prompt.message),
-        fmt_toggle_options(options, prompt.active),
-    ]
-    .join("\n")
+    fmt_message2(&prompt.message, out);
+    out.0.push("\n".into());
+    fmt_toggle_options3(options, prompt.active, out);
 }
 
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
@@ -154,8 +153,16 @@ fn fmt_message(message: &str) -> String {
     format!("{} {}", "▣".blue(), message)
 }
 
+fn fmt_message2(message: &str, out: &mut ColoredStrings<'_>) {
+    out.0.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
+}
+
 fn fmt_last_message(message: &str, answer: &str) -> String {
     format!("{} {} {}", "■".green(), message, answer.purple())
+}
+
+fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
+    out.0.extend(["■".green(), " ".into(), message.to_owned().into(), " ".into(), answer.to_owned().purple()]);
 }
 
 // endregion: general
@@ -163,6 +170,9 @@ fn fmt_last_message(message: &str, answer: &str) -> String {
 // region: toggle
 
 fn fmt_toggle_options(options: [&str; 2], active: bool) -> String {
+    format!("{}", fmt_toggle_options2(options, active))
+}
+fn fmt_toggle_options2(options: [&str; 2], active: bool) -> ColoredStrings {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {
@@ -171,11 +181,27 @@ fn fmt_toggle_options(options: [&str; 2], active: bool) -> String {
         }
     };
 
-    format!(
-        "{}  {}",
+    vec!(
         fmt_option(options[0], !active),
+        " ".into(),
         fmt_option(options[1], active)
-    )
+    ).into()
+}
+
+fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
+    let fmt_option = |opt, active| {
+        let opt = format!(" {} ", opt);
+        match active {
+            true => opt.black().on_blue(),
+            false => opt.white().on_bright_black(),
+        }
+    };
+
+    out.0.extend([
+        fmt_option(options[0], !active),
+        " ".into(),
+        fmt_option(options[1], active)
+    ]);
 }
 
 // endregion: toggle

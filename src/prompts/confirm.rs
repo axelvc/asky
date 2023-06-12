@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use crossterm::event::{KeyCode, KeyEvent};
 use std::borrow::Cow;
 
+use colored::{Colorize, ColoredString, ColoredStrings};
 use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
 use crate::utils::key_listener::self;
@@ -15,7 +16,7 @@ use crate::utils::{
     theme,
 };
 
-type Formatter<'a> = dyn Fn(&Confirm, DrawTime) -> String + 'a;
+type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>);
 
 /// Prompt to ask yes/no questions.
 ///
@@ -73,7 +74,7 @@ impl<'a> Confirm<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Confirm, DrawTime) -> String + 'a,
+        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'static,
     {
         self.formatter = Box::new(formatter);
         self
@@ -138,7 +139,10 @@ impl Typeable<KeyCode> for Confirm<'_> {
 
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time());
+        let mut out = default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        let text = format!("{}", out);
+        // renderer.print(out)
         renderer.print(text)
     }
 }
