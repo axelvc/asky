@@ -1,10 +1,16 @@
 use std::io;
 
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+#[cfg(feature="bevy")]
+use crate::bevy::*;
+
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener::self;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
@@ -208,6 +214,30 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
             KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
             KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
             _ => (),
+        }
+
+        submit
+    }
+}
+
+#[cfg(feature="bevy")]
+impl<T> Typeable<KeyEvent<'_, '_>> for MultiSelect<'_, T> {
+    fn handle_key(&mut self, mut key: KeyEvent) -> bool {
+        let mut submit = false;
+
+        for code in key.codes() {
+            match code {
+                // submit
+                KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+                // select/unselect
+                KeyCode::Space => self.toggle_focused(),
+                // update focus
+                KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+                KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+                KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+                KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+                _ => (),
+            }
         }
 
         submit

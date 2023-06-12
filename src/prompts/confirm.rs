@@ -1,11 +1,15 @@
 use std::io;
 
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 use std::borrow::Cow;
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener::self;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -104,6 +108,27 @@ impl Typeable<KeyEvent> for Confirm<'_> {
             KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
             // submit current/initial value
             KeyCode::Enter | KeyCode::Backspace => submit = true,
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+#[cfg(feature="bevy")]
+impl Typeable<KeyCode> for Confirm<'_> {
+    fn handle_key(&mut self, key: KeyCode) -> bool {
+        let mut submit = false;
+
+        match key {
+            // update value
+            KeyCode::Left | KeyCode::H => self.active = false,
+            KeyCode::Right | KeyCode::L => self.active = true,
+            // update value and submit
+            KeyCode::Y => submit = self.update_and_submit(true),
+            KeyCode::N => submit = self.update_and_submit(false),
+            // submit current/initial value
+            KeyCode::Return | KeyCode::Back => submit = true,
             _ => (),
         }
 

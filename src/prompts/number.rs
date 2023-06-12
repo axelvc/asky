@@ -1,10 +1,15 @@
 use std::{io, str::FromStr};
 
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+#[cfg(feature="bevy")]
+use crate::bevy::*;
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener::self;
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
@@ -173,6 +178,35 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
             KeyCode::Right => self.input.move_cursor(Direction::Right),
             _ => (),
         }
+
+        submit
+    }
+}
+
+#[cfg(feature="bevy")]
+impl<T: NumLike> Typeable<KeyEvent<'_, '_>> for Number<'_, T> {
+    fn handle_key(&mut self, mut key: KeyEvent) -> bool {
+        let mut submit = false;
+
+        for code in key.codes() {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            }
+        }
+
+        // type
+        for ev in key.char_evr.iter() {
+            self.insert(ev.char)
+        }
+
 
         submit
     }

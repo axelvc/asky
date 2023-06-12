@@ -104,6 +104,9 @@
 mod prompts;
 mod utils;
 
+#[cfg(feature="bevy")]
+mod bevy;
+
 pub use prompts::confirm::Confirm;
 pub use prompts::multi_select::MultiSelect;
 pub use prompts::number::Number;
