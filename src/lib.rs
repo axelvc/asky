@@ -99,13 +99,13 @@
 //! ```
 //!
 //! Where `|` is the cursor position.
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 
 mod prompts;
 mod utils;
 
 #[cfg(feature="bevy")]
-mod bevy;
+pub mod bevy;
 
 pub use prompts::confirm::Confirm;
 pub use prompts::multi_select::MultiSelect;
@@ -119,3 +119,4 @@ pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;
 pub use utils::num_like::NumLike;
 pub use utils::renderer::DrawTime;
+pub use utils::key_listener::Typeable;

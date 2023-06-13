@@ -25,17 +25,17 @@ pub trait Formatter {
 impl Formatter for DefaultFormatter {
 
     fn format(&self, prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
-    let options = ["No", "Yes"];
+        let options = ["No", "Yes"];
 
-    if draw_time == DrawTime::Last {
-        crate::utils::theme::fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
-        return
+        if draw_time == DrawTime::Last {
+            crate::utils::theme::fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
+            return
+        }
+
+        crate::utils::theme::fmt_message2(&prompt.message, out);
+        out.0.push("\n".into());
+        crate::utils::theme::fmt_toggle_options3(options, prompt.active, out);
     }
-
-    crate::utils::theme::fmt_message2(&prompt.message, out);
-    out.0.push("\n".into());
-    crate::utils::theme::fmt_toggle_options3(options, prompt.active, out);
-}
 }
 
 // #[derive(Debug)]
@@ -75,7 +75,8 @@ pub struct Confirm<'a> {
     pub message: Cow<'a, str>,
     /// Current state of the prompt.
     pub active: bool,
-    formatter: Box<dyn Formatter + Sync + Send>,
+    /// Current formatter
+    pub formatter: Box<dyn Formatter + 'static + Sync + Send>,
 }
 
 impl<'a> Confirm<'a> {

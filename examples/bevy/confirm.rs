@@ -16,8 +16,22 @@ use bevy::{
     input::keyboard::KeyboardInput,
 };
 
+use asky::bevy::ColoredBuilder;
+use asky::Typeable;
+
+use asky::DrawTime;
+
+use colored::{Colorize, ColoredString, ColoredStrings};
+
 fn main() {
     App::new()
+        // .insert_resource(ColoredBuilder { style:
+        //     TextStyle {
+        //         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //         font_size: 100.0,
+        //         color: Color::WHITE,
+        //     },
+        // })
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup)
@@ -83,6 +97,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ]),
         FpsText,
     ));
+    let confirm: Confirm<'static> = Confirm::new("Hi?");
 
     // Text with multiple sections
     commands.spawn((
@@ -99,14 +114,37 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ]),
         //Confirm::new("Do you like coffee?")
     ))
-    .insert(Confirm::new("Hi?"));
+    .insert(confirm)
+        ;
 }
 
 fn asky_confirm_system(
     char_evr: EventReader<ReceivedCharacter>,
     keys: Res<Input<KeyCode>>,
-    key_evr: EventReader<KeyboardInput>,
-    mut query: Query<&mut Text, With<Confirm>>) {
+    mut key_evr: EventReader<KeyboardInput>,
+    asset_server: Res<AssetServer>,
+    // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
+    mut query: Query<(&mut Text, &mut Confirm<'static>)>) {
+
+    let builder = ColoredBuilder { style:
+        TextStyle {
+            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+            font_size: 100.0,
+            color: Color::WHITE,
+        },
+    };
+
+    let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
+    for (mut text, mut confirm) in query.iter_mut() {
+        for key in key_event.key_codes.iter() {
+            confirm.handle_key(*key);
+        }
+
+        let mut out = ColoredStrings::default();
+        // confirm.formatter.format(confirm, renderer.draw_time(), &mut out);
+        confirm.formatter.format(&confirm, DrawTime::Update, &mut out);
+        builder.to_text(out, &mut text);
+    }
 
 }
 

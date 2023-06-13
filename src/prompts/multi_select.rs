@@ -220,29 +220,29 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     }
 }
 
-#[cfg(feature="bevy")]
-impl<T> Typeable<KeyEvent<'_, '_>> for MultiSelect<'_, T> {
-    fn handle_key(&mut self, mut key: KeyEvent) -> bool {
-        let mut submit = false;
+// #[cfg(feature="bevy")]
+// impl<T> Typeable<KeyEvent<'_, '_>> for MultiSelect<'_, T> {
+//     fn handle_key(&mut self, mut key: KeyEvent) -> bool {
+//         let mut submit = false;
 
-        for code in key.codes() {
-            match code {
-                // submit
-                KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
-                // select/unselect
-                KeyCode::Space => self.toggle_focused(),
-                // update focus
-                KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-                KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-                KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-                KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
-                _ => (),
-            }
-        }
+//         for code in key.codes() {
+//             match code {
+//                 // submit
+//                 KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+//                 // select/unselect
+//                 KeyCode::Space => self.toggle_focused(),
+//                 // update focus
+//                 KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+//                 KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+//                 KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+//                 KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+//                 _ => (),
+//             }
+//         }
 
-        submit
-    }
-}
+//         submit
+//     }
+// }
 
 impl<T> Printable for MultiSelect<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {

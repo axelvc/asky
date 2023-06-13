@@ -183,34 +183,34 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
-#[cfg(feature="bevy")]
-impl<T: NumLike> Typeable<KeyEvent<'_, '_>> for Number<'_, T> {
-    fn handle_key(&mut self, mut key: KeyEvent) -> bool {
-        let mut submit = false;
+// #[cfg(feature="bevy")]
+// impl<T: NumLike> Typeable<KeyEvent<'_, '_>> for Number<'_, T> {
+//     fn handle_key(&mut self, mut key: KeyEvent) -> bool {
+//         let mut submit = false;
 
-        for code in key.codes() {
-            match code {
-                // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
-                // remove delete
-                KeyCode::Back => self.input.backspace(),
-                KeyCode::Delete => self.input.delete(),
-                // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
-                _ => (),
-            }
-        }
+//         for code in key.codes() {
+//             match code {
+//                 // submit
+//                 KeyCode::Return => submit = self.validate_to_submit(),
+//                 // remove delete
+//                 KeyCode::Back => self.input.backspace(),
+//                 KeyCode::Delete => self.input.delete(),
+//                 // move cursor
+//                 KeyCode::Left => self.input.move_cursor(Direction::Left),
+//                 KeyCode::Right => self.input.move_cursor(Direction::Right),
+//                 _ => (),
+//             }
+//         }
 
-        // type
-        for ev in key.char_evr.iter() {
-            self.insert(ev.char)
-        }
+//         // type
+//         for c in key.chars.iter() {
+//             self.insert(*c);
+//         }
 
 
-        submit
-    }
-}
+//         submit
+//     }
+// }
 
 impl<T: NumLike> Printable for Number<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
