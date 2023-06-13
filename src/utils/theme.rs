@@ -153,7 +153,7 @@ fn fmt_message(message: &str) -> String {
     format!("{} {}", "▣".blue(), message)
 }
 
-fn fmt_message2(message: &str, out: &mut ColoredStrings<'_>) {
+pub fn fmt_message2(message: &str, out: &mut ColoredStrings<'_>) {
     out.0.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
 }
 
@@ -161,7 +161,7 @@ fn fmt_last_message(message: &str, answer: &str) -> String {
     format!("{} {} {}", "■".green(), message, answer.purple())
 }
 
-fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
+pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
     out.0.extend(["■".green(), " ".into(), message.to_owned().into(), " ".into(), answer.to_owned().purple()]);
 }
 
@@ -188,7 +188,7 @@ fn fmt_toggle_options2(options: [&str; 2], active: bool) -> ColoredStrings {
     ).into()
 }
 
-fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
+pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {

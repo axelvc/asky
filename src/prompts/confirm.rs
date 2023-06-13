@@ -10,13 +10,36 @@ use std::borrow::Cow;
 use colored::{Colorize, ColoredString, ColoredStrings};
 use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::self;
+use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>);
+struct DefaultFormatter;
+
+pub trait Formatter {
+    fn format(&self, confirm: &Confirm<'_>, time: DrawTime, out: &mut ColoredStrings<'_>);
+}
+
+impl Formatter for DefaultFormatter {
+
+    fn format(&self, prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
+    let options = ["No", "Yes"];
+
+    if draw_time == DrawTime::Last {
+        crate::utils::theme::fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
+        return
+    }
+
+    crate::utils::theme::fmt_message2(&prompt.message, out);
+    out.0.push("\n".into());
+    crate::utils::theme::fmt_toggle_options3(options, prompt.active, out);
+}
+}
+
+// #[derive(Debug)]
+// type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>);
 
 /// Prompt to ask yes/no questions.
 ///
@@ -44,13 +67,15 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>);
 /// # Ok(())
 /// # }
 /// ```
+// #[derive(Debug)]
+#[cfg_attr(feature="bevy", derive(Component))]
 pub struct Confirm<'a> {
     /// Message used to display in the prompt.
     // pub message: &'a str,
     pub message: Cow<'a, str>,
     /// Current state of the prompt.
     pub active: bool,
-    formatter: Box<Formatter<'a>>,
+    formatter: Box<dyn Formatter + Sync + Send>,
 }
 
 impl<'a> Confirm<'a> {
@@ -59,7 +84,7 @@ impl<'a> Confirm<'a> {
         Confirm {
             message: message.into(),
             active: false,
-            formatter: Box::new(theme::fmt_confirm),
+            formatter: Box::new(DefaultFormatter)
         }
     }
 
@@ -72,9 +97,7 @@ impl<'a> Confirm<'a> {
     /// Set custom closure to format the prompt.
     ///
     /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'static,
+    pub fn format<F: Formatter + 'static + Sync + Send>(&mut self, formatter: F) -> &mut Self
     {
         self.formatter = Box::new(formatter);
         self
@@ -139,8 +162,8 @@ impl Typeable<KeyCode> for Confirm<'_> {
 
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
+        let mut out = ColoredStrings::default();
+        self.formatter.format(self, renderer.draw_time(), &mut out);
         let text = format!("{}", out);
         // renderer.print(out)
         renderer.print(text)

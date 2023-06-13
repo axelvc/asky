@@ -9,7 +9,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::self;
+use crate::utils::key_listener;
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},

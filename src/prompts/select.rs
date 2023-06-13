@@ -10,7 +10,7 @@ use crate::bevy::*;
 
 use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::self;
+use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
