@@ -165,9 +165,9 @@ impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         self.formatter.format(self, renderer.draw_time(), &mut out);
-        let text = format!("{}", out);
-        // renderer.print(out)
-        renderer.print(text)
+        renderer.print(out)
+        // let text = format!("{}", out);
+        // renderer.print(text)
     }
 }
 

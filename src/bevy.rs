@@ -30,6 +30,7 @@ impl<'w> KeyEvent<'w> {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct BevyRenderer {
     draw_time: DrawTime,
     cursor_visible: bool,
@@ -114,7 +115,7 @@ impl Renderer for BevyRenderer {
         }
     }
 
-    fn print(&mut self, mut text: String) -> io::Result<()> {
+    fn print(&mut self, mut text: ColoredStrings) -> io::Result<()> {
         // if self.draw_time != DrawTime::First {
         //     queue!(
         //         self.out,
@@ -173,9 +174,8 @@ impl Renderer for BevyRenderer {
     }
 }
 
-#[cfg(feature="terminal")]
-impl Default for TermRenderer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for BevyRenderer {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }

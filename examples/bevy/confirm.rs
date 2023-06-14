@@ -119,12 +119,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn asky_confirm_system(
+    mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
     keys: Res<Input<KeyCode>>,
     mut key_evr: EventReader<KeyboardInput>,
     asset_server: Res<AssetServer>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(&mut Text, &mut Confirm<'static>)>) {
+    mut query: Query<(Entity, &mut Text, &mut Confirm<'static>)>) {
 
     let builder = ColoredBuilder { style:
         TextStyle {
@@ -135,15 +136,27 @@ fn asky_confirm_system(
     };
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
-    for (mut text, mut confirm) in query.iter_mut() {
+    'outer: for (entity, mut text, mut confirm) in query.iter_mut() {
         for key in key_event.key_codes.iter() {
-            confirm.handle_key(*key);
+            if confirm.handle_key(*key) {
+                // It's done.
+                // let mut out = ColoredStrings::default();
+                // builder.to_text(out, &mut text);
+                // XXX: text.sections.clear() doesn't work.
+                text.sections.clear();
+                // text.sections.push(TextSection::new("waaah".to_owned(), builder.style.clone()));
+                commands.entity(entity).remove::<Confirm<'static>>();
+                // commands.entity(entity).remove::<Text>();
+                continue 'outer;
+            }
         }
+        // if confirm.active {
 
         let mut out = ColoredStrings::default();
         // confirm.formatter.format(confirm, renderer.draw_time(), &mut out);
         confirm.formatter.format(&confirm, DrawTime::Update, &mut out);
         builder.to_text(out, &mut text);
+        // }
     }
 
 }

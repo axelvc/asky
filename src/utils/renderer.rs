@@ -4,6 +4,7 @@ use std::io::{self, Write};
 #[cfg(feature="terminal")]
 use crossterm::{cursor, execute, queue, style::Print, terminal};
 
+use colored::{Colorize, ColoredString, ColoredStrings};
 pub trait Printable {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()>;
 }
@@ -23,7 +24,7 @@ pub enum DrawTime {
 pub trait Renderer {
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
-    fn print(&mut self, text: String) -> io::Result<()>;
+    fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
     fn show_cursor(&mut self) -> io::Result<()>;
@@ -60,7 +61,7 @@ impl Renderer for TermRenderer {
         }
     }
 
-    fn print(&mut self, mut text: String) -> io::Result<()> {
+    fn print(&mut self, mut text: ColoredStrings) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -68,6 +69,7 @@ impl Renderer for TermRenderer {
                 terminal::Clear(terminal::ClearType::FromCursorDown),
             )?;
         }
+        let text = format!("{}", text);
 
         if !text.ends_with('\n') {
             text.push('\n')
