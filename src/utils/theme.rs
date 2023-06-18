@@ -181,11 +181,11 @@ fn fmt_toggle_options2(options: [&str; 2], active: bool) -> ColoredStrings {
         }
     };
 
-    vec!(
+    ColoredStrings(vec!(
         fmt_option(options[0], !active),
         " ".into(),
         fmt_option(options[1], active)
-    ).into()
+    ))
 }
 
 pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredStrings) {

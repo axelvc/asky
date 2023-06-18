@@ -61,7 +61,7 @@ impl Renderer for TermRenderer {
         }
     }
 
-    fn print(&mut self, mut text: ColoredStrings) -> io::Result<()> {
+    fn print(&mut self, text: ColoredStrings) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -69,7 +69,7 @@ impl Renderer for TermRenderer {
                 terminal::Clear(terminal::ClearType::FromCursorDown),
             )?;
         }
-        let text = format!("{}", text);
+        let mut text = format!("{}", text);
 
         if !text.ends_with('\n') {
             text.push('\n')

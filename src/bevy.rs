@@ -30,24 +30,6 @@ impl<'w> KeyEvent<'w> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct BevyRenderer {
-    draw_time: DrawTime,
-    cursor_visible: bool,
-    cursor_pos: [usize; 2],
-    // out: io::Stdout,
-}
-
-impl BevyRenderer {
-    pub fn new() -> Self {
-        BevyRenderer {
-            draw_time: DrawTime::First,
-            cursor_visible: false,
-            cursor_pos: [0, 0]
-        }
-    }
-}
-
 #[derive(Resource)]
 pub struct ColoredBuilder {
     pub style: TextStyle,
@@ -102,14 +84,37 @@ fn convert(c: Colored) -> Color {
     }
 }
 
-impl Renderer for BevyRenderer {
+
+#[derive(Debug, Default)]
+pub struct BevyRendererState {
+    draw_time: DrawTime,
+    cursor_visible: bool,
+    cursor_pos: [usize; 2],
+}
+
+#[derive(Debug)]
+pub struct BevyRenderer<'a> {
+    state: &'a mut BevyRendererState,
+    text: &'a mut Text,
+}
+
+impl<'a> BevyRenderer<'a> {
+    pub fn new(state: &'a mut BevyRendererState, text: &'a mut Text) -> Self {
+        BevyRenderer {
+            state,
+            text
+        }
+    }
+}
+
+impl<'a> Renderer for BevyRenderer<'a> {
 
     fn draw_time(&self) -> DrawTime {
-        self.draw_time
+        self.state.draw_time
     }
 
     fn update_draw_time(&mut self) {
-        self.draw_time = match self.draw_time {
+        self.state.draw_time = match self.state.draw_time {
             DrawTime::First => DrawTime::Update,
             _ => DrawTime::Last,
         }
@@ -155,21 +160,21 @@ impl Renderer for BevyRenderer {
     /// Utility function for line input
     /// Set initial position based on the position after drawing
     fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
-        if self.draw_time == DrawTime::Last {
+        if self.state.draw_time == DrawTime::Last {
             return Ok(());
         }
-        self.cursor_pos[0] = x;
-        self.cursor_pos[0] = y;
+        self.state.cursor_pos[0] = x;
+        self.state.cursor_pos[0] = y;
         Ok(())
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
-        self.cursor_visible = false;
+        self.state.cursor_visible = false;
         Ok(())
     }
 
     fn show_cursor(&mut self) -> io::Result<()> {
-        self.cursor_visible = true;
+        self.state.cursor_visible = true;
         Ok(())
     }
 }

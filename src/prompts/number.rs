@@ -215,7 +215,7 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 impl<T: NumLike> Printable for Number<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text)?;
+        renderer.print(text.into())?;
         renderer.set_cursor(cursor)
     }
 }

@@ -106,7 +106,7 @@ fn fmt_select_option<T>(&self, option: &SelectOption<T>, focused: bool, multiple
         }
     };
 
-    let title = &option.title;
+    let title = option.title.clone();
     let title = match (option.disabled, focused) {
         (true, _) => title.bright_black().strikethrough(),
         (false, true) => title.blue(),
@@ -280,7 +280,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// Set custom closure to format the prompt.
     ///
     /// See: [`Customization`](index.html#customization).
-    pub fn format<F: Formatter<T>>(&mut self, formatter: F) -> &mut Self
+    pub fn format<F: Formatter<T> + 'static>(&mut self, formatter: F) -> &mut Self
     {
         self.formatter = Box::new(formatter);
         self
@@ -380,7 +380,7 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
 
 impl<T> Printable for MultiSelect<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let out = default();
+        let mut out = ColoredStrings::default();
         self.formatter.format(self, renderer.draw_time(), &mut out);
         renderer.print(out);
         Ok(())

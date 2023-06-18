@@ -216,7 +216,7 @@ impl Typeable<KeyEvent> for Text<'_> {
 impl Printable for Text<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let (text, cursor) = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text)?;
+        renderer.print(text.into())?;
         renderer.set_cursor(cursor)
     }
 }

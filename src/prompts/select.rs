@@ -348,7 +348,7 @@ impl<T> Typeable<KeyEvent> for Select<'_, T> {
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let text = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text)
+        renderer.print(text.into())
     }
 }
 

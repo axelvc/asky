@@ -107,7 +107,7 @@ impl Typeable<KeyEvent> for Toggle<'_> {
 impl Printable for Toggle<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let text = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text)
+        renderer.print(text.into())
     }
 }
 
