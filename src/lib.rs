@@ -102,7 +102,7 @@
 // #![deny(missing_docs)]
 
 mod prompts;
-mod utils;
+pub mod utils;
 
 #[cfg(feature="bevy")]
 pub mod bevy;

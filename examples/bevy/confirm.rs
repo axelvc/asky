@@ -1,4 +1,6 @@
 use asky::Confirm;
+use asky::bevy::*;
+use asky::utils::renderer::*;
 
 // fn main() -> std::io::Result<()> {
 //     if Confirm::new("Do you like coffe?").prompt()? {
@@ -16,7 +18,6 @@ use bevy::{
     input::keyboard::KeyboardInput,
 };
 
-use asky::bevy::ColoredBuilder;
 use asky::Typeable;
 
 use asky::DrawTime;
@@ -50,6 +51,15 @@ struct FpsText;
 struct ColorText;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+
+    let settings = BevyAskySettings { style:
+        TextStyle {
+            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+            font_size: 100.0,
+            color: Color::WHITE,
+        },
+    };
+    commands.insert_resource(settings);
     // UI camera
     commands.spawn(Camera2dBundle::default());
     // Text with one section
@@ -124,41 +134,35 @@ fn asky_confirm_system(
     keys: Res<Input<KeyCode>>,
     mut key_evr: EventReader<KeyboardInput>,
     asset_server: Res<AssetServer>,
+    asky_settings: Res<BevyAskySettings>,
+    mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
     mut query: Query<(Entity, &mut Text, &mut Confirm<'static>)>) {
-
-    let builder = ColoredBuilder { style:
-        TextStyle {
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-            font_size: 100.0,
-            color: Color::WHITE,
-        },
-    };
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
     'outer: for (entity, mut text, mut confirm) in query.iter_mut() {
         for key in key_event.key_codes.iter() {
             if confirm.handle_key(*key) {
                 // It's done.
-                // let mut out = ColoredStrings::default();
-                // builder.to_text(out, &mut text);
-                // XXX: text.sections.clear() doesn't work.
-                text.sections.clear();
-                // text.sections.push(TextSection::new("waaah".to_owned(), builder.style.clone()));
+                // text.sections.clear();
                 commands.entity(entity).remove::<Confirm<'static>>();
-                // commands.entity(entity).remove::<Text>();
-                continue 'outer;
+                // render_state.clear();
+                let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
+                // render_state.draw_time == DrawTime::Last;
+                renderer.update_draw_time();
             }
         }
-        // if confirm.active {
-
+        let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
         let mut out = ColoredStrings::default();
-        // confirm.formatter.format(confirm, renderer.draw_time(), &mut out);
-        confirm.formatter.format(&confirm, DrawTime::Update, &mut out);
-        builder.to_text(out, &mut text);
-        // }
+        let draw_time = renderer.draw_time();
+        confirm.formatter.format(&confirm, draw_time, &mut out);
+        renderer.print(out);
+        if draw_time == DrawTime::First {
+            renderer.update_draw_time();
+        } else if draw_time == DrawTime::Last {
+            render_state.clear();
+        }
     }
-
 }
 
 fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<ColorText>>) {

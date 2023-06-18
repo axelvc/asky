@@ -30,36 +30,9 @@ impl<'w> KeyEvent<'w> {
     }
 }
 
-#[derive(Resource)]
-pub struct ColoredBuilder {
+#[derive(Resource, Debug)]
+pub struct BevyAskySettings {
     pub style: TextStyle,
-}
-
-impl ColoredBuilder {
-
-    pub fn to_text(&self, strings: ColoredStrings, out: &mut Text) {
-        out.sections.clear();
-        for s in strings.0.iter() {
-            let mut style = self.style.clone();
-            if let Some(fg) = s.fgcolor() {
-                style.color = convert(fg);
-            }
-            out.sections.push(TextSection::new(s.input.to_owned(), style));
-        }
-    }
-    pub fn build_text_bundle(&self, s: ColoredString) -> TextBundle {
-        let mut style = self.style.clone();
-        if let Some(fg) = s.fgcolor() {
-            style.color = convert(fg);
-        }
-        let mut bundle = TextBundle::from_section(
-                format!("{}", s),
-                style);
-        if let Some(bg) = s.bgcolor() {
-            bundle.background_color = BackgroundColor(convert(bg));
-        }
-        bundle
-    }
 }
 
 fn convert(c: Colored) -> Color {
@@ -92,18 +65,53 @@ pub struct BevyRendererState {
     cursor_pos: [usize; 2],
 }
 
+impl BevyRendererState {
+    pub fn clear(&mut self) {
+        self.draw_time = DrawTime::First;
+        self.cursor_visible = true;
+        self.cursor_pos[0] = 0;
+        self.cursor_pos[1] = 0;
+    }
+}
+
 #[derive(Debug)]
 pub struct BevyRenderer<'a> {
     state: &'a mut BevyRendererState,
     text: &'a mut Text,
+    settings: &'a BevyAskySettings,
 }
 
 impl<'a> BevyRenderer<'a> {
-    pub fn new(state: &'a mut BevyRendererState, text: &'a mut Text) -> Self {
+    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState, text: &'a mut Text) -> Self {
         BevyRenderer {
+            settings,
             state,
             text
         }
+    }
+
+    pub fn to_text(&mut self, strings: ColoredStrings) {
+        self.text.sections.clear();
+        for s in strings.0.iter() {
+            let mut style = self.settings.style.clone();
+            if let Some(fg) = s.fgcolor() {
+                style.color = convert(fg);
+            }
+            self.text.sections.push(TextSection::new(s.input.to_owned(), style));
+        }
+    }
+    pub fn build_text_bundle(&self, s: ColoredString) -> TextBundle {
+        let mut style = self.settings.style.clone();
+        if let Some(fg) = s.fgcolor() {
+            style.color = convert(fg);
+        }
+        let mut bundle = TextBundle::from_section(
+                format!("{}", s),
+                style);
+        if let Some(bg) = s.bgcolor() {
+            bundle.background_color = BackgroundColor(convert(bg));
+        }
+        bundle
     }
 }
 
@@ -120,7 +128,8 @@ impl<'a> Renderer for BevyRenderer<'a> {
         }
     }
 
-    fn print(&mut self, mut text: ColoredStrings) -> io::Result<()> {
+    fn print(&mut self, mut strings: ColoredStrings) -> io::Result<()> {
+        self.to_text(strings);
         // if self.draw_time != DrawTime::First {
         //     queue!(
         //         self.out,
