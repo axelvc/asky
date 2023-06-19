@@ -101,7 +101,7 @@ impl<'a> Password<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a,
+        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self

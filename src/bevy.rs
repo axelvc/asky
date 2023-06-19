@@ -7,18 +7,26 @@ use crate::utils::renderer::{Renderer, Printable};
 use std::io;
 use colored::{Colorize, ColoredString, ColoredStrings, Color as Colored, Color::TrueColor};
 use std::ops::{Deref, DerefMut};
+use std::marker::PhantomData;
 
 #[derive(Component, Debug)]
-pub struct Asky<T: Printable + Typeable<KeyCode>>(pub T);
+// pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
+pub struct Asky<'a, T: Printable + Typeable<KeyEvent<'a>>>(T, PhantomData<&'a T>);
 
-impl<T: Printable + Typeable<KeyCode>> Deref for Asky<T> {
+impl<'a, T: Printable + Typeable<KeyEvent<'a>>> Asky<'a,T> {
+    fn new(x: T) -> Self {
+        Asky(x, PhantomData)
+    }
+}
+
+impl<T: Printable + for<'a> Typeable<KeyEvent<'a>>> Deref for Asky<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T: Printable + Typeable<KeyCode>> DerefMut for Asky<T> {
+impl<T: Printable + for<'a> Typeable<KeyEvent<'a>>> DerefMut for Asky<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -27,7 +35,17 @@ impl<T: Printable + Typeable<KeyCode>> DerefMut for Asky<T> {
 pub struct KeyEvent<'w> {
     pub chars: Vec<char>,
     pub keys: &'w Res<'w, Input<KeyCode>>,
-    pub key_codes: Vec<KeyCode>,
+    pub codes: Vec<KeyCode>,
+}
+
+impl<T: Typeable<KeyCode>> Typeable<&KeyEvent<'_>> for T {
+    fn handle_key(&mut self, key: &KeyEvent<'_>) -> bool {
+        let mut result = false;
+        for code in &key.codes {
+            result |= self.handle_key(*code);
+        }
+        return result;
+    }
 }
 
 impl<'w> KeyEvent<'w> {
@@ -39,7 +57,7 @@ impl<'w> KeyEvent<'w> {
         Self {
             chars: char_evr.iter().map(|e| e.char).collect(),
             keys,
-            key_codes: key_evr.iter().filter_map(|e| if e.state == bevy::input::ButtonState::Pressed {
+            codes: key_evr.iter().filter_map(|e| if e.state == bevy::input::ButtonState::Pressed {
                 e.key_code
             } else {
                 None

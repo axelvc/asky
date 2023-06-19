@@ -1,10 +1,16 @@
 use std::io;
 
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+#[cfg(feature="bevy")]
+use crate::bevy::*;
+
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -68,8 +74,8 @@ impl LineInput {
 
 // endregion: TextInput
 
-pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a;
+pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync;
+type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a + Send + Sync;
 
 /// Prompt to get one-line user input.
 ///
@@ -148,7 +154,7 @@ impl<'a> Text<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a,
+        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -159,7 +165,7 @@ impl<'a> Text<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a,
+        F: Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -208,6 +214,35 @@ impl Typeable<KeyEvent> for Text<'_> {
             KeyCode::Right => self.input.move_cursor(Direction::Right),
             _ => (),
         };
+
+        submit
+    }
+}
+
+#[cfg(feature="bevy")]
+impl Typeable<KeyEvent<'_>> for Text<'_> {
+    fn handle_key(&mut self, key: KeyEvent) -> bool {
+        let mut submit = false;
+
+        for c in key.chars.iter() {
+            self.input.insert(*c);
+        }
+
+        for code in key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
 
         submit
     }
