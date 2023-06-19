@@ -1,4 +1,4 @@
-use asky::Confirm;
+use asky::{Confirm, Toggle};
 use asky::bevy::*;
 use asky::utils::renderer::*;
 
@@ -38,7 +38,8 @@ fn main() {
         .add_startup_system(setup)
         .add_system(text_update_system)
         .add_system(text_color_system)
-        .add_system(asky_confirm_system)
+        .add_system(asky_confirm_system::<Confirm>)
+        .add_system(asky_confirm_system::<Toggle>)
         .run();
 }
 
@@ -108,6 +109,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         FpsText,
     ));
     let confirm: Confirm<'static> = Confirm::new("Hi?");
+    let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
 
     // Text with multiple sections
     commands.spawn((
@@ -124,12 +126,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ]),
         //Confirm::new("Do you like coffee?")
     ))
-    .insert(Asky(confirm))
+    // .insert(Asky(confirm))
+    .insert(Asky(toggle))
         ;
 }
 
-// fn asky_confirm_system<T: Printable + Typeable<KeyCode>>(
-fn asky_confirm_system(
+fn asky_confirm_system<T: Printable + Typeable<KeyCode> + Send + Sync + 'static>(
+// fn asky_confirm_system(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
     keys: Res<Input<KeyCode>>,
@@ -138,14 +141,14 @@ fn asky_confirm_system(
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(Entity, &mut Text, &mut Asky<Confirm<'static>>, Option<&Children>)>) {
+    mut query: Query<(Entity, &mut Text, &mut Asky<T>, Option<&Children>)>) {
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
     'outer: for (entity, mut text, mut confirm, children) in query.iter_mut() {
         for key in key_event.key_codes.iter() {
             if confirm.handle_key(*key) {
                 // It's done.
-                commands.entity(entity).remove::<Asky<Confirm<'static>>>();
+                commands.entity(entity).remove::<Asky<T>>();
                 let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
                 renderer.update_draw_time();
             }

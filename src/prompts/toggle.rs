@@ -1,16 +1,21 @@
 use std::io;
+use colored::ColoredStrings;
 
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+
+type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to choose between two options.
 ///
@@ -44,6 +49,7 @@ pub struct Toggle<'a> {
     formatter: Box<Formatter<'a>>,
 }
 
+
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
     pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
@@ -51,7 +57,7 @@ impl<'a> Toggle<'a> {
             message,
             options,
             active: false,
-            formatter: Box::new(theme::fmt_toggle),
+            formatter: Box::new(theme::fmt_toggle2),
         }
     }
 
@@ -66,7 +72,7 @@ impl<'a> Toggle<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Toggle, DrawTime) -> String + 'a,
+        F: Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -104,10 +110,29 @@ impl Typeable<KeyEvent> for Toggle<'_> {
     }
 }
 
+#[cfg(feature="bevy")]
+impl Typeable<KeyCode> for Toggle<'_> {
+    fn handle_key(&mut self, key: KeyCode) -> bool {
+        let mut submit = false;
+
+        match key {
+            // update value
+            KeyCode::Left | KeyCode::H => self.active = false,
+            KeyCode::Right | KeyCode::L => self.active = true,
+            // submit current/initial value
+            KeyCode::Return | KeyCode::Back => submit = true,
+            _ => (),
+        }
+
+        submit
+    }
+}
+
 impl Printable for Toggle<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text.into())
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
     }
 }
 

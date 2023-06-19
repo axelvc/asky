@@ -38,6 +38,17 @@ pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
     .join("\n")
 }
 
+pub fn fmt_toggle2(prompt: &Toggle, draw_time: DrawTime, out: &mut ColoredStrings) {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(prompt.message, prompt.options[prompt.active as usize], out);
+        return;
+    }
+
+    fmt_message2(prompt.message, out);
+    out.push("\n".into());
+    fmt_toggle_options2(prompt.options, prompt.active, out);
+}
+
 pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
         return fmt_last_message(prompt.message, &prompt.options[prompt.input.focused].title);
@@ -170,9 +181,11 @@ pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'
 // region: toggle
 
 fn fmt_toggle_options(options: [&str; 2], active: bool) -> String {
-    format!("{}", fmt_toggle_options2(options, active))
+    let mut out = ColoredStrings::default();
+    fmt_toggle_options2(options, active, &mut out);
+    format!("{}", out)
 }
-fn fmt_toggle_options2(options: [&str; 2], active: bool) -> ColoredStrings {
+fn fmt_toggle_options2(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {
@@ -181,11 +194,12 @@ fn fmt_toggle_options2(options: [&str; 2], active: bool) -> ColoredStrings {
         }
     };
 
-    ColoredStrings(vec!(
+    out.extend(
+        [
         fmt_option(options[0], !active),
         " ".into(),
         fmt_option(options[1], active)
-    ))
+    ]);
 }
 
 pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
