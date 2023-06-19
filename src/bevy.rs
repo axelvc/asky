@@ -2,9 +2,27 @@ use bevy::prelude::*;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use crate::DrawTime;
-use crate::utils::renderer::Renderer;
+use crate::Typeable;
+use crate::utils::renderer::{Renderer, Printable};
 use std::io;
 use colored::{Colorize, ColoredString, ColoredStrings, Color as Colored, Color::TrueColor};
+use std::ops::{Deref, DerefMut};
+
+#[derive(Component, Debug)]
+pub struct Asky<T: Printable + Typeable<KeyCode>>(pub T);
+
+impl<T: Printable + Typeable<KeyCode>> Deref for Asky<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T: Printable + Typeable<KeyCode>> DerefMut for Asky<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+}
 
 pub struct KeyEvent<'w> {
     pub chars: Vec<char>,

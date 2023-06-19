@@ -124,10 +124,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ]),
         //Confirm::new("Do you like coffee?")
     ))
-    .insert(confirm)
+    .insert(Asky(confirm))
         ;
 }
 
+// fn asky_confirm_system<T: Printable + Typeable<KeyCode>>(
 fn asky_confirm_system(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
@@ -137,26 +138,21 @@ fn asky_confirm_system(
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(Entity, &mut Text, &mut Confirm<'static>, Option<&Children>)>) {
+    mut query: Query<(Entity, &mut Text, &mut Asky<Confirm<'static>>, Option<&Children>)>) {
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
     'outer: for (entity, mut text, mut confirm, children) in query.iter_mut() {
         for key in key_event.key_codes.iter() {
             if confirm.handle_key(*key) {
                 // It's done.
-                // text.sections.clear();
-                commands.entity(entity).remove::<Confirm<'static>>();
-                // render_state.clear();
+                commands.entity(entity).remove::<Asky<Confirm<'static>>>();
                 let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
-                // render_state.draw_time == DrawTime::Last;
                 renderer.update_draw_time();
             }
         }
         let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
-        let mut out = ColoredStrings::default();
         let draw_time = renderer.draw_time();
-        confirm.formatter.format(&confirm, draw_time, &mut out);
-        renderer.print(out);
+        confirm.draw(&mut renderer);
         let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
         commands.entity(entity).remove_children(&children);
         for child in children {

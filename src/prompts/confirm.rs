@@ -166,8 +166,6 @@ impl Printable for Confirm<'_> {
         let mut out = ColoredStrings::default();
         self.formatter.format(self, renderer.draw_time(), &mut out);
         renderer.print(out)
-        // let text = format!("{}", out);
-        // renderer.print(text)
     }
 }
 
