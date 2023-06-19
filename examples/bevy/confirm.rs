@@ -134,7 +134,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ;
 }
 
-fn asky_confirm_system<T: Printable + for<'a> Typeable<KeyEvent<'a>> + Send + Sync + 'static>(
+fn asky_confirm_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync + 'static>(
 // fn asky_confirm_system(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
@@ -146,7 +146,7 @@ fn asky_confirm_system<T: Printable + for<'a> Typeable<KeyEvent<'a>> + Send + Sy
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
     mut query: Query<(Entity, &mut Text, &mut Asky<T>, Option<&Children>)>) {
 
-    let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
+    let key_event = asky::bevy::KeyEvent::new(char_evr, key_evr);
     'outer: for (entity, mut text, mut confirm, children) in query.iter_mut() {
         if confirm.handle_key(&key_event) {
             // It's done.

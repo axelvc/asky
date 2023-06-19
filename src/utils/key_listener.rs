@@ -12,7 +12,7 @@ use super::renderer::{Printable, Renderer};
 /// Trait used for the prompts to handle key events
 pub trait Typeable<T> {
     /// Returns `true` if it should end to listen for more key events
-    fn handle_key(&mut self, key: T) -> bool;
+    fn handle_key(&mut self, key: &T) -> bool;
 }
 
 #[cfg(feature="terminal")]

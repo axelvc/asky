@@ -112,7 +112,7 @@ impl Typeable<KeyEvent> for Toggle<'_> {
 
 #[cfg(feature="bevy")]
 impl Typeable<KeyCode> for Toggle<'_> {
-    fn handle_key(&mut self, key: KeyCode) -> bool {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;
 
         match key {

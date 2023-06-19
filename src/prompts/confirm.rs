@@ -142,7 +142,7 @@ impl Typeable<KeyEvent> for Confirm<'_> {
 
 #[cfg(feature="bevy")]
 impl Typeable<KeyCode> for Confirm<'_> {
-    fn handle_key(&mut self, key: KeyCode) -> bool {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;
 
         match key {

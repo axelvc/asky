@@ -8,6 +8,8 @@ use crate::bevy::*;
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use colored::{Colorize, ColoredString, ColoredStrings};
+
 use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
 use crate::utils::key_listener;
@@ -75,7 +77,7 @@ impl LineInput {
 // endregion: TextInput
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a + Send + Sync;
+type Formatter<'a> = dyn Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input.
 ///
@@ -127,7 +129,7 @@ impl<'a> Text<'a> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_text),
+            formatter: Box::new(theme::fmt_text2),
         }
     }
 
@@ -165,7 +167,7 @@ impl<'a> Text<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a + Send + Sync,
+        F: Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -220,15 +222,17 @@ impl Typeable<KeyEvent> for Text<'_> {
 }
 
 #[cfg(feature="bevy")]
-impl Typeable<KeyEvent<'_>> for Text<'_> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
+impl Typeable<KeyEvent> for Text<'_> {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
-            self.input.insert(*c);
+            if ! c.is_control() {
+                self.input.insert(*c);
+            }
         }
 
-        for code in key.codes {
+        for code in &key.codes {
             match code {
                 // submit
                 KeyCode::Return => submit = self.validate_to_submit(),
@@ -250,8 +254,9 @@ impl Typeable<KeyEvent<'_>> for Text<'_> {
 
 impl Printable for Text<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text.into())?;
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
         renderer.set_cursor(cursor)
     }
 }

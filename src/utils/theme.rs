@@ -111,6 +111,27 @@ pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [usize; 2]) {
     )
 }
 
+pub fn fmt_text2(prompt: &Text, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(prompt.message, &prompt.input.value, out);
+        return [0, 0];
+    }
+
+    fmt_line_message2(prompt.message, &prompt.default_value, out);
+    out.push("\n".into());
+    fmt_line_input2(
+        &prompt.input.value,
+        &prompt.placeholder,
+        &prompt.validator_result,
+        false,
+        out
+    );
+    out.push("\n".into());
+    fmt_line_validator2(&prompt.validator_result, out);
+    get_cursor_position(prompt.input.col)
+
+}
+
 pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (fmt_last_message(prompt.message, "…"), [0, 0]);
@@ -222,6 +243,16 @@ pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredSt
 
 // region: line
 
+fn fmt_line_message2(msg: &str, default_value: &Option<&str>, out: &mut ColoredStrings) {
+    let value = match default_value {
+        Some(value) => format!("Default: {}", value).bright_black(),
+        None => "".normal(),
+    };
+    fmt_message2(msg, out);
+    out.push(" ".into());
+    out.push(value);
+}
+
 fn fmt_line_message(msg: &str, default_value: &Option<&str>) -> String {
     let value = match default_value {
         Some(value) => format!("Default: {}", value).bright_black(),
@@ -251,10 +282,39 @@ fn fmt_line_input(
     format!("{} {}", prefix, input)
 }
 
+fn fmt_line_input2(
+    input: &str,
+    placeholder: &Option<&str>,
+    validator_result: &Result<(), &str>,
+    is_number: bool,
+    out: &mut ColoredStrings
+) {
+    let prefix = match validator_result {
+        Ok(_) => "›".blue(),
+        Err(_) => "›".red(),
+    };
+
+    let input = input.to_owned();
+    let input = match (input.is_empty(), is_number) {
+        (true, _) => placeholder.map(|s| s.to_owned()).unwrap_or_default().bright_black(),
+        (false, true) => input.yellow(),
+        (false, false) => input.normal(),
+    };
+    out.push(prefix);
+    out.push(" ".into());
+    out.push(input);
+}
+
 fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
     match validator_result {
         Ok(_) => String::new(),
         Err(e) => format!("{}", e.red()),
+    }
+}
+
+fn fmt_line_validator2(validator_result: &Result<(), &str>, out: &mut ColoredStrings) {
+    if let Err(e) = validator_result {
+       out.push(e.clone().to_owned().red());
     }
 }
 
