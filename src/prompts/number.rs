@@ -16,11 +16,12 @@ use crate::utils::{
     theme,
 };
 
+use colored::{Colorize, ColoredString, ColoredStrings};
 use super::text::{Direction, LineInput};
 
 type InputValidator<'a, T> =
-    dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a;
-type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime) -> (String, [usize; 2]) + 'a;
+    dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a + Send + Sync;
+type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input of numbers.
 ///
@@ -79,7 +80,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_number),
+            formatter: Box::new(theme::fmt_number2),
         }
     }
 
@@ -106,7 +107,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str, Result<T, T::Err>) -> Result<(), &'a str> + 'static,
+        F: Fn(&str, Result<T, T::Err>) -> Result<(), &'a str> + 'static + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -117,7 +118,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Number<T>, DrawTime) -> (String, [usize; 2]) + 'a,
+        F: Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -183,39 +184,42 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
-// #[cfg(feature="bevy")]
-// impl<T: NumLike> Typeable<KeyEvent<'_, '_>> for Number<'_, T> {
-//     fn handle_key(&mut self, mut key: KeyEvent) -> bool {
-//         let mut submit = false;
+#[cfg(feature="bevy")]
+impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
 
-//         for code in key.codes() {
-//             match code {
-//                 // submit
-//                 KeyCode::Return => submit = self.validate_to_submit(),
-//                 // remove delete
-//                 KeyCode::Back => self.input.backspace(),
-//                 KeyCode::Delete => self.input.delete(),
-//                 // move cursor
-//                 KeyCode::Left => self.input.move_cursor(Direction::Left),
-//                 KeyCode::Right => self.input.move_cursor(Direction::Right),
-//                 _ => (),
-//             }
-//         }
+        for c in key.chars.iter() {
+            if ! c.is_control() {
+                self.insert(*c);
+            }
+        }
 
-//         // type
-//         for c in key.chars.iter() {
-//             self.insert(*c);
-//         }
+        for code in &key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
 
-
-//         submit
-//     }
-// }
+        submit
+    }
+}
 
 impl<T: NumLike> Printable for Number<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text.into())?;
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
         renderer.set_cursor(cursor)
     }
 }

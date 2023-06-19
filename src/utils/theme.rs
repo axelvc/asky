@@ -179,6 +179,26 @@ pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (Strin
     )
 }
 
+pub fn fmt_number2<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(prompt.message, &prompt.input.value, out);
+        return [0, 0];
+    }
+
+    fmt_line_message2(prompt.message, &prompt.default_value.as_deref(), out);
+    out.push("\n".into());
+    fmt_line_input2(
+        &prompt.input.value,
+        &prompt.placeholder,
+        &prompt.validator_result,
+        false,
+        out
+    );
+    out.push("\n".into());
+    fmt_line_validator2(&prompt.validator_result, out);
+    get_cursor_position(prompt.input.col)
+}
+
 // region: general
 
 fn fmt_message(message: &str) -> String {
