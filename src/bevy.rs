@@ -79,6 +79,7 @@ pub struct BevyRenderer<'a> {
     state: &'a mut BevyRendererState,
     text: &'a mut Text,
     settings: &'a BevyAskySettings,
+    pub children: Vec<TextBundle>,
 }
 
 impl<'a> BevyRenderer<'a> {
@@ -86,7 +87,8 @@ impl<'a> BevyRenderer<'a> {
         BevyRenderer {
             settings,
             state,
-            text
+            text,
+            children: Vec::new()
         }
     }
 
@@ -128,8 +130,14 @@ impl<'a> Renderer for BevyRenderer<'a> {
         }
     }
 
-    fn print(&mut self, mut strings: ColoredStrings) -> io::Result<()> {
-        self.to_text(strings);
+    fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
+        // for bundle in strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>() {
+        //     self.children.push(bundle);
+        // }
+        self.children.extend(strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>());
+        // self.children.extend(bundles);
+
+        // self.to_text(strings);
         // if self.draw_time != DrawTime::First {
         //     queue!(
         //         self.out,

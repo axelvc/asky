@@ -137,10 +137,10 @@ fn asky_confirm_system(
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(Entity, &mut Text, &mut Confirm<'static>)>) {
+    mut query: Query<(Entity, &mut Text, &mut Confirm<'static>, Option<&Children>)>) {
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, &keys, key_evr);
-    'outer: for (entity, mut text, mut confirm) in query.iter_mut() {
+    'outer: for (entity, mut text, mut confirm, children) in query.iter_mut() {
         for key in key_event.key_codes.iter() {
             if confirm.handle_key(*key) {
                 // It's done.
@@ -157,6 +157,13 @@ fn asky_confirm_system(
         let draw_time = renderer.draw_time();
         confirm.formatter.format(&confirm, draw_time, &mut out);
         renderer.print(out);
+        let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+        commands.entity(entity).remove_children(&children);
+        for child in children {
+            commands.entity(child).despawn();
+        }
+        let new_children: Vec<Entity> = renderer.children.drain(0..).map(|b| commands.spawn(b).id()).collect();
+        commands.entity(entity).push_children(&new_children);
         if draw_time == DrawTime::First {
             renderer.update_draw_time();
         } else if draw_time == DrawTime::Last {
