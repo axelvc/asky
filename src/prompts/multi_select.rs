@@ -21,142 +21,8 @@ use colored::{Colorize, ColoredString, ColoredStrings};
 use super::select::{Direction, SelectInput, SelectOption};
 use crate::utils::theme::*;
 
-// type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime) -> String + 'a;
+type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
-struct DefaultFormatter;
-
-impl DefaultFormatter {
-
-    fn fmt_message(&self, msg: &str, min: Option<usize>, max: Option<usize>, out: &mut ColoredStrings) {
-        let min_max = match (min, max) {
-            (None, None) => String::new(),
-            (None, Some(max)) => format!("Max: {}", max),
-            (Some(min), None) => format!("Min: {}", min),
-            (Some(min), Some(max)) => format!("Min: {} · Max: {}", min, max),
-        }
-        .bright_black();
-        fmt_message2(msg, out);
-        out.0.extend([" ".into(), min_max]);
-    }
-
-    fn fmt_select_page_options<T>(&self,
-    options: &[SelectOption<T>],
-    input: &SelectInput,
-    is_multiple: bool,
-    out: &mut ColoredStrings
-) {
-    let items_per_page = input.items_per_page;
-    let total = input.total_items;
-
-    let page_len = items_per_page.min(total);
-    let page_start = input.get_page() * items_per_page;
-    let page_end = (page_start + page_len).min(total);
-    let page_focused = input.focused % items_per_page;
-
-    let mut page_options: Vec<ColoredStrings> = options[page_start..page_end]
-        .iter()
-        .enumerate()
-        .map(|(i, option)| { let mut out = ColoredStrings::default();
-                             self.fmt_select_option(option, page_focused == i, is_multiple, &mut out);
-                             out })
-        .collect();
-
-    page_options.resize(page_len, ColoredStrings::default());
-    // out.0.extend((*page_options.as_slice()).join("\n".into().into()));
-    for page in page_options {
-        out.0.extend(page.0);
-        out.0.push("\n".into());
-    }
-}
-
-fn fmt_select_pagination(&self, page: usize, pages: usize, out: &mut ColoredStrings) {
-    if pages == 1 {
-        return;
-    }
-
-    let icon = "•";
-
-    out.0.extend([
-        "\n  ".into(),
-        icon.repeat(page).bright_black(),
-        icon.into(),
-        icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
-        ]);
-}
-
-fn fmt_select_option<T>(&self, option: &SelectOption<T>, focused: bool, multiple: bool, out: &mut ColoredStrings) {
-    let prefix = if multiple {
-        let prefix = match (option.active, focused) {
-            (true, true) => "◉",
-            (true, false) => "●",
-            _ => "○",
-        };
-
-        match (focused, option.active, option.disabled) {
-            (true, _, true) => prefix.red(),
-            (true, _, false) => prefix.blue(),
-            (false, true, _) => prefix.normal(),
-            (false, false, _) => prefix.bright_black(),
-        }
-    } else {
-        match (focused, option.disabled) {
-            (false, _) => "○".bright_black(),
-            (true, true) => "○".red(),
-            (true, false) => "●".blue(),
-        }
-    };
-
-    let title = option.title.clone();
-    let title = match (option.disabled, focused) {
-        (true, _) => title.bright_black().strikethrough(),
-        (false, true) => title.blue(),
-        (false, false) => title.normal(),
-    };
-
-    let make_description = |s: &str| format!(" · {}", s).bright_black();
-    let description = match (focused, option.disabled, option.description) {
-        (true, true, _) => make_description("(Disabled)"),
-        (true, false, Some(description)) => make_description(description),
-        _ => "".normal(),
-    };
-
-    out.0.extend([prefix, " ".into(), title, " ".into(), description]);
-    // format!("{} {} {}", prefix, title, description)
-}
-
-}
-
-pub trait Formatter<T> {
-    fn format(&self, prompt: &MultiSelect<T>, time: DrawTime, out: &mut ColoredStrings<'_>);
-}
-
-impl<T> Formatter<T> for DefaultFormatter {
-
-    fn format(&self, prompt: &MultiSelect<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
-        if draw_time == DrawTime::Last {
-            return fmt_last_message2(
-                prompt.message,
-                &format!(
-                    "[{}]",
-                    prompt
-                        .options
-                        .iter()
-                        .filter(|opt| opt.active)
-                        .map(|opt| opt.title.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                ),
-                out
-            );
-        }
-
-        self.fmt_message(prompt.message, prompt.min, prompt.max, out);
-        out.0.push("\n".into());
-        self.fmt_select_page_options(&prompt.options, &prompt.input, true, out);
-        out.0.push("\n".into());
-        self.fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages(), out);
-    }
-}
 /// Prompt to select multiple items from a list.
 ///
 /// To allow only one item to be selected, it is recommended to use [`Select`] struct instead.
@@ -195,7 +61,7 @@ pub struct MultiSelect<'a, T> {
     /// Input state.
     pub input: SelectInput,
     selected_count: usize,
-    formatter: Box<dyn Formatter<T>>,
+    formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> MultiSelect<'a, T> {
@@ -237,7 +103,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
             max: None,
             selected_count: 0,
             input: SelectInput::new(options_len),
-            formatter: Box::new(DefaultFormatter)
+            formatter: Box::new(theme::fmt_multi_select2)
         }
     }
 
@@ -280,7 +146,9 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// Set custom closure to format the prompt.
     ///
     /// See: [`Customization`](index.html#customization).
-    pub fn format<F: Formatter<T> + 'static>(&mut self, formatter: F) -> &mut Self
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync
     {
         self.formatter = Box::new(formatter);
         self
@@ -354,34 +222,31 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     }
 }
 
-// #[cfg(feature="bevy")]
-// impl<T> Typeable<KeyEvent<'_, '_>> for MultiSelect<'_, T> {
-//     fn handle_key(&mut self, mut key: KeyEvent) -> bool {
-//         let mut submit = false;
+#[cfg(feature="bevy")]
+impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        let mut submit = false;
 
-//         for code in key.codes() {
-//             match code {
-//                 // submit
-//                 KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
-//                 // select/unselect
-//                 KeyCode::Space => self.toggle_focused(),
-//                 // update focus
-//                 KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-//                 KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-//                 KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-//                 KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
-//                 _ => (),
-//             }
-//         }
+        match key {
+            // submit
+            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            KeyCode::Space => self.toggle_focused(),
+            // update value
+            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
 
-//         submit
-//     }
-// }
+        submit
+    }
+}
 
 impl<T> Printable for MultiSelect<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
-        self.formatter.format(self, renderer.draw_time(), &mut out);
+        (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out);
         Ok(())
     }

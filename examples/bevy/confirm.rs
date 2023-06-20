@@ -1,4 +1,4 @@
-use asky::{Confirm, Toggle, Number, Select, Password};
+use asky::{Confirm, Toggle, Number, Select, Password, MultiSelect};
 use asky::bevy::*;
 use asky::utils::renderer::*;
 
@@ -45,6 +45,7 @@ fn main() {
         .add_system(asky_confirm_system::<Number<f32>>)
         .add_system(asky_confirm_system::<Select<'static, &'static str>>)
         .add_system(asky_confirm_system::<Password>)
+        .add_system(asky_confirm_system::<MultiSelect<'static, &'static str>>)
         .run();
 }
 
@@ -93,26 +94,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
         ColorText,
     ));
-    // Text with multiple sections
-    commands.spawn((
-        // Create a TextBundle that has a Text with a list of sections.
-        TextBundle::from_sections([
-            TextSection::new(
-                "FPS: ",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    font_size: 60.0,
-                    color: Color::WHITE,
-                },
-            ),
-            TextSection::from_style(TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: 60.0,
-                color: Color::GOLD,
-            }),
-        ]),
-        FpsText,
-    ));
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
@@ -120,6 +101,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let float: Number<'static, f32> = Number::new("Float?");
     let select: Select<'static, &'static str> = Select::new("Favorite animal?", ["dog", "cow", "cat"]);
     let password: Password<'static> = Password::new("Password: ");
+
+    let multi_select: MultiSelect<'static, &'static str> = MultiSelect::new("Favorite animal?", ["dog", "cow", "cat"]);
 
     // Text with multiple sections
     commands.spawn((
@@ -142,7 +125,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // .insert(Asky(number))
     // .insert(Asky(float))
     // .insert(Asky(select))
-    .insert(Asky(password))
+    // .insert(Asky(password))
+    .insert(Asky(multi_select))
         ;
 }
 

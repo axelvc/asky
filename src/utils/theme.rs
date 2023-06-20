@@ -100,6 +100,32 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
     .join("\n")
 }
 
+pub fn fmt_multi_select2<T>(prompt: &MultiSelect<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(
+            prompt.message,
+            &format!(
+                "[{}]",
+                prompt
+                    .options
+                    .iter()
+                    .filter(|opt| opt.active)
+                    .map(|opt| opt.title.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+            out
+        );
+        return;
+    }
+
+    fmt_multi_select_message2(prompt.message, prompt.min, prompt.max, out);
+    out.push("\n".into());
+    fmt_select_page_options2(&prompt.options, &prompt.input, true, out);
+    out.push("\n".into());
+    fmt_select_pagination2(prompt.input.get_page(), prompt.input.count_pages(), out);
+}
+
 pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (
@@ -393,6 +419,20 @@ fn fmt_multi_select_message(msg: &str, min: Option<usize>, max: Option<usize>) -
     .bright_black();
 
     format!("{} {}", fmt_message(msg), min_max)
+}
+
+fn fmt_multi_select_message2(msg: &str, min: Option<usize>, max: Option<usize>, out: &mut ColoredStrings) {
+    let min_max = match (min, max) {
+        (None, None) => String::new(),
+        (None, Some(max)) => format!("Max: {}", max),
+        (Some(min), None) => format!("Min: {}", min),
+        (Some(min), Some(max)) => format!("Min: {} · Max: {}", min, max),
+    }
+    .bright_black();
+
+    fmt_message2(msg, out);
+    out.push(" ".into());
+    out.push(min_max);
 }
 
 fn fmt_select_page_options<T>(
