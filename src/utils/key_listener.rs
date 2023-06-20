@@ -38,7 +38,7 @@ pub fn listen(prompt: &mut (impl Printable + Typeable<KeyEvent>), hide_cursor: b
 
         if let Event::Key(key) = key {
             handle_abort(key, &mut renderer);
-            submit = prompt.handle_key(key);
+            submit = prompt.handle_key(&key);
             prompt.draw(&mut renderer)?;
         }
     }

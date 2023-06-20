@@ -62,6 +62,19 @@ pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
     .join("\n")
 }
 
+pub fn fmt_select2<T>(prompt: &Select<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(prompt.message, &prompt.options[prompt.input.focused].title, out);
+        return;
+    }
+
+    fmt_message2(prompt.message, out);
+    out.push("\n".into());
+    fmt_select_page_options2(&prompt.options, &prompt.input, false, out);
+    out.push("\n".into());
+    fmt_select_pagination2(prompt.input.get_page(), prompt.input.count_pages(), out);
+}
+
 pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
         return fmt_last_message(
@@ -384,6 +397,39 @@ fn fmt_select_page_options<T>(
     page_options.join("\n")
 }
 
+fn fmt_select_page_options2<T>(
+    options: &[SelectOption<T>],
+    input: &SelectInput,
+    is_multiple: bool,
+    out: &mut ColoredStrings,
+) {
+    let items_per_page = input.items_per_page;
+    let total = input.total_items;
+
+    let page_len = items_per_page.min(total);
+    let page_start = input.get_page() * items_per_page;
+    let page_end = (page_start + page_len).min(total);
+    let page_focused = input.focused % items_per_page;
+
+    let mut page_options: Vec<Vec<ColoredString>> = options[page_start..page_end]
+        .iter()
+        .enumerate()
+        .map(|(i, option)| {
+            let mut o = ColoredStrings::default();
+            fmt_select_option2(option, page_focused == i, is_multiple, &mut o);
+            o.0
+        })
+        .collect();
+
+    page_options.resize(page_len, vec![]);
+    for page in page_options {
+        out.push("\n".into());
+        out.extend(page);
+    }
+    // let joined: Vec<ColoredString> = page_options.join::<ColoredString>("\n".into());
+    // out.extend(joined);
+}
+
 fn fmt_select_pagination(page: usize, pages: usize) -> String {
     if pages == 1 {
         return String::new();
@@ -397,6 +443,21 @@ fn fmt_select_pagination(page: usize, pages: usize) -> String {
         icon,
         icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
     )
+}
+
+fn fmt_select_pagination2(page: usize, pages: usize, out: &mut ColoredStrings) {
+    if pages == 1 {
+        return;
+    }
+
+    let icon = "•";
+
+    out.extend([
+        "\n  ".into(),
+        icon.repeat(page).bright_black(),
+        icon.into(),
+        icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
+        ]);
 }
 
 fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool) -> String {
@@ -436,6 +497,45 @@ fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool)
     };
 
     format!("{} {} {}", prefix, title, description)
+}
+
+fn fmt_select_option2<T>(option: &SelectOption<T>, focused: bool, multiple: bool, out: &mut ColoredStrings) {
+    let prefix = if multiple {
+        let prefix = match (option.active, focused) {
+            (true, true) => "◉",
+            (true, false) => "●",
+            _ => "○",
+        };
+
+        match (focused, option.active, option.disabled) {
+            (true, _, true) => prefix.red(),
+            (true, _, false) => prefix.blue(),
+            (false, true, _) => prefix.normal(),
+            (false, false, _) => prefix.bright_black(),
+        }
+    } else {
+        match (focused, option.disabled) {
+            (false, _) => "○".bright_black(),
+            (true, true) => "○".red(),
+            (true, false) => "●".blue(),
+        }
+    };
+
+    let title = option.title.to_owned();
+    let title = match (option.disabled, focused) {
+        (true, _) => title.bright_black().strikethrough(),
+        (false, true) => title.blue(),
+        (false, false) => title.normal(),
+    };
+
+    let make_description = |s: &str| format!(" · {}", s).bright_black();
+    let description = match (focused, option.disabled, option.description) {
+        (true, true, _) => make_description("(Disabled)"),
+        (true, false, Some(description)) => make_description(description),
+        _ => "".normal(),
+    };
+
+    out.extend([prefix, " ".into(), title, " ".into(), description]);
 }
 
 // endregion: select

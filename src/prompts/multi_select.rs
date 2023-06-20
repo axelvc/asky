@@ -334,7 +334,7 @@ impl<T> MultiSelect<'_, T> {
 
 #[cfg(feature="terminal")]
 impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {

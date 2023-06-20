@@ -16,6 +16,8 @@ use crate::utils::{
     theme,
 };
 
+use colored::{Colorize, ColoredString, ColoredStrings};
+
 pub enum Direction {
     Up,
     Down,
@@ -177,7 +179,7 @@ impl SelectInput {
 
 // endregion: SelectCursor
 
-type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
+type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to select an item from a list.
 ///
@@ -250,7 +252,7 @@ impl<'a, T: 'a> Select<'a, T> {
             message,
             options,
             input: SelectInput::new(options_len),
-            formatter: Box::new(theme::fmt_select),
+            formatter: Box::new(theme::fmt_select2),
         }
     }
 
@@ -277,7 +279,7 @@ impl<'a, T: 'a> Select<'a, T> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Select<T>, DrawTime) -> String + 'a,
+        F: Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -305,7 +307,7 @@ impl<T> Select<'_, T> {
 
 #[cfg(feature="terminal")]
 impl<T> Typeable<KeyEvent> for Select<'_, T> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
@@ -323,32 +325,31 @@ impl<T> Typeable<KeyEvent> for Select<'_, T> {
     }
 }
 
-// #[cfg(feature="bevy")]
-// impl<T> Typeable<KeyEvent<'_, '_>> for Select<'_, T> {
-//     fn handle_key(&mut self, mut key: KeyEvent) -> bool {
-//         let mut submit = false;
+#[cfg(feature="bevy")]
+impl<T> Typeable<KeyCode> for Select<'_, T> {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        let mut submit = false;
 
-//         for code in key.codes() {
-//             match code {
-//                 // submit
-//                 KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
-//                 // update value
-//                 KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-//                 KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-//                 KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-//                 KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
-//                 _ => (),
-//             }
-//         }
+        match key {
+            // submit
+            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            // update value
+            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
 
-//         submit
-//     }
-// }
+        submit
+    }
+}
 
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text.into())
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
     }
 }
 

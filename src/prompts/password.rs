@@ -145,7 +145,7 @@ impl Password<'_> {
 
 #[cfg(feature="terminal")]
 impl Typeable<KeyEvent> for Password<'_> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         match key.code {
