@@ -2,16 +2,6 @@ use asky::{Confirm, Toggle, Number, Select, Password, MultiSelect};
 use asky::bevy::*;
 use asky::utils::renderer::*;
 
-// fn main() -> std::io::Result<()> {
-//     if Confirm::new("Do you like coffe?").prompt()? {
-//         println!("Great, me too!");
-//     }
-
-//     // ...
-
-//     Ok(())
-// }
-
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -26,74 +16,32 @@ use colored::{Colorize, ColoredString, ColoredStrings};
 
 fn main() {
     App::new()
-        // .insert_resource(ColoredBuilder { style:
-        //     TextStyle {
-        //         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-        //         font_size: 100.0,
-        //         color: Color::WHITE,
-        //     },
-        // })
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup)
-        .add_system(text_update_system)
-        .add_system(text_color_system)
-        .add_system(asky_confirm_system::<Confirm>)
-        .add_system(asky_confirm_system::<Toggle>)
-        .add_system(asky_confirm_system::<asky::Text>)
-        .add_system(asky_confirm_system::<Number<u8>>)
-        .add_system(asky_confirm_system::<Number<f32>>)
-        .add_system(asky_confirm_system::<Select<'static, &'static str>>)
-        .add_system(asky_confirm_system::<Password>)
-        .add_system(asky_confirm_system::<MultiSelect<'static, &'static str>>)
+        .add_system(asky_system::<Confirm>)
+        .add_system(asky_system::<Toggle>)
+        .add_system(asky_system::<asky::Text>)
+        .add_system(asky_system::<Number<u8>>)
+        .add_system(asky_system::<Number<f32>>)
+        .add_system(asky_system::<Select<'static, &'static str>>)
+        .add_system(asky_system::<Password>)
+        .add_system(asky_system::<MultiSelect<'static, &'static str>>)
         .run();
 }
-
-// A unit struct to help identify the FPS UI component, since there may be many Text components
-#[derive(Component)]
-struct FpsText;
-
-// A unit struct to help identify the color-changing Text component
-#[derive(Component)]
-struct ColorText;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let settings = BevyAskySettings { style:
         TextStyle {
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-            font_size: 100.0,
+            font: asset_server.load("fonts/DejaVuSansMono.ttf"),
+            font_size: 50.0,
             color: Color::WHITE,
         },
     };
     commands.insert_resource(settings);
     // UI camera
     commands.spawn(Camera2dBundle::default());
-    // Text with one section
-    commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "hello\nbevy!",
-            TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: 100.0,
-                color: Color::WHITE,
-            },
-        ) // Set the alignment of the Text
-        .with_text_alignment(TextAlignment::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            position: UiRect {
-                bottom: Val::Px(5.0),
-                right: Val::Px(15.0),
-                ..default()
-            },
-            ..default()
-        }),
-        ColorText,
-    ));
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
@@ -105,20 +53,17 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let multi_select: MultiSelect<'static, &'static str> = MultiSelect::new("Favorite animal?", ["dog", "cow", "cat"]);
 
     // Text with multiple sections
-    commands.spawn((
+    commands.spawn(
         // Create a TextBundle that has a Text with a list of sections.
-        TextBundle::from_sections([
-            TextSection::new(
-                "Confirm",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    font_size: 60.0,
-                    color: Color::WHITE,
-                },
-            ),
-        ]),
+        NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            ..default()
+        }
         //Confirm::new("Do you like coffee?")
-    ))
+    )
     // .insert(Asky(confirm))
     // .insert(Asky(toggle))
     // .insert(Asky(text_input))
@@ -130,27 +75,24 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ;
 }
 
-fn asky_confirm_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync + 'static>(
-// fn asky_confirm_system(
+fn asky_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync + 'static>(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
-    keys: Res<Input<KeyCode>>,
     mut key_evr: EventReader<KeyboardInput>,
-    asset_server: Res<AssetServer>,
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(Entity, &mut Text, &mut Asky<T>, Option<&Children>)>) {
+    mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>) {
 
     let key_event = asky::bevy::KeyEvent::new(char_evr, key_evr);
-    'outer: for (entity, mut text, mut confirm, children) in query.iter_mut() {
+    'outer: for (entity, mut confirm, children) in query.iter_mut() {
         if confirm.handle_key(&key_event) {
             // It's done.
             commands.entity(entity).remove::<Asky<T>>();
-            let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
+            let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state);
             renderer.update_draw_time();
         }
-        let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut text);
+        let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state);
         let draw_time = renderer.draw_time();
         confirm.draw(&mut renderer);
         let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
@@ -168,27 +110,3 @@ fn asky_confirm_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync +
     }
 }
 
-fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<ColorText>>) {
-    for mut text in &mut query {
-        let seconds = time.elapsed_seconds();
-
-        // Update the color of the first and only section.
-        text.sections[0].style.color = Color::Rgba {
-            red: (1.25 * seconds).sin() / 2.0 + 0.5,
-            green: (0.75 * seconds).sin() / 2.0 + 0.5,
-            blue: (0.50 * seconds).sin() / 2.0 + 0.5,
-            alpha: 1.0,
-        };
-    }
-}
-
-fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
-    for mut text in &mut query {
-        if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(value) = fps.smoothed() {
-                // Update the value of the second section
-                text.sections[1].value = format!("{value:.2}");
-            }
-        }
-    }
-}

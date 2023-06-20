@@ -113,31 +113,30 @@ impl BevyRendererState {
 #[derive(Debug)]
 pub struct BevyRenderer<'a> {
     state: &'a mut BevyRendererState,
-    text: &'a mut Text,
     settings: &'a BevyAskySettings,
     pub children: Vec<TextBundle>,
 }
 
 impl<'a> BevyRenderer<'a> {
-    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState, text: &'a mut Text) -> Self {
+    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState) -> Self {
         BevyRenderer {
             settings,
             state,
-            text,
             children: Vec::new()
         }
     }
 
-    pub fn to_text(&mut self, strings: ColoredStrings) {
-        self.text.sections.clear();
-        for s in strings.0.iter() {
-            let mut style = self.settings.style.clone();
-            if let Some(fg) = s.fgcolor() {
-                style.color = convert(fg);
-            }
-            self.text.sections.push(TextSection::new(s.input.to_owned(), style));
-        }
-    }
+    // pub fn to_text(&mut self, strings: ColoredStrings) {
+    //     self.text.sections.clear();
+    //     for s in strings.0.iter() {
+    //         let mut style = self.settings.style.clone();
+    //         if let Some(fg) = s.fgcolor() {
+    //             style.color = convert(fg);
+    //         }
+    //         self.text.sections.push(TextSection::new(s.input.to_owned(), style));
+    //     }
+    // }
+
     pub fn build_text_bundle(&self, s: ColoredString) -> TextBundle {
         let mut style = self.settings.style.clone();
         if let Some(fg) = s.fgcolor() {
