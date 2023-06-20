@@ -168,6 +168,27 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 
     )
 }
 
+pub fn fmt_password2(prompt: &Password, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(prompt.message, "…", out);
+        return [0, 0];
+    }
+
+    let text = match prompt.hidden {
+        true => String::new(),
+        false => "*".repeat(prompt.input.value.len()),
+    };
+
+    let cursor_col = if prompt.hidden { 0 } else { prompt.input.col };
+
+    fmt_line_message2(prompt.message, &prompt.default_value, out);
+    out.push("\n".into());
+    fmt_line_input2(&text, &prompt.placeholder, &prompt.validator_result, false, out);
+    out.push("\n".into());
+    fmt_line_validator2(&prompt.validator_result, out);
+    get_cursor_position(cursor_col)
+}
+
 pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (

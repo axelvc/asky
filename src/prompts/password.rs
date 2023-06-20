@@ -1,18 +1,25 @@
 use std::io;
 
+#[cfg(feature="bevy")]
+use bevy::prelude::*;
+#[cfg(feature="bevy")]
+use crate::bevy::*;
+
 #[cfg(feature="terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::utils::key_listener::Typeable;
 #[cfg(feature="terminal")]
-use crate::utils::key_listener::{self, Typeable};
+use crate::utils::key_listener::self;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
+use colored::{Colorize, ColoredString, ColoredStrings};
 use super::text::{Direction, InputValidator, LineInput};
 
-type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a;
+type Formatter<'a> = dyn Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input as password.
 ///
@@ -68,7 +75,7 @@ impl<'a> Password<'a> {
             hidden: false,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_password),
+            formatter: Box::new(theme::fmt_password2),
         }
     }
 
@@ -112,7 +119,7 @@ impl<'a> Password<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a,
+        F: Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
@@ -166,10 +173,41 @@ impl Typeable<KeyEvent> for Password<'_> {
     }
 }
 
+#[cfg(feature="bevy")]
+impl Typeable<KeyEvent> for Password<'_> {
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
+
+        for c in key.chars.iter() {
+            if ! c.is_control() {
+                self.input.insert(*c);
+            }
+        }
+
+        for code in &key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
+
+        submit
+    }
+}
 impl Printable for Password<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time());
-        renderer.print(text.into())?;
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
         renderer.set_cursor(cursor)
     }
 }

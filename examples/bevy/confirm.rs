@@ -1,4 +1,4 @@
-use asky::{Confirm, Toggle, Number, Select};
+use asky::{Confirm, Toggle, Number, Select, Password};
 use asky::bevy::*;
 use asky::utils::renderer::*;
 
@@ -44,6 +44,7 @@ fn main() {
         .add_system(asky_confirm_system::<Number<u8>>)
         .add_system(asky_confirm_system::<Number<f32>>)
         .add_system(asky_confirm_system::<Select<'static, &'static str>>)
+        .add_system(asky_confirm_system::<Password>)
         .run();
 }
 
@@ -118,6 +119,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let number: Number<'static, u8> = Number::new("Number?");
     let float: Number<'static, f32> = Number::new("Float?");
     let select: Select<'static, &'static str> = Select::new("Favorite animal?", ["dog", "cow", "cat"]);
+    let password: Password<'static> = Password::new("Password: ");
 
     // Text with multiple sections
     commands.spawn((
@@ -139,7 +141,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // .insert(Asky(text_input))
     // .insert(Asky(number))
     // .insert(Asky(float))
-    .insert(Asky(select))
+    // .insert(Asky(select))
+    .insert(Asky(password))
         ;
 }
 
