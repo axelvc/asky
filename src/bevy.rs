@@ -141,7 +141,6 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
     // }
 
     pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
-        // let mut style = self.settings.style.clone();
         if let Some(fg) = s.fgcolor() {
             style.color = convert(fg);
         }
@@ -174,17 +173,8 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     }
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-        // for bundle in strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>() {
-        //     self.children.push(bundle);
-        // }
-
-        // let mut children = vec![];
-        //
-        //
         let style = self.settings.style.clone();
         self.commands.entity(self.column).with_children(|column| {
-        // for colored_line in strings.split('\n') {
-            // let bundles: Vec<_> = colored_line.iter().map(|cs| self.build_text_bundle(cs.clone())).collect();
 
             for bundles in strings.split('\n').into_iter().map(|colored_line|
              colored_line.0.into_iter().map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))) {
@@ -203,44 +193,6 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                 }) ;
         }
         });
-        // self.commands.entity(self.column).push_children(&children);
-        // self.children.extend(strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>());
-        // self.children.extend(bundles);
-
-        // self.to_text(strings);
-        // if self.draw_time != DrawTime::First {
-        //     queue!(
-        //         self.out,
-        //         cursor::RestorePosition,
-        //         terminal::Clear(terminal::ClearType::FromCursorDown),
-        //     )?;
-        // }
-
-        // if !text.ends_with('\n') {
-        //     text.push('\n')
-        // }
-
-        // queue!(self.out, Print(&text))?;
-
-        // // Saved position is updated each draw because the text lines could be different
-        // // between draws. The last draw is ignored to always set the cursor at the end
-        // //
-        // // The position is saved this way to ensure the correct position when the cursor is at
-        // // the bottom of the terminal. Otherwise, the saved position will be the last row
-        // // and when trying to restore, the next draw will be below the last row.
-        // if self.draw_time != DrawTime::Last {
-        //     let (col, row) = cursor::position()?;
-        //     let text_lines = text.lines().count() as u16;
-
-        //     queue!(
-        //         self.out,
-        //         cursor::MoveToPreviousLine(text_lines),
-        //         cursor::SavePosition,
-        //         cursor::MoveTo(col, row)
-        //     )?;
-        // }
-
-        // self.out.flush()
         Ok(())
     }
 
@@ -265,9 +217,3 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
         Ok(())
     }
 }
-
-// impl Default for BevyRenderer {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }

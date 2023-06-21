@@ -65,12 +65,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     )
     // .insert(Asky(confirm))
     // .insert(Asky(toggle))
-    // .insert(Asky(text_input))
+    .insert(Asky(text_input))
     // .insert(Asky(number))
     // .insert(Asky(float))
     // .insert(Asky(select))
     // .insert(Asky(password))
-    .insert(Asky(multi_select))
+    // .insert(Asky(multi_select))
         ;
 }
 
@@ -100,8 +100,6 @@ fn asky_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync + 'static
         let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
         let draw_time = renderer.draw_time();
         confirm.draw(&mut renderer);
-        // let new_children: Vec<Entity> = renderer.children.drain(0..).map(|b| commands.spawn(b).id()).collect();
-        // commands.entity(entity).push_children(&new_children);
         if draw_time == DrawTime::First {
             renderer.update_draw_time();
         } else if draw_time == DrawTime::Last {
