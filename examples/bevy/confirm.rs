@@ -62,7 +62,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         }
-        //Confirm::new("Do you like coffee?")
     )
     // .insert(Asky(confirm))
     // .insert(Asky(toggle))
@@ -89,19 +88,20 @@ fn asky_system<T: Printable + for<'a> Typeable<KeyEvent> + Send + Sync + 'static
         if confirm.handle_key(&key_event) {
             // It's done.
             commands.entity(entity).remove::<Asky<T>>();
-            let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state);
+            let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
             renderer.update_draw_time();
         }
-        let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state);
-        let draw_time = renderer.draw_time();
-        confirm.draw(&mut renderer);
+
         let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
         commands.entity(entity).remove_children(&children);
         for child in children {
-            commands.entity(child).despawn();
+            commands.entity(child).despawn_recursive();
         }
-        let new_children: Vec<Entity> = renderer.children.drain(0..).map(|b| commands.spawn(b).id()).collect();
-        commands.entity(entity).push_children(&new_children);
+        let mut renderer = BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
+        let draw_time = renderer.draw_time();
+        confirm.draw(&mut renderer);
+        // let new_children: Vec<Entity> = renderer.children.drain(0..).map(|b| commands.spawn(b).id()).collect();
+        // commands.entity(entity).push_children(&new_children);
         if draw_time == DrawTime::First {
             renderer.update_draw_time();
         } else if draw_time == DrawTime::Last {

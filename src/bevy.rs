@@ -34,7 +34,6 @@ impl<T: Printable + Typeable<KeyEvent>> DerefMut for Asky<T> {
 
 pub struct KeyEvent{
     pub chars: Vec<char>,
-    // pub keys: &'w Res<'w, Input<KeyCode>>,
     pub codes: Vec<KeyCode>,
 }
 
@@ -93,7 +92,6 @@ fn convert(c: Colored) -> Color {
     }
 }
 
-
 #[derive(Debug, Default)]
 pub struct BevyRendererState {
     draw_time: DrawTime,
@@ -110,19 +108,24 @@ impl BevyRendererState {
     }
 }
 
-#[derive(Debug)]
-pub struct BevyRenderer<'a> {
+// #[derive(Debug)]
+pub struct BevyRenderer<'a, 'w, 's> {
     state: &'a mut BevyRendererState,
     settings: &'a BevyAskySettings,
     pub children: Vec<TextBundle>,
+    commands: &'a mut Commands<'w, 's>,
+    column: Entity,
 }
 
-impl<'a> BevyRenderer<'a> {
-    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState) -> Self {
+impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
+
+    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState, commands: &'a mut Commands<'w, 's>, column: Entity) -> Self {
         BevyRenderer {
             settings,
             state,
-            children: Vec::new()
+            children: Vec::new(),
+            commands,
+            column
         }
     }
 
@@ -137,8 +140,8 @@ impl<'a> BevyRenderer<'a> {
     //     }
     // }
 
-    pub fn build_text_bundle(&self, s: ColoredString) -> TextBundle {
-        let mut style = self.settings.style.clone();
+    pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
+        // let mut style = self.settings.style.clone();
         if let Some(fg) = s.fgcolor() {
             style.color = convert(fg);
         }
@@ -150,9 +153,14 @@ impl<'a> BevyRenderer<'a> {
         }
         bundle
     }
+
+    // fn split(strings: ColoredStrings, pat: char) -> impl Iterator<Item = ColoredStrings> {
+
+
+    // }
 }
 
-impl<'a> Renderer for BevyRenderer<'a> {
+impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
@@ -169,7 +177,34 @@ impl<'a> Renderer for BevyRenderer<'a> {
         // for bundle in strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>() {
         //     self.children.push(bundle);
         // }
-        self.children.extend(strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>());
+
+        // let mut children = vec![];
+        //
+        //
+        let style = self.settings.style.clone();
+        self.commands.entity(self.column).with_children(|column| {
+        // for colored_line in strings.split('\n') {
+            // let bundles: Vec<_> = colored_line.iter().map(|cs| self.build_text_bundle(cs.clone())).collect();
+
+            for bundles in strings.split('\n').into_iter().map(|colored_line|
+             colored_line.0.into_iter().map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))) {
+            column.spawn(
+                NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    for bundle in bundles {
+                        parent.spawn(bundle);
+                    }
+                }) ;
+        }
+        });
+        // self.commands.entity(self.column).push_children(&children);
+        // self.children.extend(strings.0.into_iter().map(|s| self.build_text_bundle(s)).collect::<Vec<_>>());
         // self.children.extend(bundles);
 
         // self.to_text(strings);
