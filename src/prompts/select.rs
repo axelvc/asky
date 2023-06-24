@@ -1,22 +1,22 @@
 use std::io;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-#[cfg(feature="bevy")]
-use bevy::prelude::*;
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use crate::bevy::*;
+#[cfg(feature = "bevy")]
+use bevy::prelude::*;
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use colored::{Colorize, ColoredString, ColoredStrings};
+use colored::{ColoredString, ColoredStrings, Colorize};
 
 pub enum Direction {
     Up,
@@ -285,7 +285,7 @@ impl<'a, T: 'a> Select<'a, T> {
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<T> {
         key_listener::listen(self, true)?;
@@ -305,7 +305,7 @@ impl<T> Select<'_, T> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl<T> Typeable<KeyEvent> for Select<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -325,7 +325,7 @@ impl<T> Typeable<KeyEvent> for Select<'_, T> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl<T> Typeable<KeyCode> for Select<'_, T> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;

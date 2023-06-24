@@ -1,25 +1,25 @@
 use std::io;
 
-#[cfg(feature="bevy")]
-use bevy::prelude::*;
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use crate::bevy::*;
+#[cfg(feature = "bevy")]
+use bevy::prelude::*;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use colored::{Colorize, ColoredString, ColoredStrings};
 use super::select::{Direction, SelectInput, SelectOption};
 use crate::utils::theme::*;
+use colored::{ColoredString, ColoredStrings, Colorize};
 
 type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -103,7 +103,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
             max: None,
             selected_count: 0,
             input: SelectInput::new(options_len),
-            formatter: Box::new(theme::fmt_multi_select2)
+            formatter: Box::new(theme::fmt_multi_select2),
         }
     }
 
@@ -148,13 +148,13 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync
+        F: Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
     {
         self.formatter = Box::new(formatter);
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self, true)?;
@@ -200,7 +200,7 @@ impl<T> MultiSelect<'_, T> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -222,7 +222,7 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;

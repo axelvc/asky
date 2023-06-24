@@ -1,27 +1,28 @@
 use std::{io, str::FromStr};
 
-#[cfg(feature="bevy")]
-use bevy::prelude::*;
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use crate::bevy::*;
-#[cfg(feature="terminal")]
+#[cfg(feature = "bevy")]
+use bevy::prelude::*;
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use colored::{Colorize, ColoredString, ColoredStrings};
 use super::text::{Direction, LineInput};
+use colored::{ColoredString, ColoredStrings, Colorize};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a + Send + Sync;
-type Formatter<'a, T> = dyn Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
+type Formatter<'a, T> =
+    dyn Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input of numbers.
 ///
@@ -124,7 +125,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Result<T, T::Err>> {
         key_listener::listen(self, false)?;
@@ -161,7 +162,7 @@ impl<T: NumLike> Number<'_, T> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -184,13 +185,13 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
-            if ! c.is_control() {
+            if !c.is_control() {
                 self.insert(*c);
             }
         }

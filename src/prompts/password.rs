@@ -1,25 +1,26 @@
 use std::io;
 
-#[cfg(feature="bevy")]
-use bevy::prelude::*;
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use crate::bevy::*;
+#[cfg(feature = "bevy")]
+use bevy::prelude::*;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use colored::{Colorize, ColoredString, ColoredStrings};
 use super::text::{Direction, InputValidator, LineInput};
+use colored::{ColoredString, ColoredStrings, Colorize};
 
-type Formatter<'a> = dyn Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
+type Formatter<'a> =
+    dyn Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input as password.
 ///
@@ -125,7 +126,7 @@ impl<'a> Password<'a> {
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self, false)?;
@@ -150,7 +151,7 @@ impl Password<'_> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl Typeable<KeyEvent> for Password<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -173,13 +174,13 @@ impl Typeable<KeyEvent> for Password<'_> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl Typeable<KeyEvent> for Password<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
-            if ! c.is_control() {
+            if !c.is_control() {
                 self.input.insert(*c);
             }
         }

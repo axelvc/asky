@@ -1,18 +1,18 @@
 use std::io;
 
-#[cfg(feature="bevy")]
-use bevy::prelude::*;
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use crate::bevy::*;
+#[cfg(feature = "bevy")]
+use bevy::prelude::*;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use colored::{Colorize, ColoredString, ColoredStrings};
+use colored::{ColoredString, ColoredStrings, Colorize};
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -173,7 +173,7 @@ impl<'a> Text<'a> {
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self, false)?;
@@ -198,7 +198,7 @@ impl Text<'_> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl Typeable<KeyEvent> for Text<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -221,13 +221,13 @@ impl Typeable<KeyEvent> for Text<'_> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl Typeable<KeyEvent> for Text<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
-            if ! c.is_control() {
+            if !c.is_control() {
                 self.input.insert(*c);
             }
         }

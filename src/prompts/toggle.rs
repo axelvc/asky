@@ -1,18 +1,18 @@
-use std::io;
 use colored::ColoredStrings;
+use std::io;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use bevy::prelude::*;
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
@@ -49,7 +49,6 @@ pub struct Toggle<'a> {
     formatter: Box<Formatter<'a>>,
 }
 
-
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
     pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
@@ -78,7 +77,7 @@ impl<'a> Toggle<'a> {
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
         key_listener::listen(self, true)?;
@@ -92,7 +91,7 @@ impl Toggle<'_> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl Typeable<KeyEvent> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -110,7 +109,7 @@ impl Typeable<KeyEvent> for Toggle<'_> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl Typeable<KeyCode> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;

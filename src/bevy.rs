@@ -1,13 +1,13 @@
-use bevy::prelude::*;
-use bevy::input::ButtonState;
-use bevy::input::keyboard::KeyboardInput;
+use crate::utils::renderer::{Printable, Renderer};
 use crate::DrawTime;
 use crate::Typeable;
-use crate::utils::renderer::{Renderer, Printable};
+use bevy::input::keyboard::KeyboardInput;
+use bevy::input::ButtonState;
+use bevy::prelude::*;
+use colored::{Color as Colored, Color::TrueColor, ColoredString, ColoredStrings, Colorize};
 use std::io;
-use colored::{Colorize, ColoredString, ColoredStrings, Color as Colored, Color::TrueColor};
-use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Component, Debug)]
 // pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
@@ -32,7 +32,7 @@ impl<T: Printable + Typeable<KeyEvent>> DerefMut for Asky<T> {
     }
 }
 
-pub struct KeyEvent{
+pub struct KeyEvent {
     pub chars: Vec<char>,
     pub codes: Vec<KeyCode>,
 }
@@ -56,11 +56,16 @@ impl KeyEvent {
         Self {
             chars: char_evr.iter().map(|e| e.char).collect(),
             // keys,
-            codes: key_evr.iter().filter_map(|e| if e.state == bevy::input::ButtonState::Pressed {
-                e.key_code
-            } else {
-                None
-            }).collect(),
+            codes: key_evr
+                .iter()
+                .filter_map(|e| {
+                    if e.state == bevy::input::ButtonState::Pressed {
+                        e.key_code
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 }
@@ -118,14 +123,18 @@ pub struct BevyRenderer<'a, 'w, 's> {
 }
 
 impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
-
-    pub fn new(settings: &'a BevyAskySettings, state: &'a mut BevyRendererState, commands: &'a mut Commands<'w, 's>, column: Entity) -> Self {
+    pub fn new(
+        settings: &'a BevyAskySettings,
+        state: &'a mut BevyRendererState,
+        commands: &'a mut Commands<'w, 's>,
+        column: Entity,
+    ) -> Self {
         BevyRenderer {
             settings,
             state,
             children: Vec::new(),
             commands,
-            column
+            column,
         }
     }
 
@@ -144,23 +153,40 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         if let Some(fg) = s.fgcolor() {
             style.color = convert(fg);
         }
-        let mut bundle = TextBundle::from_section(
-                format!("{}", s),
-                style);
+        let mut bundle = TextBundle::from_section(format!("{}", s), style);
         if let Some(bg) = s.bgcolor() {
             bundle.background_color = BackgroundColor(convert(bg));
         }
         bundle
     }
 
-    // fn split(strings: ColoredStrings, pat: char) -> impl Iterator<Item = ColoredStrings> {
+    fn cursorify(cs: ColoredString, i: usize, cursor_color: colored::Color) -> impl Iterator<Item = ColoredString> {
+        let to_colored_string = |s: String| -> ColoredString {
+            let mut c = cs.clone();
+            c.input = s.into();
+            c
+        };
+        let mut input = cs.input.to_string();
+        let mut left = None;
+        let mut cursor = None;
+        let mut right = None;
+        if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
+            // let (l, r) = input.split_at(i + 1);
+            let (l, r) = input.split_at(byte_index);
+            right = Some(to_colored_string(r.to_owned()));
+            input = l.to_owned();
+        }
+        cursor = Some(to_colored_string(input.pop().expect("Could not get cursor").to_string()).on_color(cursor_color));
+        left = Some(to_colored_string(input));
+        left.into_iter().chain(cursor.into_iter().chain(right.into_iter()))
+    }
 
+    // fn split(strings: ColoredStrings, pat: char) -> impl Iterator<Item = ColoredStrings> {
 
     // }
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
-
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
     }
@@ -174,24 +200,42 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
         let style = self.settings.style.clone();
+        if self.state.cursor_visible {}
         self.commands.entity(self.column).with_children(|column| {
+            for lines in strings.split('\n').into_iter().enumerate().map(|(i, mut colored_line)| {
+                if self.state.cursor_visible && i == self.state.cursor_pos[1] {
+                    let mut length = 0;
+                    for i in 0..colored_line.len() {
+                        if self.state.cursor_pos[0] < length + colored_line[i].input.chars().count() {
+                            // The cursor is in this one.
+                            let part = colored_line.remove(i);
+                            for (j, new_part) in BevyRenderer::cursorify(part, self.state.cursor_pos[0] - length, colored::Color::White).enumerate() {
+                                colored_line.insert(i + j, new_part)
+                            }
 
-            for bundles in strings.split('\n').into_iter().map(|colored_line|
-             colored_line.0.into_iter().map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))) {
-            column.spawn(
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Row,
-                        ..default()
-                    },
-                    ..default()
-                })
-                .with_children(|parent| {
-                    for bundle in bundles {
-                        parent.spawn(bundle);
+                        }
+                        length += colored_line[i].input.chars().count();
                     }
-                }) ;
-        }
+                }
+                colored_line
+                    .0
+                    .into_iter()
+                    .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
+            }) {
+                column
+                    .spawn(NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Row,
+                            ..default()
+                        },
+                        ..default()
+                    })
+                    .with_children(|parent| {
+                        for line in lines {
+                            parent.spawn(line);
+                        }
+                    });
+            }
         });
         Ok(())
     }

@@ -1,20 +1,20 @@
 use std::io;
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 use bevy::prelude::*;
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 use std::borrow::Cow;
 
-use colored::{Colorize, ColoredString, ColoredStrings};
-use crate::utils::key_listener::Typeable;
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
+use colored::{ColoredString, ColoredStrings, Colorize};
 
 struct DefaultFormatter;
 
@@ -23,13 +23,16 @@ pub trait Formatter {
 }
 
 impl Formatter for DefaultFormatter {
-
     fn format(&self, prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
         let options = ["No", "Yes"];
 
         if draw_time == DrawTime::Last {
-            crate::utils::theme::fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
-            return
+            crate::utils::theme::fmt_last_message2(
+                &prompt.message,
+                options[prompt.active as usize],
+                out,
+            );
+            return;
         }
 
         crate::utils::theme::fmt_message2(&prompt.message, out);
@@ -68,7 +71,7 @@ impl Formatter for DefaultFormatter {
 /// # }
 /// ```
 // #[derive(Debug)]
-#[cfg_attr(feature="bevy", derive(Component))]
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct Confirm<'a> {
     /// Message used to display in the prompt.
     // pub message: &'a str,
@@ -81,11 +84,11 @@ pub struct Confirm<'a> {
 
 impl<'a> Confirm<'a> {
     /// Create a new confirm prompt.
-    pub fn new<T:Into<Cow<'a, str>>>(message: T) -> Self {
+    pub fn new<T: Into<Cow<'a, str>>>(message: T) -> Self {
         Confirm {
             message: message.into(),
             active: false,
-            formatter: Box::new(DefaultFormatter)
+            formatter: Box::new(DefaultFormatter),
         }
     }
 
@@ -98,13 +101,12 @@ impl<'a> Confirm<'a> {
     /// Set custom closure to format the prompt.
     ///
     /// See: [`Customization`](index.html#customization).
-    pub fn format<F: Formatter + 'static + Sync + Send>(&mut self, formatter: F) -> &mut Self
-    {
+    pub fn format<F: Formatter + 'static + Sync + Send>(&mut self, formatter: F) -> &mut Self {
         self.formatter = Box::new(formatter);
         self
     }
 
-    #[cfg(feature="terminal")]
+    #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<bool> {
         key_listener::listen(self, true)?;
@@ -119,7 +121,7 @@ impl Confirm<'_> {
     }
 }
 
-#[cfg(feature="terminal")]
+#[cfg(feature = "terminal")]
 impl Typeable<KeyEvent> for Confirm<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
@@ -140,7 +142,7 @@ impl Typeable<KeyEvent> for Confirm<'_> {
     }
 }
 
-#[cfg(feature="bevy")]
+#[cfg(feature = "bevy")]
 impl Typeable<KeyCode> for Confirm<'_> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
         let mut submit = false;

@@ -1,5 +1,4 @@
-
-use colored::{Colorize, ColoredString, ColoredStrings};
+use colored::{ColoredString, ColoredStrings, Colorize};
 
 use crate::prompts::{
     confirm::Confirm,
@@ -18,7 +17,7 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrin
 
     if draw_time == DrawTime::Last {
         fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
-        return
+        return;
     }
 
     fmt_message2(&prompt.message, out);
@@ -64,7 +63,11 @@ pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
 
 pub fn fmt_select2<T>(prompt: &Select<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(prompt.message, &prompt.options[prompt.input.focused].title, out);
+        fmt_last_message2(
+            prompt.message,
+            &prompt.options[prompt.input.focused].title,
+            out,
+        );
         return;
     }
 
@@ -100,7 +103,11 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
     .join("\n")
 }
 
-pub fn fmt_multi_select2<T>(prompt: &MultiSelect<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
+pub fn fmt_multi_select2<T>(
+    prompt: &MultiSelect<T>,
+    draw_time: DrawTime,
+    out: &mut ColoredStrings,
+) {
     if draw_time == DrawTime::Last {
         fmt_last_message2(
             prompt.message,
@@ -114,7 +121,7 @@ pub fn fmt_multi_select2<T>(prompt: &MultiSelect<T>, draw_time: DrawTime, out: &
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
-            out
+            out,
         );
         return;
     }
@@ -163,12 +170,11 @@ pub fn fmt_text2(prompt: &Text, draw_time: DrawTime, out: &mut ColoredStrings) -
         &prompt.placeholder,
         &prompt.validator_result,
         false,
-        out
+        out,
     );
     out.push("\n".into());
     fmt_line_validator2(&prompt.validator_result, out);
     get_cursor_position(prompt.input.col)
-
 }
 
 pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 2]) {
@@ -194,7 +200,11 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 
     )
 }
 
-pub fn fmt_password2(prompt: &Password, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
+pub fn fmt_password2(
+    prompt: &Password,
+    draw_time: DrawTime,
+    out: &mut ColoredStrings,
+) -> [usize; 2] {
     if draw_time == DrawTime::Last {
         fmt_last_message2(prompt.message, "…", out);
         return [0, 0];
@@ -209,7 +219,13 @@ pub fn fmt_password2(prompt: &Password, draw_time: DrawTime, out: &mut ColoredSt
 
     fmt_line_message2(prompt.message, &prompt.default_value, out);
     out.push("\n".into());
-    fmt_line_input2(&text, &prompt.placeholder, &prompt.validator_result, false, out);
+    fmt_line_input2(
+        &text,
+        &prompt.placeholder,
+        &prompt.validator_result,
+        false,
+        out,
+    );
     out.push("\n".into());
     fmt_line_validator2(&prompt.validator_result, out);
     get_cursor_position(cursor_col)
@@ -239,7 +255,11 @@ pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (Strin
     )
 }
 
-pub fn fmt_number2<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
+pub fn fmt_number2<T: NumLike>(
+    prompt: &Number<T>,
+    draw_time: DrawTime,
+    out: &mut ColoredStrings,
+) -> [usize; 2] {
     if draw_time == DrawTime::Last {
         fmt_last_message2(prompt.message, &prompt.input.value, out);
         return [0, 0];
@@ -252,7 +272,7 @@ pub fn fmt_number2<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime, out: &mu
         &prompt.placeholder,
         &prompt.validator_result,
         false,
-        out
+        out,
     );
     out.push("\n".into());
     fmt_line_validator2(&prompt.validator_result, out);
@@ -266,7 +286,8 @@ fn fmt_message(message: &str) -> String {
 }
 
 pub fn fmt_message2(message: &str, out: &mut ColoredStrings<'_>) {
-    out.0.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
+    out.0
+        .extend(["▣".blue(), " ".into(), message.to_owned().into()]);
 }
 
 fn fmt_last_message(message: &str, answer: &str) -> String {
@@ -274,7 +295,13 @@ fn fmt_last_message(message: &str, answer: &str) -> String {
 }
 
 pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
-    out.0.extend(["■".green(), " ".into(), message.to_owned().into(), " ".into(), answer.to_owned().purple()]);
+    out.0.extend([
+        "■".green(),
+        " ".into(),
+        message.to_owned().into(),
+        " ".into(),
+        answer.to_owned().purple(),
+    ]);
 }
 
 // endregion: general
@@ -295,11 +322,10 @@ fn fmt_toggle_options2(options: [&str; 2], active: bool, out: &mut ColoredString
         }
     };
 
-    out.extend(
-        [
+    out.extend([
         fmt_option(options[0], !active),
         " ".into(),
-        fmt_option(options[1], active)
+        fmt_option(options[1], active),
     ]);
 }
 
@@ -315,7 +341,7 @@ pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredSt
     out.0.extend([
         fmt_option(options[0], !active),
         " ".into(),
-        fmt_option(options[1], active)
+        fmt_option(options[1], active),
     ]);
 }
 
@@ -367,7 +393,7 @@ fn fmt_line_input2(
     placeholder: &Option<&str>,
     validator_result: &Result<(), &str>,
     is_number: bool,
-    out: &mut ColoredStrings
+    out: &mut ColoredStrings,
 ) {
     let prefix = match validator_result {
         Ok(_) => "›".blue(),
@@ -376,7 +402,10 @@ fn fmt_line_input2(
 
     let input = input.to_owned();
     let input = match (input.is_empty(), is_number) {
-        (true, _) => placeholder.map(|s| s.to_owned()).unwrap_or_default().bright_black(),
+        (true, _) => placeholder
+            .map(|s| s.to_owned())
+            .unwrap_or_default()
+            .bright_black(),
         (false, true) => input.yellow(),
         (false, false) => input.normal(),
     };
@@ -394,7 +423,7 @@ fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
 
 fn fmt_line_validator2(validator_result: &Result<(), &str>, out: &mut ColoredStrings) {
     if let Err(e) = validator_result {
-       out.push(e.clone().to_owned().red());
+        out.push(e.clone().to_owned().red());
     }
 }
 
@@ -421,7 +450,12 @@ fn fmt_multi_select_message(msg: &str, min: Option<usize>, max: Option<usize>) -
     format!("{} {}", fmt_message(msg), min_max)
 }
 
-fn fmt_multi_select_message2(msg: &str, min: Option<usize>, max: Option<usize>, out: &mut ColoredStrings) {
+fn fmt_multi_select_message2(
+    msg: &str,
+    min: Option<usize>,
+    max: Option<usize>,
+    out: &mut ColoredStrings,
+) {
     let min_max = match (min, max) {
         (None, None) => String::new(),
         (None, Some(max)) => format!("Max: {}", max),
@@ -518,7 +552,7 @@ fn fmt_select_pagination2(page: usize, pages: usize, out: &mut ColoredStrings) {
         icon.repeat(page).bright_black(),
         icon.into(),
         icon.repeat(pages.saturating_sub(page + 1)).bright_black(),
-        ]);
+    ]);
 }
 
 fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool) -> String {
@@ -560,7 +594,12 @@ fn fmt_select_option<T>(option: &SelectOption<T>, focused: bool, multiple: bool)
     format!("{} {} {}", prefix, title, description)
 }
 
-fn fmt_select_option2<T>(option: &SelectOption<T>, focused: bool, multiple: bool, out: &mut ColoredStrings) {
+fn fmt_select_option2<T>(
+    option: &SelectOption<T>,
+    focused: bool,
+    multiple: bool,
+    out: &mut ColoredStrings,
+) {
     let prefix = if multiple {
         let prefix = match (option.active, focused) {
             (true, true) => "◉",
