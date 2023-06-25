@@ -247,8 +247,7 @@ impl<T> Printable for MultiSelect<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out);
-        Ok(())
+        renderer.print(out)
     }
 }
 

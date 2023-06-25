@@ -223,6 +223,29 @@ impl Typeable<KeyEvent> for Text<'_> {
 
 #[cfg(feature = "bevy")]
 impl Typeable<KeyEvent> for Text<'_> {
+
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            if match code {
+                KeyCode::Return => true,
+                KeyCode::Back => true,
+                KeyCode::Delete => true,
+                KeyCode::Left => true,
+                KeyCode::Right => true,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+        false
+    }
+
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -252,12 +275,24 @@ impl Typeable<KeyEvent> for Text<'_> {
     }
 }
 
+#[cfg(feature = "terminal")]
 impl Printable for Text<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)?;
         renderer.set_cursor(cursor)
+    }
+}
+
+#[cfg(feature = "bevy")]
+impl Printable for Text<'_> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor();
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
     }
 }
 

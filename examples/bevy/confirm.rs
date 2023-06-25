@@ -70,7 +70,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }
     )
-    .insert(Asky(confirm, AskyState::Reading))
+    // .insert(Asky(confirm, AskyState::Reading))
+    // .insert(Asky(toggle, AskyState::Reading))
+    .insert(Asky(text_input, AskyState::Reading))
     // .insert(Asky(toggle))
     // .insert(Asky(text_input))
     // .insert(Asky(number))

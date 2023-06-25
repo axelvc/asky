@@ -218,11 +218,11 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
         let style = self.settings.style.clone();
-        if self.state.cursor_visible {}
         self.commands.entity(self.column).with_children(|column| {
             for lines in strings.split('\n').into_iter().enumerate().map(|(i, mut colored_line)| {
                 if self.state.cursor_visible && i == self.state.cursor_pos[1] {
                     let mut length = 0;
+                    let mut inserted = false;
                     for i in 0..colored_line.len() {
                         if self.state.cursor_pos[0] < length + colored_line[i].input.chars().count() {
                             // The cursor is in this one.
@@ -230,9 +230,15 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                             for (j, new_part) in BevyRenderer::cursorify(part, self.state.cursor_pos[0] - length, colored::Color::White).enumerate() {
                                 colored_line.insert(i + j, new_part)
                             }
+                            inserted = true;
+                            break;
 
                         }
                         length += colored_line[i].input.chars().count();
+                    }
+                    if !inserted && self.state.cursor_pos[0] >= length {
+                        // Cursor is actually one character past string.
+                        colored_line.push(" ".on_color(colored::Color::White));
                     }
                 }
                 colored_line
@@ -265,7 +271,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
             return Ok(());
         }
         self.state.cursor_pos[0] = x;
-        self.state.cursor_pos[0] = y;
+        self.state.cursor_pos[1] = y;
         Ok(())
     }
 
@@ -308,7 +314,6 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
                 }
             },
             AskyState::Reading => {
-
                 if ! confirm.will_handle_key(&key_event)
                     && render_state.draw_time != DrawTime::First {
                     continue;
@@ -327,6 +332,7 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
                 }
                 let mut renderer =
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
+                let _ = renderer.show_cursor();
                 let draw_time = renderer.draw_time();
                 confirm.draw(&mut renderer);
                 eprint!(".");
