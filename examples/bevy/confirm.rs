@@ -32,19 +32,8 @@ fn main() {
                 }),
                 ..default()
             }))
-
-        // .add_plugins(DefaultPlugins)
-        // .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        //
+        .add_plugin(AskyPlugin)
         .add_startup_system(setup)
-        .add_system(asky_system::<Confirm>)
-        .add_system(asky_system::<Toggle>)
-        .add_system(asky_system::<asky::Text>)
-        .add_system(asky_system::<Number<u8>>)
-        .add_system(asky_system::<Number<f32>>)
-        .add_system(asky_system::<Select<'static, &'static str>>)
-        .add_system(asky_system::<Password>)
-        .add_system(asky_system::<MultiSelect<'static, &'static str>>)
         .run();
 }
 
@@ -93,55 +82,3 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ;
 }
 
-fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
-    mut commands: Commands,
-    char_evr: EventReader<ReceivedCharacter>,
-    mut key_evr: EventReader<KeyboardInput>,
-    asky_settings: Res<BevyAskySettings>,
-    mut render_state: Local<BevyRendererState>,
-    // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
-    mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
-) {
-    let key_event = asky::bevy::KeyEvent::new(char_evr, key_evr);
-    for (entity, mut confirm, children) in query.iter_mut() {
-        match confirm.1 {
-            AskyState::Complete => {
-                continue;
-            },
-            AskyState::Hidden => {
-                if children.is_some() {
-                    let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
-                    commands.entity(entity).remove_children(&children);
-                    for child in children {
-                        commands.entity(child).despawn_recursive();
-                    }
-                }
-            },
-            AskyState::Reading => {
-                if confirm.handle_key(&key_event) {
-                    // It's done.
-                    confirm.1 = AskyState::Complete;
-                    // commands.entity(entity).remove::<Asky<T>>();
-                    let mut renderer =
-                        BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-                    renderer.update_draw_time();
-                }
-
-                let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
-                commands.entity(entity).remove_children(&children);
-                for child in children {
-                    commands.entity(child).despawn_recursive();
-                }
-                let mut renderer =
-                    BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-                let draw_time = renderer.draw_time();
-                confirm.draw(&mut renderer);
-                if draw_time == DrawTime::First {
-                    renderer.update_draw_time();
-                } else if draw_time == DrawTime::Last {
-                    render_state.clear();
-                }
-            }
-        }
-    }
-}

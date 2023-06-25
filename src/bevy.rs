@@ -9,6 +9,8 @@ use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle};
+
 #[derive(Component, Debug)]
 // pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
 pub struct Asky<T: Printable + Typeable<KeyEvent>>(pub T, pub AskyState);
@@ -107,7 +109,7 @@ fn convert(c: Colored) -> Color {
 
 #[derive(Debug, Default)]
 pub struct BevyRendererState {
-    draw_time: DrawTime,
+    pub(crate) draw_time: DrawTime,
     cursor_visible: bool,
     cursor_pos: [usize; 2],
 }
@@ -267,5 +269,71 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     fn show_cursor(&mut self) -> io::Result<()> {
         self.state.cursor_visible = true;
         Ok(())
+    }
+}
+
+pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
+    mut commands: Commands,
+    char_evr: EventReader<ReceivedCharacter>,
+    mut key_evr: EventReader<KeyboardInput>,
+    asky_settings: Res<BevyAskySettings>,
+    mut render_state: Local<BevyRendererState>,
+    // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
+    mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
+) {
+    let key_event = KeyEvent::new(char_evr, key_evr);
+    for (entity, mut confirm, children) in query.iter_mut() {
+        match confirm.1 {
+            AskyState::Complete => {
+                continue;
+            },
+            AskyState::Hidden => {
+                if children.is_some() {
+                    let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+                    commands.entity(entity).remove_children(&children);
+                    for child in children {
+                        commands.entity(child).despawn_recursive();
+                    }
+                }
+            },
+            AskyState::Reading => {
+                if confirm.handle_key(&key_event) {
+                    // It's done.
+                    confirm.1 = AskyState::Complete;
+                    render_state.draw_time = DrawTime::Last;
+                }
+
+                let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+                commands.entity(entity).remove_children(&children);
+                for child in children {
+                    commands.entity(child).despawn_recursive();
+                }
+                let mut renderer =
+                    BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
+                let draw_time = renderer.draw_time();
+                confirm.draw(&mut renderer);
+                if draw_time == DrawTime::First {
+                    renderer.update_draw_time();
+                } else if draw_time == DrawTime::Last {
+                    render_state.clear();
+                }
+            }
+        }
+    }
+}
+
+pub struct AskyPlugin;
+
+impl Plugin for AskyPlugin {
+    fn build(&self, app: &mut App) {
+        app
+        .add_system(asky_system::<Confirm>)
+        .add_system(asky_system::<Toggle>)
+        .add_system(asky_system::<crate::Text>)
+        .add_system(asky_system::<Number<u8>>)
+        .add_system(asky_system::<Number<f32>>)
+        .add_system(asky_system::<Select<'static, &'static str>>)
+        .add_system(asky_system::<Password>)
+        .add_system(asky_system::<MultiSelect<'static, &'static str>>);
     }
 }
