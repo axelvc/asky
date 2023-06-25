@@ -187,6 +187,35 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 
 #[cfg(feature = "bevy")]
 impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
+
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            if match code {
+                // submit
+                KeyCode::Return => true,
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => true,
+                KeyCode::Delete => true,
+                // move cursor
+                KeyCode::Left => true,
+                KeyCode::Right => true,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+
+        false
+    }
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -216,12 +245,24 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
+#[cfg(feature = "terminal")]
 impl<T: NumLike> Printable for Number<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)?;
         renderer.set_cursor(cursor)
+    }
+}
+
+#[cfg(feature = "bevy")]
+impl<T: NumLike> Printable for Number<'_, T> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor()?;
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
     }
 }
 

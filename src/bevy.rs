@@ -57,11 +57,12 @@ impl<T: Typeable<KeyCode>> Typeable<KeyEvent> for T {
     }
 
     fn will_handle_key(&self, key: &KeyEvent) -> bool {
-        let mut result = false;
         for code in &key.codes {
-            result |= self.will_handle_key(code);
+            if self.will_handle_key(code) {
+                return true;
+            }
         }
-        return result;
+        false
     }
 }
 
@@ -332,7 +333,6 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
                 }
                 let mut renderer =
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-                let _ = renderer.show_cursor();
                 let draw_time = renderer.draw_time();
                 confirm.draw(&mut renderer);
                 eprint!(".");

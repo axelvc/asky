@@ -72,14 +72,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     )
     // .insert(Asky(confirm, AskyState::Reading))
     // .insert(Asky(toggle, AskyState::Reading))
-    .insert(Asky(text_input, AskyState::Reading))
-    // .insert(Asky(toggle))
-    // .insert(Asky(text_input))
-    // .insert(Asky(number))
-    // .insert(Asky(float))
+    // .insert(Asky(text_input, AskyState::Reading))
+    // .insert(Asky(number, AskyState::Reading))
+    // .insert(Asky(float, AskyState::Reading))
     // .insert(Asky(select, AskyState::Reading))
-    // .insert(Asky(password))
-    // .insert(Asky(multi_select))
+    // .insert(Asky(password, AskyState::Reading))
+    .insert(Asky(multi_select, AskyState::Reading))
         ;
 }
 

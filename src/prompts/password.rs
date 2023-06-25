@@ -176,6 +176,35 @@ impl Typeable<KeyEvent> for Password<'_> {
 
 #[cfg(feature = "bevy")]
 impl Typeable<KeyEvent> for Password<'_> {
+
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            if match code {
+                // submit
+                KeyCode::Return => true,
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => true,
+                KeyCode::Delete => true,
+                // move cursor
+                KeyCode::Left => true,
+                KeyCode::Right => true,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+
+        false
+    }
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -204,12 +233,25 @@ impl Typeable<KeyEvent> for Password<'_> {
         submit
     }
 }
+
+#[cfg(feature = "terminal")]
 impl Printable for Password<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)?;
         renderer.set_cursor(cursor)
+    }
+}
+
+#[cfg(feature = "bevy")]
+impl Printable for Password<'_> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor()?;
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
     }
 }
 
