@@ -290,7 +290,7 @@ impl Printable for cbevy::Asky<Text<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor();
+        renderer.show_cursor()?;
         renderer.set_cursor(cursor)?;
         renderer.print(out)
     }

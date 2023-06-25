@@ -195,8 +195,6 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
             c
         };
         let mut input = cs.input.to_string();
-        let mut left = None;
-        let mut cursor = None;
         let mut right = None;
         if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
             // let (l, r) = input.split_at(i + 1);
@@ -204,8 +202,8 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
             right = Some(to_colored_string(r.to_owned()));
             input = l.to_owned();
         }
-        cursor = Some(to_colored_string(input.pop().expect("Could not get cursor").to_string()).on_color(cursor_color));
-        left = Some(to_colored_string(input));
+        let cursor = Some(to_colored_string(input.pop().expect("Could not get cursor").to_string()).on_color(cursor_color));
+        let left = Some(to_colored_string(input));
         left.into_iter().chain(cursor.into_iter().chain(right.into_iter()))
     }
 
@@ -346,7 +344,7 @@ pub fn asky_system<T>(
                 let mut renderer =
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
-                confirm.draw(&mut renderer);
+                let _ = confirm.draw(&mut renderer);
                 eprint!(".");
                 if draw_time == DrawTime::First {
                     renderer.update_draw_time();
