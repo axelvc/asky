@@ -87,7 +87,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // .insert(Asky(text_input))
     // .insert(Asky(number))
     // .insert(Asky(float))
-    .insert(Asky(select))
+    .insert(Asky(select, AskyState::Reading))
     // .insert(Asky(password))
     // .insert(Asky(multi_select))
         ;
@@ -103,28 +103,45 @@ fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
 ) {
     let key_event = asky::bevy::KeyEvent::new(char_evr, key_evr);
-    'outer: for (entity, mut confirm, children) in query.iter_mut() {
-        if confirm.handle_key(&key_event) {
-            // It's done.
-            commands.entity(entity).remove::<Asky<T>>();
-            let mut renderer =
-                BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-            renderer.update_draw_time();
-        }
+    for (entity, mut confirm, children) in query.iter_mut() {
+        match confirm.1 {
+            AskyState::Complete => {
+                continue;
+            },
+            AskyState::Hidden => {
+                if children.is_some() {
+                    let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+                    commands.entity(entity).remove_children(&children);
+                    for child in children {
+                        commands.entity(child).despawn_recursive();
+                    }
+                }
+            },
+            AskyState::Reading => {
+                if confirm.handle_key(&key_event) {
+                    // It's done.
+                    confirm.1 = AskyState::Complete;
+                    // commands.entity(entity).remove::<Asky<T>>();
+                    let mut renderer =
+                        BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
+                    renderer.update_draw_time();
+                }
 
-        let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
-        commands.entity(entity).remove_children(&children);
-        for child in children {
-            commands.entity(child).despawn_recursive();
-        }
-        let mut renderer =
-            BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-        let draw_time = renderer.draw_time();
-        confirm.draw(&mut renderer);
-        if draw_time == DrawTime::First {
-            renderer.update_draw_time();
-        } else if draw_time == DrawTime::Last {
-            render_state.clear();
+                let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+                commands.entity(entity).remove_children(&children);
+                for child in children {
+                    commands.entity(child).despawn_recursive();
+                }
+                let mut renderer =
+                    BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
+                let draw_time = renderer.draw_time();
+                confirm.draw(&mut renderer);
+                if draw_time == DrawTime::First {
+                    renderer.update_draw_time();
+                } else if draw_time == DrawTime::Last {
+                    render_state.clear();
+                }
+            }
         }
     }
 }

@@ -11,7 +11,15 @@ use std::ops::{Deref, DerefMut};
 
 #[derive(Component, Debug)]
 // pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
-pub struct Asky<T: Printable + Typeable<KeyEvent>>(pub T);
+pub struct Asky<T: Printable + Typeable<KeyEvent>>(pub T, pub AskyState);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AskyState {
+    #[default]
+    Reading,
+    Complete,
+    Hidden,
+}
 
 // impl<'a, T: Printable + Typeable<KeyEvent<'a>>> Asky<'a,T> {
 //     fn new(x: T) -> Self {
