@@ -135,6 +135,15 @@ impl Printable for Toggle<'_> {
     }
 }
 
+#[cfg(feature = "bevy")]
+impl Printable for crate::bevy::Asky<Toggle<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

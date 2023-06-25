@@ -353,6 +353,15 @@ impl<T> Printable for Select<'_, T> {
     }
 }
 
+#[cfg(feature = "bevy")]
+impl<T> Printable for crate::bevy::Asky<Select<'_, T>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

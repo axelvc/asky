@@ -16,6 +16,28 @@ use asky::DrawTime;
 use colored::{ColoredString, ColoredStrings, Colorize};
 
 fn main() {
+    let mut args: Vec<String> = std::env::args().collect();
+    let options = vec![
+    "confirm",
+    "toggle",
+    "text_input",
+    "number",
+    "float",
+    "select",
+    "password",
+    "multi_select",
+        ];
+    if args.len() != 2 {
+        eprintln!("Usage: bevy <{}>",
+                  options.join("|"));
+        std::process::exit(1);
+    } else if ! options.contains(&args[1].as_str()) {
+        eprintln!("Invalid argument: {}", args[1]);
+        eprintln!("Usage: bevy <{}>",
+                  options.join("|"));
+        std::process::exit(1);
+    }
+    let kind: String = args.remove(1);
     App::new()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
@@ -33,11 +55,11 @@ fn main() {
                 ..default()
             }))
         .add_plugin(AskyPlugin)
-        .add_startup_system(setup)
+        .add_startup_system(move |commands: Commands, asset: Res<AssetServer>| { setup(commands, asset, kind.as_str()); })
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
     let settings = BevyAskySettings {
         style: TextStyle {
             font: asset_server.load("fonts/DejaVuSansMono.ttf"),
@@ -46,8 +68,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
     };
     commands.insert_resource(settings);
-    // UI camera
     commands.spawn(Camera2dBundle::default());
+
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
@@ -59,25 +81,48 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let multi_select: MultiSelect<'static, &'static str> =
         MultiSelect::new("Favorite animal?", ["dog", "cow", "cat"]);
 
-    // Text with multiple sections
-    commands.spawn(
-        // Create a TextBundle that has a Text with a list of sections.
+    let node =
         NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
             ..default()
-        }
-    )
-    // .insert(Asky(confirm, AskyState::Reading))
-    // .insert(Asky(toggle, AskyState::Reading))
-    // .insert(Asky(text_input, AskyState::Reading))
-    // .insert(Asky(number, AskyState::Reading))
-    // .insert(Asky(float, AskyState::Reading))
-    // .insert(Asky(select, AskyState::Reading))
+        };
+    match kind {
+        "multi_select" => {
+            commands.spawn(node)
+                    .insert(Asky(multi_select, AskyState::Reading));
+        },
+        "select" => {
+            commands.spawn(node)
+                    .insert(Asky(select, AskyState::Reading));
+        },
+        "confirm" => {
+            commands.spawn(node)
+                    .insert(Asky(confirm, AskyState::Reading));
+        },
+        "toggle" => {
+            commands.spawn(node)
+                    .insert(Asky(toggle, AskyState::Reading));
+        },
+        "text" => {
+            commands.spawn(node)
+                    .insert(Asky(text_input, AskyState::Reading));
+        },
+        "password" => {
+            commands.spawn(node)
+                    .insert(Asky(password, AskyState::Reading));
+        },
+        "float" => {
+            commands.spawn(node)
+                    .insert(Asky(float, AskyState::Reading));
+        },
+        "number" => {
+            commands.spawn(node)
+                    .insert(Asky(number, AskyState::Reading));
+        },
+        _ => {},
     // .insert(Asky(password, AskyState::Reading))
-    .insert(Asky(multi_select, AskyState::Reading))
-        ;
+    }
 }
-

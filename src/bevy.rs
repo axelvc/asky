@@ -13,7 +13,16 @@ use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle};
 
 #[derive(Component, Debug)]
 // pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
-pub struct Asky<T: Printable + Typeable<KeyEvent>>(pub T, pub AskyState);
+pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
+
+// impl<T> Printable for Asky<T> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         unimplemented!();
+//     }
+// }
+
+// trait TypePrintable : Printable + Typeable<KeyEvent> {}
+// pub struct AskyDyn(pub dyn TypePrintable);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AskyState {
@@ -29,14 +38,14 @@ pub enum AskyState {
 //     }
 // }
 
-impl<T: Printable + Typeable<KeyEvent>> Deref for Asky<T> {
+impl<T:  Typeable<KeyEvent>> Deref for Asky<T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T: Printable + Typeable<KeyEvent>> DerefMut for Asky<T> {
+impl<T: Typeable<KeyEvent>> DerefMut for Asky<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -287,7 +296,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     }
 }
 
-pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
+pub fn asky_system<T>(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
     mut key_evr: EventReader<KeyboardInput>,
@@ -295,7 +304,10 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
-) {
+)
+    where T : Typeable<KeyEvent> + Send + Sync + 'static,
+        Asky<T> : Printable
+{
     let key_event = KeyEvent::new(char_evr, key_evr);
 
     // let must_mutate = query.iter().filter(|(e, c, _)| c.1 != AskyState::Complete && c.will_handle_key(&key));

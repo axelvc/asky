@@ -251,6 +251,15 @@ impl<T> Printable for MultiSelect<'_, T> {
     }
 }
 
+#[cfg(feature = "bevy")]
+impl<T> Printable for Asky<MultiSelect<'_, T>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

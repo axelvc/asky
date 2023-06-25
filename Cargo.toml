@@ -11,14 +11,10 @@ repository = "https://github.com/axelvc/asky/"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.10.1", default-features = false, optional = true, features = [ "bevy_render", "bevy_ui", "bevy_text" ] }
+bevy = { version = "0.10.1", default-features = false, optional = true, features = [ "bevy_render", "bevy_ui", "bevy_text",    "bevy_core_pipeline", "bevy_asset", "bevy_sprite", "bevy_winit" ] }
 # colored = { version = "2.0.0", default-features = false }
 colored = { path = "../colored", default-features = false }
 crossterm = { version = "0.26.0", optional = true }
-
-
-# [dev-dependencies]
-# bevy = { version = "0.10.1", default-features = true, optional = true }
 
 [features]
 default = ["terminal"]
