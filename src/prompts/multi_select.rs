@@ -3,7 +3,7 @@ use std::io;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -223,19 +223,19 @@ impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
-    fn handle_key(&mut self, key: &KeyCode) -> bool {
+impl<T> Typeable<BKeyCode> for MultiSelect<'_, T> {
+    fn handle_key(&mut self, key: &BKeyCode) -> bool {
         let mut submit = false;
 
         match key {
             // submit
-            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
-            KeyCode::Space => self.toggle_focused(),
+            BKeyCode::Return | BKeyCode::Back => submit = self.validate_to_submit(),
+            BKeyCode::Space => self.toggle_focused(),
             // update value
-            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            BKeyCode::Up | BKeyCode::K => self.input.move_cursor(Direction::Up),
+            BKeyCode::Down | BKeyCode::J => self.input.move_cursor(Direction::Down),
+            BKeyCode::Left | BKeyCode::H => self.input.move_cursor(Direction::Left),
+            BKeyCode::Right | BKeyCode::L => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -298,9 +298,10 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
+        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+        let mut out = ColoredStrings::new();
+        (prompt.formatter)(&prompt, draw_time, &mut out);
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -311,7 +312,7 @@ mod tests {
             let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
             let simulated_key = KeyEvent::from(event);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert!(submit);
         }
     }
@@ -321,12 +322,12 @@ mod tests {
         let mut prompt = MultiSelect::new("", ["a", "b", "c"]);
 
         prompt.min(1);
-        let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        let mut submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(!submit);
 
-        prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
-        submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        prompt.handle_key(&KeyEvent::from(KeyCode::Char(' ')));
+        submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(submit);
     }
@@ -342,7 +343,7 @@ mod tests {
 
         for key in next_keys {
             prompt.input.focused = 0;
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.focused, 1);
         }
@@ -352,7 +353,7 @@ mod tests {
 
         for key in next_keys {
             prompt.input.focused = 2;
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.focused, 0);
         }
@@ -362,7 +363,7 @@ mod tests {
 
         for key in prev_keys {
             prompt.input.focused = 2;
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.focused, 1);
         }
@@ -372,7 +373,7 @@ mod tests {
 
         for key in prev_keys {
             prompt.input.focused = 0;
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.focused, 2);
         }
@@ -388,11 +389,11 @@ mod tests {
         assert!(!prompt.options[2].active);
 
         prompt.input.focused = 1;
-        prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
+        prompt.handle_key(&KeyEvent::from(KeyCode::Char(' ')));
 
         // must not update over limit
         prompt.input.focused = 2;
-        prompt.handle_key(KeyEvent::from(KeyCode::Char(' ')));
+        prompt.handle_key(&KeyEvent::from(KeyCode::Char(' ')));
 
         assert!(prompt.options[1].active);
         assert!(!prompt.options[2].active);

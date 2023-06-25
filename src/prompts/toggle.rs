@@ -13,7 +13,7 @@ use crate::utils::{
 };
 
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -110,16 +110,16 @@ impl Typeable<KeyEvent> for Toggle<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Typeable<KeyCode> for Toggle<'_> {
-    fn handle_key(&mut self, key: &KeyCode) -> bool {
+impl Typeable<BKeyCode> for Toggle<'_> {
+    fn handle_key(&mut self, key: &BKeyCode) -> bool {
         let mut submit = false;
 
         match key {
             // update value
-            KeyCode::Left | KeyCode::H => self.active = false,
-            KeyCode::Right | KeyCode::L => self.active = true,
+            BKeyCode::Left | BKeyCode::H => self.active = false,
+            BKeyCode::Right | BKeyCode::L => self.active = true,
             // submit current/initial value
-            KeyCode::Return | KeyCode::Back => submit = true,
+            BKeyCode::Return | BKeyCode::Back => submit = true,
             _ => (),
         }
 
@@ -155,9 +155,10 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
+        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+        let mut out = ColoredStrings::new();
+        (prompt.formatter)(&prompt, draw_time, &mut out);
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -168,7 +169,7 @@ mod tests {
             let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(event);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert_eq!(prompt.get_value(), "foo");
             assert!(submit);
         }
@@ -190,7 +191,7 @@ mod tests {
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
 
             assert_eq!(prompt.get_value(), expected);
             assert!(!submit);

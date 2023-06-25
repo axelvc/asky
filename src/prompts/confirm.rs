@@ -1,7 +1,7 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -14,34 +14,9 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
 };
 use colored::{ColoredStrings};
+use crate::utils::theme;
 
-struct DefaultFormatter;
-
-pub trait Formatter {
-    fn format(&self, confirm: &Confirm<'_>, time: DrawTime, out: &mut ColoredStrings<'_>);
-}
-
-impl Formatter for DefaultFormatter {
-    fn format(&self, prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
-        let options = ["No", "Yes"];
-
-        if draw_time == DrawTime::Last {
-            crate::utils::theme::fmt_last_message2(
-                &prompt.message,
-                options[prompt.active as usize],
-                out,
-            );
-            return;
-        }
-
-        crate::utils::theme::fmt_message2(&prompt.message, out);
-        out.0.push("\n".into());
-        crate::utils::theme::fmt_toggle_options3(options, prompt.active, out);
-    }
-}
-
-// #[derive(Debug)]
-// type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>);
+type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///
@@ -70,7 +45,7 @@ impl Formatter for DefaultFormatter {
 /// # }
 /// ```
 // #[derive(Debug)]
-#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "bevy", derive(bevy::prelude::Component))]
 pub struct Confirm<'a> {
     /// Message used to display in the prompt.
     // pub message: &'a str,
@@ -78,7 +53,7 @@ pub struct Confirm<'a> {
     /// Current state of the prompt.
     pub active: bool,
     /// Current formatter
-    pub formatter: Box<dyn Formatter + 'static + Sync + Send>,
+    pub formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Confirm<'a> {
@@ -87,7 +62,7 @@ impl<'a> Confirm<'a> {
         Confirm {
             message: message.into(),
             active: false,
-            formatter: Box::new(DefaultFormatter),
+            formatter: Box::new(theme::fmt_confirm2),
         }
     }
 
@@ -100,7 +75,9 @@ impl<'a> Confirm<'a> {
     /// Set custom closure to format the prompt.
     ///
     /// See: [`Customization`](index.html#customization).
-    pub fn format<F: Formatter + 'static + Sync + Send>(&mut self, formatter: F) -> &mut Self {
+    pub fn format<F>(&mut self, formatter: F) -> &mut Self
+    where
+        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + Send + Sync + 'a {
         self.formatter = Box::new(formatter);
         self
     }
@@ -142,31 +119,31 @@ impl Typeable<KeyEvent> for Confirm<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Typeable<KeyCode> for Confirm<'_> {
+impl Typeable<BKeyCode> for Confirm<'_> {
 
-    fn will_handle_key(&self, key: &KeyCode) -> bool {
+    fn will_handle_key(&self, key: &BKeyCode) -> bool {
         match key {
-            KeyCode::Left | KeyCode::H => true,
-            KeyCode::Right | KeyCode::L => true,
-            KeyCode::Y => true,
-            KeyCode::N => true,
-            KeyCode::Return | KeyCode::Back => true,
+            BKeyCode::Left | BKeyCode::H => true,
+            BKeyCode::Right | BKeyCode::L => true,
+            BKeyCode::Y => true,
+            BKeyCode::N => true,
+            BKeyCode::Return | BKeyCode::Back => true,
             _ => false,
         }
     }
 
-    fn handle_key(&mut self, key: &KeyCode) -> bool {
+    fn handle_key(&mut self, key: &BKeyCode) -> bool {
         let mut submit = false;
 
         match key {
             // update value
-            KeyCode::Left | KeyCode::H => self.active = false,
-            KeyCode::Right | KeyCode::L => self.active = true,
+            BKeyCode::Left | BKeyCode::H => self.active = false,
+            BKeyCode::Right | BKeyCode::L => self.active = true,
             // update value and submit
-            KeyCode::Y => submit = self.update_and_submit(true),
-            KeyCode::N => submit = self.update_and_submit(false),
+            BKeyCode::Y => submit = self.update_and_submit(true),
+            BKeyCode::N => submit = self.update_and_submit(false),
             // submit current/initial value
-            KeyCode::Return | KeyCode::Back => submit = true,
+            BKeyCode::Return | BKeyCode::Back => submit = true,
             _ => (),
         }
 
@@ -177,7 +154,7 @@ impl Typeable<KeyCode> for Confirm<'_> {
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
-        self.formatter.format(self, renderer.draw_time(), &mut out);
+        (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)
     }
 }
@@ -202,9 +179,10 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
+        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+        let mut out = ColoredStrings::new();
+        (prompt.formatter)(&prompt, draw_time, &mut out);
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -216,7 +194,7 @@ mod tests {
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
             prompt.initial(!expected);
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
 
             assert_eq!(prompt.active, expected);
             assert!(submit);
@@ -231,7 +209,7 @@ mod tests {
             let mut prompt = Confirm::new("");
             let simulated_key = KeyEvent::from(event);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert!(!prompt.active);
             assert!(submit);
         }
@@ -253,7 +231,7 @@ mod tests {
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
 
             assert_eq!(prompt.active, expected);
             assert!(!submit);

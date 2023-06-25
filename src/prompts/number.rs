@@ -1,9 +1,9 @@
 use std::{io, str::FromStr};
 
 #[cfg(feature = "bevy")]
-use crate::bevy::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use crate::bevy as cbevy;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -186,9 +186,9 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
+impl<T: NumLike> Typeable<cbevy::KeyEvent> for Number<'_, T> {
 
-    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+    fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
 
         for c in key.chars.iter() {
             if !c.is_control() {
@@ -199,15 +199,15 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
         for code in &key.codes {
             if match code {
                 // submit
-                KeyCode::Return => true,
+                BKeyCode::Return => true,
                 // type
-                // KeyCode::Char(c) => self.input.insert(c),
+                // BKeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => true,
-                KeyCode::Delete => true,
+                BKeyCode::Back => true,
+                BKeyCode::Delete => true,
                 // move cursor
-                KeyCode::Left => true,
-                KeyCode::Right => true,
+                BKeyCode::Left => true,
+                BKeyCode::Right => true,
                 _ => false,
             } {
                 return true;
@@ -216,7 +216,7 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 
         false
     }
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &cbevy::KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
@@ -228,15 +228,15 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                BKeyCode::Return => submit = self.validate_to_submit(),
                 // type
-                // KeyCode::Char(c) => self.input.insert(c),
+                // BKeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
-                KeyCode::Delete => self.input.delete(),
+                BKeyCode::Back => self.input.backspace(),
+                BKeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                BKeyCode::Left => self.input.move_cursor(Direction::Left),
+                BKeyCode::Right => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -256,7 +256,7 @@ impl<T: NumLike> Printable for Number<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T: NumLike> Printable for Number<'_, T> {
+impl<T: NumLike> Printable for cbevy::Asky<Number<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -317,12 +317,13 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
-
+        prompt.format(|_, _, out| {out.push(EXPECTED_VALUE.into()); [0, 0] });
+        let mut out = ColoredStrings::new();
         assert_eq!(
-            (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), [0, 0])
+            (prompt.formatter)(&prompt, draw_time, &mut out),
+            [0, 0]
         );
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -334,7 +335,7 @@ mod tests {
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.col, expected);
         }
@@ -366,8 +367,8 @@ mod tests {
             let mut prompt = Number::<i32>::new("");
 
             // must accept only one sign, simulate double press
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
 
             assert_eq!(prompt.input.value, c.to_string());
         }
@@ -376,7 +377,7 @@ mod tests {
         for c in signs {
             let mut prompt = Number::<u32>::new("");
 
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
 
             assert!(prompt.input.value.is_empty());
         }
@@ -388,12 +389,12 @@ mod tests {
 
         // try to type a character
         ('a'..='z').for_each(|c| {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
         });
 
         // try to type digits
         ('0'..='9').for_each(|c| {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
         });
 
         assert_eq!(prompt.input.value, "0123456789");
@@ -404,7 +405,7 @@ mod tests {
         let mut prompt = Number::<f32>::new("");
 
         "1.".chars().for_each(|c| {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
         });
 
         assert_eq!(prompt.input.value, "1.");
@@ -413,7 +414,7 @@ mod tests {
         let mut prompt = Number::<i32>::new("");
 
         "2.".chars().for_each(|c| {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(c)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(c)));
         });
 
         assert_eq!(prompt.input.value, "2");

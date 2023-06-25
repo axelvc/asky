@@ -25,6 +25,19 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrin
     fmt_toggle_options3(options, prompt.active, out);
 }
 
+pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrings) {
+    let options = ["No", "Yes"];
+
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(&prompt.message, options[prompt.active as usize], out);
+        return;
+    }
+
+    fmt_message2(&prompt.message, out);
+    out.0.push("\n".into());
+    fmt_toggle_options3(options, prompt.active, out);
+}
+
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
         return fmt_last_message(prompt.message, prompt.options[prompt.active as usize]);

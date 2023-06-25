@@ -4,7 +4,7 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "bevy")]
-use crate::bevy::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 #[cfg(feature = "bevy")]
 use bevy::prelude::*;
 
@@ -326,18 +326,18 @@ impl<T> Typeable<KeyEvent> for Select<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T> Typeable<KeyCode> for Select<'_, T> {
-    fn handle_key(&mut self, key: &KeyCode) -> bool {
+impl<T> Typeable<BKeyCode> for Select<'_, T> {
+    fn handle_key(&mut self, key: &BKeyCode) -> bool {
         let mut submit = false;
 
         match key {
             // submit
-            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            BKeyCode::Return | BKeyCode::Back => submit = self.validate_to_submit(),
             // update value
-            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            BKeyCode::Up | BKeyCode::K => self.input.move_cursor(Direction::Up),
+            BKeyCode::Down | BKeyCode::J => self.input.move_cursor(Direction::Down),
+            BKeyCode::Left | BKeyCode::H => self.input.move_cursor(Direction::Left),
+            BKeyCode::Right | BKeyCode::L => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -382,9 +382,10 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
+        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+        let mut out = ColoredStrings::new();
+        (prompt.formatter)(&prompt, draw_time, &mut out);
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -397,7 +398,7 @@ mod tests {
 
             prompt.selected(1);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert_eq!(prompt.input.focused, 1);
             assert!(submit);
         }
@@ -410,7 +411,7 @@ mod tests {
         for event in events {
             let mut prompt = Select::new_complex("", vec![SelectOption::new("foo").disabled(true)]);
 
-            let submit = prompt.handle_key(KeyEvent::from(event));
+            let submit = prompt.handle_key(&KeyEvent::from(event));
             assert!(!submit);
         }
     }
@@ -440,7 +441,7 @@ mod tests {
 
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
-                prompt.handle_key(simulated_key);
+                prompt.handle_key(&simulated_key);
                 assert_eq!(prompt.input.focused, expected);
             }
         }
@@ -452,7 +453,7 @@ mod tests {
 
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
-                prompt.handle_key(simulated_key);
+                prompt.handle_key(&simulated_key);
                 assert_eq!(prompt.input.focused, expected);
             }
         }

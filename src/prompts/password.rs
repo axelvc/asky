@@ -1,9 +1,9 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use crate::bevy::*;
+use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -175,9 +175,9 @@ impl Typeable<KeyEvent> for Password<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Typeable<KeyEvent> for Password<'_> {
+impl Typeable<cbevy::KeyEvent> for Password<'_> {
 
-    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+    fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
 
         for c in key.chars.iter() {
             if !c.is_control() {
@@ -188,15 +188,15 @@ impl Typeable<KeyEvent> for Password<'_> {
         for code in &key.codes {
             if match code {
                 // submit
-                KeyCode::Return => true,
+                BKeyCode::Return => true,
                 // type
-                // KeyCode::Char(c) => self.input.insert(c),
+                // BKeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => true,
-                KeyCode::Delete => true,
+                BKeyCode::Back => true,
+                BKeyCode::Delete => true,
                 // move cursor
-                KeyCode::Left => true,
-                KeyCode::Right => true,
+                BKeyCode::Left => true,
+                BKeyCode::Right => true,
                 _ => false,
             } {
                 return true;
@@ -205,7 +205,7 @@ impl Typeable<KeyEvent> for Password<'_> {
 
         false
     }
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &cbevy::KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
@@ -217,15 +217,15 @@ impl Typeable<KeyEvent> for Password<'_> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                BKeyCode::Return => submit = self.validate_to_submit(),
                 // type
-                // KeyCode::Char(c) => self.input.insert(c),
+                // BKeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
-                KeyCode::Delete => self.input.delete(),
+                BKeyCode::Back => self.input.backspace(),
+                BKeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                BKeyCode::Left => self.input.move_cursor(Direction::Left),
+                BKeyCode::Right => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -237,7 +237,7 @@ impl Typeable<KeyEvent> for Password<'_> {
 #[cfg(feature = "terminal")]
 impl Printable for Password<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
+        let mut out = ColoredStrings::new();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)?;
         renderer.set_cursor(cursor)
@@ -245,7 +245,7 @@ impl Printable for Password<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Printable for Password<'_> {
+impl Printable for cbevy::Asky<Password<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -300,12 +300,14 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
 
+        prompt.format(|_, _, out| {out.push(EXPECTED_VALUE.into()); [0, 0] });
+        let mut out = ColoredStrings::new();
         assert_eq!(
-            (prompt.formatter)(&prompt, draw_time()),
-            (String::from(EXPECTED_VALUE), [0, 0])
+            (prompt.formatter)(&prompt, draw_time, &mut out),
+            [0, 0]
         );
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -326,7 +328,7 @@ mod tests {
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.col, expected);
         }

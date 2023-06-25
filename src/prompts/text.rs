@@ -1,9 +1,9 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use crate::bevy::*;
+use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -222,9 +222,9 @@ impl Typeable<KeyEvent> for Text<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Typeable<KeyEvent> for Text<'_> {
+impl Typeable<cbevy::KeyEvent> for Text<'_> {
 
-    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+    fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
         for c in key.chars.iter() {
             if !c.is_control() {
                 return true;
@@ -233,11 +233,11 @@ impl Typeable<KeyEvent> for Text<'_> {
 
         for code in &key.codes {
             if match code {
-                KeyCode::Return => true,
-                KeyCode::Back => true,
-                KeyCode::Delete => true,
-                KeyCode::Left => true,
-                KeyCode::Right => true,
+                BKeyCode::Return => true,
+                BKeyCode::Back => true,
+                BKeyCode::Delete => true,
+                BKeyCode::Left => true,
+                BKeyCode::Right => true,
                 _ => false,
             } {
                 return true;
@@ -246,7 +246,7 @@ impl Typeable<KeyEvent> for Text<'_> {
         false
     }
 
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &cbevy::KeyEvent) -> bool {
         let mut submit = false;
 
         for c in key.chars.iter() {
@@ -258,15 +258,15 @@ impl Typeable<KeyEvent> for Text<'_> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                BKeyCode::Return => submit = self.validate_to_submit(),
                 // type
-                // KeyCode::Char(c) => self.input.insert(c),
+                // BKeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
-                KeyCode::Delete => self.input.delete(),
+                BKeyCode::Back => self.input.backspace(),
+                BKeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                BKeyCode::Left => self.input.move_cursor(Direction::Left),
+                BKeyCode::Right => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -286,7 +286,7 @@ impl Printable for Text<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Printable for Text<'_> {
+impl Printable for cbevy::Asky<Text<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -339,12 +339,13 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
-
+        prompt.format(|_, _, out| {out.push(EXPECTED_VALUE.into()); [0, 0] });
+        let mut out = ColoredStrings::new();
         assert_eq!(
-            (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), [0, 0])
+            (prompt.formatter)(&prompt, draw_time, &mut out),
+            [0, 0]
         );
+        assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
     #[test]
@@ -355,7 +356,7 @@ mod tests {
         let text = "foo";
 
         for char in text.chars() {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(char)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(char)));
         }
 
         assert_eq!(prompt.input.value, "foo");
@@ -366,7 +367,7 @@ mod tests {
         prompt.input.col = 2;
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.value, expected);
             assert_eq!(prompt.input.col, 1);
@@ -382,7 +383,7 @@ mod tests {
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.col, expected);
         }
@@ -396,14 +397,14 @@ mod tests {
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
 
         // invalid value
-        let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        let mut submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(!submit);
         assert_eq!(prompt.validator_result, Err(err_str));
 
         // valid value
         prompt.input.set_value("foo");
-        submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(submit);
         assert_eq!(prompt.validator_result, Ok(()));

@@ -47,9 +47,9 @@
 //! # use asky::Confirm;
 //! # fn main() -> std::io::Result<()> {
 //! Confirm::new("Do you like Rust?")
-//!     .format(|prompt, _draw_time| {
+//!     .format(|prompt, _draw_time, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
-//!         format!("{} {}\n", prompt.message, state)
+//!         out.push(format!("{} {}\n", prompt.message, state).into());
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -73,17 +73,15 @@
 //! # use asky::Text;
 //! # fn main() -> std::io::Result<()> {
 //! Text::new("What is your name")
-//!     .format(|prompt, _draw_time| {
+//!     .format(|prompt, _draw_time, out| {
 //!         let cursor_col = prompt.input.col;
 //!         let prefix = "> ";
 //!
 //!         let x = (prefix.len() + cursor_col);
 //!         let y = 1;
 //!
-//!         (
-//!             format!("{}\n{} {}", prompt.message, prefix, prompt.input.value),
-//!             [x, y],
-//!         )
+//!         out.push(format!("{}\n{} {}", prompt.message, prefix, prompt.input.value).into());
+//!         [x, y]
 //!     })
 //!     .prompt();
 //! # Ok(())
