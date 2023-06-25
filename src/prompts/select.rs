@@ -4,9 +4,8 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "bevy")]
-use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
-#[cfg(feature = "bevy")]
-use bevy::prelude::*;
+use bevy::{input::keyboard::KeyCode as BKeyCode};
+
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;

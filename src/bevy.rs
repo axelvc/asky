@@ -2,11 +2,11 @@ use crate::utils::renderer::{Printable, Renderer};
 use crate::DrawTime;
 use crate::Typeable;
 use bevy::input::keyboard::KeyboardInput;
-use bevy::input::ButtonState;
+
 use bevy::prelude::*;
-use colored::{Color as Colored, Color::TrueColor, ColoredString, ColoredStrings, Colorize};
+use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
 use std::io;
-use std::marker::PhantomData;
+
 use std::ops::{Deref, DerefMut};
 
 use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle};
@@ -299,7 +299,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 pub fn asky_system<T>(
     mut commands: Commands,
     char_evr: EventReader<ReceivedCharacter>,
-    mut key_evr: EventReader<KeyboardInput>,
+    key_evr: EventReader<KeyboardInput>,
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.

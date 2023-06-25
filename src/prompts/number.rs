@@ -1,7 +1,7 @@
 use std::{io, str::FromStr};
 
 #[cfg(feature = "bevy")]
-use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
+use bevy::{input::keyboard::KeyCode as BKeyCode};
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
 #[cfg(feature = "terminal")]

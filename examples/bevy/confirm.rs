@@ -1,19 +1,17 @@
 use asky::bevy::*;
-use asky::utils::renderer::*;
+
 use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle};
 
 use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    input::keyboard::KeyboardInput,
     prelude::*,
-    window::{CursorGrabMode, PresentMode, WindowLevel},
+    window::{PresentMode},
 };
 
-use asky::Typeable;
 
-use asky::DrawTime;
 
-use colored::{ColoredString, ColoredStrings, Colorize};
+
+
+
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();

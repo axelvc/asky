@@ -3,7 +3,7 @@ use std::io;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 #[cfg(feature = "bevy")]
-use bevy::{prelude::*, input::keyboard::KeyCode as BKeyCode};
+use bevy::{input::keyboard::KeyCode as BKeyCode};
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
