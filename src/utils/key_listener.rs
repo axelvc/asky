@@ -16,7 +16,7 @@ pub trait Typeable<T> {
 
     /// Returns `true` if this will handle a key. (Useful for avoiding mutable
     /// access to allow for change detection in some cases.)
-    fn will_handle_key(&self, key: &T) -> bool {
+    fn will_handle_key(&self, _key: &T) -> bool {
         true
     }
 }

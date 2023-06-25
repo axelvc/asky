@@ -8,7 +8,7 @@ use bevy::prelude::*;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use colored::{ColoredString, ColoredStrings, Colorize};
+use colored::{ColoredStrings};
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;

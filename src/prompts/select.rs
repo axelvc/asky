@@ -16,7 +16,7 @@ use crate::utils::{
     theme,
 };
 
-use colored::{ColoredString, ColoredStrings, Colorize};
+use colored::{ColoredStrings};
 
 pub enum Direction {
     Up,
@@ -348,7 +348,7 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)
     }
 }

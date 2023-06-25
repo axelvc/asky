@@ -4,7 +4,7 @@ use std::io::{self, Write};
 #[cfg(feature = "terminal")]
 use crossterm::{cursor, execute, queue, style::Print, terminal};
 
-use colored::{ColoredString, ColoredStrings, Colorize};
+use colored::{ColoredStrings};
 pub trait Printable {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()>;
 }

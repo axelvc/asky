@@ -12,9 +12,8 @@ use crate::utils::key_listener;
 use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
-use colored::{ColoredString, ColoredStrings, Colorize};
+use colored::{ColoredStrings};
 
 struct DefaultFormatter;
 
