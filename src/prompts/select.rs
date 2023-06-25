@@ -4,8 +4,7 @@ use std::io;
 use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
-
+use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -15,7 +14,7 @@ use crate::utils::{
     theme,
 };
 
-use colored::{ColoredStrings};
+use colored::ColoredStrings;
 
 pub enum Direction {
     Up,

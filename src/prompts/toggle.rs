@@ -13,7 +13,7 @@ use crate::utils::{
 };
 
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
+use bevy::input::keyboard::KeyCode as BKeyCode;
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

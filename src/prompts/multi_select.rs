@@ -3,7 +3,7 @@ use std::io;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
+use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -19,7 +19,7 @@ use crate::utils::{
 
 use super::select::{Direction, SelectInput, SelectOption};
 
-use colored::{ColoredStrings};
+use colored::ColoredStrings;
 
 type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

@@ -1,9 +1,9 @@
 use std::{io, str::FromStr};
 
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
-#[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
+#[cfg(feature = "bevy")]
+use bevy::input::keyboard::KeyCode as BKeyCode;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -17,7 +17,7 @@ use crate::utils::{
 };
 
 use super::text::{Direction, LineInput};
-use colored::{ColoredStrings};
+use colored::ColoredStrings;
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a + Send + Sync;
@@ -187,9 +187,7 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 
 #[cfg(feature = "bevy")]
 impl<T: NumLike> Typeable<cbevy::KeyEvent> for Number<'_, T> {
-
     fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
-
         for c in key.chars.iter() {
             if !c.is_control() {
                 return true;
@@ -317,12 +315,12 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| {out.push(EXPECTED_VALUE.into()); [0, 0] });
-        let mut out = ColoredStrings::new();
-        assert_eq!(
-            (prompt.formatter)(&prompt, draw_time, &mut out),
+        prompt.format(|_, _, out| {
+            out.push(EXPECTED_VALUE.into());
             [0, 0]
-        );
+        });
+        let mut out = ColoredStrings::new();
+        assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
         assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 

@@ -38,7 +38,7 @@ pub enum AskyState {
 //     }
 // }
 
-impl<T:  Typeable<KeyEvent>> Deref for Asky<T> {
+impl<T: Typeable<KeyEvent>> Deref for Asky<T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0
@@ -188,7 +188,11 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         bundle
     }
 
-    fn cursorify(cs: ColoredString, i: usize, cursor_color: colored::Color) -> impl Iterator<Item = ColoredString> {
+    fn cursorify(
+        cs: ColoredString,
+        i: usize,
+        cursor_color: colored::Color,
+    ) -> impl Iterator<Item = ColoredString> {
         let to_colored_string = |s: String| -> ColoredString {
             let mut c = cs.clone();
             c.input = s.into();
@@ -202,9 +206,13 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
             right = Some(to_colored_string(r.to_owned()));
             input = l.to_owned();
         }
-        let cursor = Some(to_colored_string(input.pop().expect("Could not get cursor").to_string()).on_color(cursor_color));
+        let cursor = Some(
+            to_colored_string(input.pop().expect("Could not get cursor").to_string())
+                .on_color(cursor_color),
+        );
         let left = Some(to_colored_string(input));
-        left.into_iter().chain(cursor.into_iter().chain(right.into_iter()))
+        left.into_iter()
+            .chain(cursor.into_iter().chain(right.into_iter()))
     }
 
     // fn split(strings: ColoredStrings, pat: char) -> impl Iterator<Item = ColoredStrings> {
@@ -227,33 +235,45 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
         let style = self.settings.style.clone();
         self.commands.entity(self.column).with_children(|column| {
-            for lines in strings.split('\n').into_iter().enumerate().map(|(i, mut colored_line)| {
-                if self.state.cursor_visible && i == self.state.cursor_pos[1] {
-                    let mut length = 0;
-                    let mut inserted = false;
-                    for i in 0..colored_line.len() {
-                        if self.state.cursor_pos[0] < length + colored_line[i].input.chars().count() {
-                            // The cursor is in this one.
-                            let part = colored_line.remove(i);
-                            for (j, new_part) in BevyRenderer::cursorify(part, self.state.cursor_pos[0] - length, colored::Color::White).enumerate() {
-                                colored_line.insert(i + j, new_part)
+            for lines in strings
+                .split('\n')
+                .into_iter()
+                .enumerate()
+                .map(|(i, mut colored_line)| {
+                    if self.state.cursor_visible && i == self.state.cursor_pos[1] {
+                        let mut length = 0;
+                        let mut inserted = false;
+                        for i in 0..colored_line.len() {
+                            if self.state.cursor_pos[0]
+                                < length + colored_line[i].input.chars().count()
+                            {
+                                // The cursor is in this one.
+                                let part = colored_line.remove(i);
+                                for (j, new_part) in BevyRenderer::cursorify(
+                                    part,
+                                    self.state.cursor_pos[0] - length,
+                                    colored::Color::White,
+                                )
+                                .enumerate()
+                                {
+                                    colored_line.insert(i + j, new_part)
+                                }
+                                inserted = true;
+                                break;
                             }
-                            inserted = true;
-                            break;
-
+                            length += colored_line[i].input.chars().count();
                         }
-                        length += colored_line[i].input.chars().count();
+                        if !inserted && self.state.cursor_pos[0] >= length {
+                            // Cursor is actually one character past string.
+                            colored_line.push(" ".on_color(colored::Color::White));
+                        }
                     }
-                    if !inserted && self.state.cursor_pos[0] >= length {
-                        // Cursor is actually one character past string.
-                        colored_line.push(" ".on_color(colored::Color::White));
-                    }
-                }
-                colored_line
-                    .0
-                    .into_iter()
-                    .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
-            }) {
+                    colored_line
+                        .0
+                        .into_iter()
+                        .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
+                })
+            {
                 column
                     .spawn(NodeBundle {
                         style: Style {
@@ -302,9 +322,9 @@ pub fn asky_system<T>(
     mut render_state: Local<BevyRendererState>,
     // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
-)
-    where T : Typeable<KeyEvent> + Send + Sync + 'static,
-        Asky<T> : Printable
+) where
+    T: Typeable<KeyEvent> + Send + Sync + 'static,
+    Asky<T>: Printable,
 {
     let key_event = KeyEvent::new(char_evr, key_evr);
 
@@ -314,7 +334,7 @@ pub fn asky_system<T>(
         match confirm.1 {
             AskyState::Complete => {
                 continue;
-            },
+            }
             AskyState::Hidden => {
                 if let Some(children) = children {
                     let children: Vec<Entity> = children.to_vec();
@@ -323,10 +343,10 @@ pub fn asky_system<T>(
                         commands.entity(child).despawn_recursive();
                     }
                 }
-            },
+            }
             AskyState::Reading => {
-                if ! confirm.will_handle_key(&key_event)
-                    && render_state.draw_time != DrawTime::First {
+                if !confirm.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
+                {
                     continue;
                 }
                 if confirm.handle_key(&key_event) {
@@ -360,14 +380,13 @@ pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
-        app
-        .add_system(asky_system::<Confirm>)
-        .add_system(asky_system::<Toggle>)
-        .add_system(asky_system::<crate::Text>)
-        .add_system(asky_system::<Number<u8>>)
-        .add_system(asky_system::<Number<f32>>)
-        .add_system(asky_system::<Select<'static, &'static str>>)
-        .add_system(asky_system::<Password>)
-        .add_system(asky_system::<MultiSelect<'static, &'static str>>);
+        app.add_system(asky_system::<Confirm>)
+            .add_system(asky_system::<Toggle>)
+            .add_system(asky_system::<crate::Text>)
+            .add_system(asky_system::<Number<u8>>)
+            .add_system(asky_system::<Number<f32>>)
+            .add_system(asky_system::<Select<'static, &'static str>>)
+            .add_system(asky_system::<Password>)
+            .add_system(asky_system::<MultiSelect<'static, &'static str>>);
     }
 }

@@ -1,7 +1,7 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
+use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
@@ -10,11 +10,9 @@ use std::borrow::Cow;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
 use crate::utils::key_listener::Typeable;
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
-use colored::{ColoredStrings};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
+use colored::ColoredStrings;
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
 
@@ -77,7 +75,8 @@ impl<'a> Confirm<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + Send + Sync + 'a {
+        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + Send + Sync + 'a,
+    {
         self.formatter = Box::new(formatter);
         self
     }
@@ -120,7 +119,6 @@ impl Typeable<KeyEvent> for Confirm<'_> {
 
 #[cfg(feature = "bevy")]
 impl Typeable<BKeyCode> for Confirm<'_> {
-
     fn will_handle_key(&self, key: &BKeyCode) -> bool {
         match key {
             BKeyCode::Left | BKeyCode::H => true,

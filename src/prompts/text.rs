@@ -3,12 +3,12 @@ use std::io;
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
-use bevy::{input::keyboard::KeyCode as BKeyCode};
+use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use colored::{ColoredStrings};
+use colored::ColoredStrings;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -223,7 +223,6 @@ impl Typeable<KeyEvent> for Text<'_> {
 
 #[cfg(feature = "bevy")]
 impl Typeable<cbevy::KeyEvent> for Text<'_> {
-
     fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
         for c in key.chars.iter() {
             if !c.is_control() {
@@ -339,12 +338,12 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| {out.push(EXPECTED_VALUE.into()); [0, 0] });
-        let mut out = ColoredStrings::new();
-        assert_eq!(
-            (prompt.formatter)(&prompt, draw_time, &mut out),
+        prompt.format(|_, _, out| {
+            out.push(EXPECTED_VALUE.into());
             [0, 0]
-        );
+        });
+        let mut out = ColoredStrings::new();
+        assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
         assert_eq!(format!("{}", out), EXPECTED_VALUE);
     }
 
