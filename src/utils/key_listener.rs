@@ -13,6 +13,12 @@ use super::renderer::{Printable, Renderer};
 pub trait Typeable<T> {
     /// Returns `true` if it should end to listen for more key events
     fn handle_key(&mut self, key: &T) -> bool;
+
+    /// Returns `true` if this will handle a key. (Useful for avoiding mutable
+    /// access to allow for change detection in some cases.)
+    fn will_handle_key(&self, key: &T) -> bool {
+        return true;
+    }
 }
 
 #[cfg(feature = "terminal")]

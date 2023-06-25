@@ -56,7 +56,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let select: Select<'static, &'static str> =
         Select::new("Favorite animal?", ["dog", "cow", "cat"]);
     let password: Password<'static> = Password::new("Password: ");
-
     let multi_select: MultiSelect<'static, &'static str> =
         MultiSelect::new("Favorite animal?", ["dog", "cow", "cat"]);
 
@@ -71,12 +70,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }
     )
-    // .insert(Asky(confirm))
+    .insert(Asky(confirm, AskyState::Reading))
     // .insert(Asky(toggle))
     // .insert(Asky(text_input))
     // .insert(Asky(number))
     // .insert(Asky(float))
-    .insert(Asky(select, AskyState::Reading))
+    // .insert(Asky(select, AskyState::Reading))
     // .insert(Asky(password))
     // .insert(Asky(multi_select))
         ;

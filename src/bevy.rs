@@ -55,6 +55,14 @@ impl<T: Typeable<KeyCode>> Typeable<KeyEvent> for T {
         }
         return result;
     }
+
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+        let mut result = false;
+        for code in &key.codes {
+            result |= self.will_handle_key(code);
+        }
+        return result;
+    }
 }
 
 impl KeyEvent {
@@ -282,14 +290,17 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
 ) {
     let key_event = KeyEvent::new(char_evr, key_evr);
+
+    // let must_mutate = query.iter().filter(|(e, c, _)| c.1 != AskyState::Complete && c.will_handle_key(&key));
+
     for (entity, mut confirm, children) in query.iter_mut() {
         match confirm.1 {
             AskyState::Complete => {
                 continue;
             },
             AskyState::Hidden => {
-                if children.is_some() {
-                    let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
+                if let Some(children) = children {
+                    let children: Vec<Entity> = children.to_vec();
                     commands.entity(entity).remove_children(&children);
                     for child in children {
                         commands.entity(child).despawn_recursive();
@@ -297,21 +308,28 @@ pub fn asky_system<T: Printable + Typeable<KeyEvent> + Send + Sync + 'static>(
                 }
             },
             AskyState::Reading => {
+
+                if ! confirm.will_handle_key(&key_event)
+                    && render_state.draw_time != DrawTime::First {
+                    continue;
+                }
                 if confirm.handle_key(&key_event) {
                     // It's done.
                     confirm.1 = AskyState::Complete;
                     render_state.draw_time = DrawTime::Last;
                 }
-
-                let children: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_else(Vec::new);
-                commands.entity(entity).remove_children(&children);
-                for child in children {
-                    commands.entity(child).despawn_recursive();
+                if let Some(children) = children {
+                    let children: Vec<Entity> = children.to_vec();
+                    commands.entity(entity).remove_children(&children);
+                    for child in children {
+                        commands.entity(child).despawn_recursive();
+                    }
                 }
                 let mut renderer =
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
                 confirm.draw(&mut renderer);
+                eprint!(".");
                 if draw_time == DrawTime::First {
                     renderer.update_draw_time();
                 } else if draw_time == DrawTime::Last {
