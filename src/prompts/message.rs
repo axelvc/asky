@@ -4,7 +4,7 @@ use std::io;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyEvent, KeyCode};
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
@@ -34,11 +34,7 @@ type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings<'a>) + 'a + 
 /// use asky::Message;
 ///
 /// # fn main() -> std::io::Result<()> {
-/// if Message::new("Do you like the pizza?").prompt()? {
-///     println!("Great!");
-/// } else {
-///     println!("Interesting!");
-/// }
+/// Message::new("Well, that's great.").prompt()?;
 /// # Ok(())
 /// # }
 /// ```
@@ -81,18 +77,18 @@ impl<'a> Message<'a> {
 
 #[cfg(feature = "terminal")]
 impl Typeable<KeyEvent> for Message<'_> {
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+    fn handle_key(&mut self, _key: &KeyEvent) -> bool {
         true
     }
 }
 
 #[cfg(feature = "bevy")]
 impl Typeable<BKeyCode> for Message<'_> {
-    fn will_handle_key(&self, key: &BKeyCode) -> bool {
+    fn will_handle_key(&self, _key: &BKeyCode) -> bool {
         true
     }
 
-    fn handle_key(&mut self, key: &BKeyCode) -> bool {
+    fn handle_key(&mut self, _key: &BKeyCode) -> bool {
         true
     }
 }
@@ -119,16 +115,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn set_initial_value() {
-        let mut prompt = Message::new("");
-
-        prompt.initial(false);
-        assert!(!prompt.active);
-        prompt.initial(true);
-        assert!(prompt.active);
-    }
-
-    #[test]
     fn set_custom_formatter() {
         let mut prompt: Message = Message::new("");
         let draw_time = DrawTime::First;
@@ -148,10 +134,9 @@ mod tests {
             let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
-            prompt.initial(!expected);
+            // prompt.initial(!expected);
             let submit = prompt.handle_key(&simulated_key);
 
-            assert_eq!(prompt.active, expected);
             assert!(submit);
         }
     }
@@ -165,7 +150,7 @@ mod tests {
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(&simulated_key);
-            assert!(!prompt.active);
+            // assert!(!prompt.active);
             assert!(submit);
         }
     }
@@ -185,11 +170,11 @@ mod tests {
             let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(key);
 
-            prompt.initial(initial);
+            // prompt.initial(initial);
             let submit = prompt.handle_key(&simulated_key);
 
-            assert_eq!(prompt.active, expected);
-            assert!(!submit);
+            // assert_eq!(prompt.active, expected);
+            assert!(submit);
         }
     }
 }
