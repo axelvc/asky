@@ -1,6 +1,6 @@
 use asky::bevy::*;
 
-use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle};
+use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
 
 use bevy::{
     prelude::*,
@@ -18,6 +18,7 @@ fn main() {
         "select",
         "password",
         "multi_select",
+        "message",
     ];
     if args.len() != 2 {
         eprintln!("Usage: bevy <{}>", options.join("|"));
@@ -62,6 +63,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
     commands.spawn(Camera2dBundle::default());
 
     let confirm: Confirm<'static> = Confirm::new("Hi?");
+    let message: Message<'static> = Message::new("My message");
     let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
     let number: Number<'static, u8> = Number::new("Number?");
@@ -117,6 +119,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
             commands
                 .spawn(node)
                 .insert(Asky(number, AskyState::Reading));
+        }
+        "message" => {
+            commands.spawn(node).insert(Asky(message, AskyState::Reading));
         }
         _ => {}
         // .insert(Asky(password, AskyState::Reading))

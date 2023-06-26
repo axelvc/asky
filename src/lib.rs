@@ -112,6 +112,7 @@ pub use prompts::password::Password;
 pub use prompts::select::Select;
 pub use prompts::text::Text;
 pub use prompts::toggle::Toggle;
+pub use prompts::message::Message;
 
 pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;

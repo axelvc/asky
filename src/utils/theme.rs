@@ -8,6 +8,7 @@ use crate::prompts::{
     select::{Select, SelectInput, SelectOption},
     text::Text,
     toggle::Toggle,
+    message::Message,
 };
 
 use super::{num_like::NumLike, renderer::DrawTime};
@@ -20,7 +21,7 @@ pub fn fmt_confirm(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStrin
         return;
     }
 
-    fmt_message2(&prompt.message, out);
+    fmt_msg2(&prompt.message, out);
     out.0.push("\n".into());
     fmt_toggle_options3(options, prompt.active, out);
 }
@@ -33,9 +34,21 @@ pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStri
         return;
     }
 
-    fmt_message2(&prompt.message, out);
+    fmt_msg2(&prompt.message, out);
     out.0.push("\n".into());
     fmt_toggle_options3(options, prompt.active, out);
+}
+
+pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStrings) {
+
+    if draw_time == DrawTime::Last {
+        fmt_last_message2(&prompt.message, "", out);
+        return;
+    }
+
+    fmt_msg2(&prompt.message, out);
+    out.push("\n".into());
+    fmt_toggle_options4(&["Press any key"], 0, out);
 }
 
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
@@ -56,7 +69,7 @@ pub fn fmt_toggle2(prompt: &Toggle, draw_time: DrawTime, out: &mut ColoredString
         return;
     }
 
-    fmt_message2(prompt.message, out);
+    fmt_msg2(prompt.message, out);
     out.push("\n".into());
     fmt_toggle_options2(prompt.options, prompt.active, out);
 }
@@ -84,7 +97,7 @@ pub fn fmt_select2<T>(prompt: &Select<T>, draw_time: DrawTime, out: &mut Colored
         return;
     }
 
-    fmt_message2(prompt.message, out);
+    fmt_msg2(prompt.message, out);
     out.push("\n".into());
     fmt_select_page_options2(&prompt.options, &prompt.input, false, out);
     out.push("\n".into());
@@ -298,9 +311,8 @@ fn fmt_message(message: &str) -> String {
     format!("{} {}", "▣".blue(), message)
 }
 
-pub fn fmt_message2(message: &str, out: &mut ColoredStrings<'_>) {
-    out.0
-        .extend(["▣".blue(), " ".into(), message.to_owned().into()]);
+pub fn fmt_msg2(message: &str, out: &mut ColoredStrings<'_>) {
+    out.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
 }
 
 fn fmt_last_message(message: &str, answer: &str) -> String {
@@ -351,11 +363,27 @@ pub fn fmt_toggle_options3(options: [&str; 2], active: bool, out: &mut ColoredSt
         }
     };
 
-    out.0.extend([
+    out.extend([
         fmt_option(options[0], !active),
         " ".into(),
         fmt_option(options[1], active),
     ]);
+}
+
+pub fn fmt_toggle_options4(options: &[&str], active: usize, out: &mut ColoredStrings) {
+    let fmt_option = |opt, active| {
+        let opt = format!(" {} ", opt);
+        match active {
+            true => opt.black().on_blue(),
+            false => opt.white().on_bright_black(),
+        }
+    };
+    for i in 0..options.len() {
+        out.push(fmt_option(options[i], i == active));
+        if i < options.len() - 1 {
+            out.push(" ".into());
+        }
+    }
 }
 
 // endregion: toggle
@@ -367,7 +395,7 @@ fn fmt_line_message2(msg: &str, default_value: &Option<&str>, out: &mut ColoredS
         Some(value) => format!("Default: {}", value).bright_black(),
         None => "".normal(),
     };
-    fmt_message2(msg, out);
+    fmt_msg2(msg, out);
     out.push(" ".into());
     out.push(value);
 }
@@ -477,7 +505,7 @@ fn fmt_multi_select_message2(
     }
     .bright_black();
 
-    fmt_message2(msg, out);
+    fmt_msg2(msg, out);
     out.push(" ".into());
     out.push(min_max);
 }

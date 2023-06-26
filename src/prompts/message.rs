@@ -14,7 +14,7 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use colored::ColoredStrings;
 
-type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
+type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///
@@ -31,10 +31,10 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + 
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Confirm;
+/// use asky::Message;
 ///
 /// # fn main() -> std::io::Result<()> {
-/// if Confirm::new("Do you like the pizza?").prompt()? {
+/// if Message::new("Do you like the pizza?").prompt()? {
 ///     println!("Great!");
 /// } else {
 ///     println!("Interesting!");
@@ -43,30 +43,21 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + 
 /// # }
 /// ```
 // #[derive(Debug)]
-pub struct Confirm<'a> {
+pub struct Message<'a> {
     /// Message used to display in the prompt.
     // pub message: &'a str,
     pub message: Cow<'a, str>,
-    /// Current state of the prompt.
-    pub active: bool,
     /// Current formatter
     pub formatter: Box<Formatter<'a>>,
 }
 
-impl<'a> Confirm<'a> {
+impl<'a> Message<'a> {
     /// Create a new confirm prompt.
     pub fn new<T: Into<Cow<'a, str>>>(message: T) -> Self {
-        Confirm {
+        Message {
             message: message.into(),
-            active: false,
-            formatter: Box::new(theme::fmt_confirm2),
+            formatter: Box::new(theme::fmt_message2),
         }
-    }
-
-    /// Set whether the prompt should be active at start.
-    pub fn initial(&mut self, active: bool) -> &mut Self {
-        self.active = active;
-        self
     }
 
     /// Set custom closure to format the prompt.
@@ -74,7 +65,7 @@ impl<'a> Confirm<'a> {
     /// See: [`Customization`](index.html#customization).
     pub fn format<F>(&mut self, formatter: F) -> &mut Self
     where
-        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + Send + Sync + 'a,
+        F: Fn(&Message, DrawTime, &mut ColoredStrings) + Send + Sync + 'a,
     {
         self.formatter = Box::new(formatter);
         self
@@ -82,73 +73,31 @@ impl<'a> Confirm<'a> {
 
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<bool> {
+    pub fn prompt(&mut self) -> io::Result<()> {
         key_listener::listen(self, true)?;
-        Ok(self.active)
-    }
-}
-
-impl Confirm<'_> {
-    fn update_and_submit(&mut self, active: bool) -> bool {
-        self.active = active;
-        true
+        Ok(())
     }
 }
 
 #[cfg(feature = "terminal")]
-impl Typeable<KeyEvent> for Confirm<'_> {
+impl Typeable<KeyEvent> for Message<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // update value
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
-            // update value and submit
-            KeyCode::Char('y' | 'Y') => submit = self.update_and_submit(true),
-            KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
-            // submit current/initial value
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            _ => (),
-        }
-
-        submit
+        true
     }
 }
 
 #[cfg(feature = "bevy")]
-impl Typeable<BKeyCode> for Confirm<'_> {
+impl Typeable<BKeyCode> for Message<'_> {
     fn will_handle_key(&self, key: &BKeyCode) -> bool {
-        match key {
-            BKeyCode::Left | BKeyCode::H => true,
-            BKeyCode::Right | BKeyCode::L => true,
-            BKeyCode::Y => true,
-            BKeyCode::N => true,
-            BKeyCode::Return | BKeyCode::Back => true,
-            _ => false,
-        }
+        true
     }
 
     fn handle_key(&mut self, key: &BKeyCode) -> bool {
-        let mut submit = false;
-
-        match key {
-            // update value
-            BKeyCode::Left | BKeyCode::H => self.active = false,
-            BKeyCode::Right | BKeyCode::L => self.active = true,
-            // update value and submit
-            BKeyCode::Y => submit = self.update_and_submit(true),
-            BKeyCode::N => submit = self.update_and_submit(false),
-            // submit current/initial value
-            BKeyCode::Return | BKeyCode::Back => submit = true,
-            _ => (),
-        }
-
-        submit
+        true
     }
 }
 
-impl Printable for Confirm<'_> {
+impl Printable for Message<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -157,7 +106,7 @@ impl Printable for Confirm<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Printable for crate::bevy::Asky<Confirm<'_>> {
+impl Printable for crate::bevy::Asky<Message<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -171,7 +120,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Confirm::new("");
+        let mut prompt = Message::new("");
 
         prompt.initial(false);
         assert!(!prompt.active);
@@ -181,7 +130,7 @@ mod tests {
 
     #[test]
     fn set_custom_formatter() {
-        let mut prompt: Confirm = Confirm::new("");
+        let mut prompt: Message = Message::new("");
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
 
@@ -196,7 +145,7 @@ mod tests {
         let events = [('y', true), ('Y', true), ('n', false), ('N', false)];
 
         for (char, expected) in events {
-            let mut prompt = Confirm::new("");
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
             prompt.initial(!expected);
@@ -212,7 +161,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Confirm::new("");
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(&simulated_key);
@@ -233,7 +182,7 @@ mod tests {
         ];
 
         for (key, initial, expected) in events {
-            let mut prompt = Confirm::new("");
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);

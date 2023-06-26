@@ -9,20 +9,10 @@ use std::io;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle};
+use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
 
-#[derive(Component, Debug)]
-// pub struct Asky<T: Printable + for<'a> Typeable<KeyEvent<'a>>>(pub T);
+#[derive(Component, Debug, Clone)]
 pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
-
-// impl<T> Printable for Asky<T> {
-//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-//         unimplemented!();
-//     }
-// }
-
-// trait TypePrintable : Printable + Typeable<KeyEvent> {}
-// pub struct AskyDyn(pub dyn TypePrintable);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AskyState {
@@ -31,12 +21,6 @@ pub enum AskyState {
     Complete,
     Hidden,
 }
-
-// impl<'a, T: Printable + Typeable<KeyEvent<'a>>> Asky<'a,T> {
-//     fn new(x: T) -> Self {
-//         Asky(x, PhantomData)
-//     }
-// }
 
 impl<T: Typeable<KeyEvent>> Deref for Asky<T> {
     type Target = T;
@@ -56,13 +40,19 @@ pub struct KeyEvent {
     pub codes: Vec<KeyCode>,
 }
 
+impl KeyEvent {
+    pub fn is_empty(&self) -> bool {
+       self.chars.is_empty() && self.codes.is_empty()
+    }
+}
+
 impl<T: Typeable<KeyCode>> Typeable<KeyEvent> for T {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut result = false;
         for code in &key.codes {
             result |= self.handle_key(code);
         }
-        return result;
+        result
     }
 
     fn will_handle_key(&self, key: &KeyEvent) -> bool {
@@ -142,10 +132,9 @@ impl BevyRendererState {
 }
 
 // #[derive(Debug)]
-pub struct BevyRenderer<'a, 'w, 's> {
+struct BevyRenderer<'a, 'w, 's> {
     state: &'a mut BevyRendererState,
     settings: &'a BevyAskySettings,
-    pub children: Vec<TextBundle>,
     commands: &'a mut Commands<'w, 's>,
     column: Entity,
 }
@@ -160,22 +149,10 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         BevyRenderer {
             settings,
             state,
-            children: Vec::new(),
             commands,
             column,
         }
     }
-
-    // pub fn to_text(&mut self, strings: ColoredStrings) {
-    //     self.text.sections.clear();
-    //     for s in strings.0.iter() {
-    //         let mut style = self.settings.style.clone();
-    //         if let Some(fg) = s.fgcolor() {
-    //             style.color = convert(fg);
-    //         }
-    //         self.text.sections.push(TextSection::new(s.input.to_owned(), style));
-    //     }
-    // }
 
     pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
         if let Some(fg) = s.fgcolor() {
@@ -201,7 +178,6 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         let mut input = cs.input.to_string();
         let mut right = None;
         if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
-            // let (l, r) = input.split_at(i + 1);
             let (l, r) = input.split_at(byte_index);
             right = Some(to_colored_string(r.to_owned()));
             input = l.to_owned();
@@ -214,10 +190,6 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         left.into_iter()
             .chain(cursor.into_iter().chain(right.into_iter()))
     }
-
-    // fn split(strings: ColoredStrings, pat: char) -> impl Iterator<Item = ColoredStrings> {
-
-    // }
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
@@ -292,8 +264,8 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
         Ok(())
     }
 
-    /// Utility function for line input
-    /// Set initial position based on the position after drawing
+    /// Utility function for line input.
+    /// Set initial position based on the position after drawing.
     fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
         if self.state.draw_time == DrawTime::Last {
             return Ok(());
@@ -320,51 +292,46 @@ pub fn asky_system<T>(
     key_evr: EventReader<KeyboardInput>,
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
-    // mut query: Query<&mut Text, With<Confirm>>) { // Compiler goes broke on this line.
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
 ) where
     T: Typeable<KeyEvent> + Send + Sync + 'static,
     Asky<T>: Printable,
 {
     let key_event = KeyEvent::new(char_evr, key_evr);
-
-    // let must_mutate = query.iter().filter(|(e, c, _)| c.1 != AskyState::Complete && c.will_handle_key(&key));
-
-    for (entity, mut confirm, children) in query.iter_mut() {
-        match confirm.1 {
+    for (entity, mut prompt, children) in query.iter_mut() {
+        match prompt.1 {
             AskyState::Complete => {
                 continue;
             }
             AskyState::Hidden => {
                 if let Some(children) = children {
-                    let children: Vec<Entity> = children.to_vec();
                     commands.entity(entity).remove_children(&children);
                     for child in children {
-                        commands.entity(child).despawn_recursive();
+                        commands.entity(*child).despawn_recursive();
                     }
                 }
             }
             AskyState::Reading => {
-                if !confirm.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
+                if !prompt.will_handle_key(&key_event)
+                    && render_state.draw_time != DrawTime::First
                 {
                     continue;
                 }
-                if confirm.handle_key(&key_event) {
+                if prompt.handle_key(&key_event) {
                     // It's done.
-                    confirm.1 = AskyState::Complete;
+                    prompt.1 = AskyState::Complete;
                     render_state.draw_time = DrawTime::Last;
                 }
                 if let Some(children) = children {
-                    let children: Vec<Entity> = children.to_vec();
                     commands.entity(entity).remove_children(&children);
                     for child in children {
-                        commands.entity(child).despawn_recursive();
+                        commands.entity(*child).despawn_recursive();
                     }
                 }
                 let mut renderer =
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
-                let _ = confirm.draw(&mut renderer);
+                let _ = prompt.draw(&mut renderer);
                 eprint!(".");
                 if draw_time == DrawTime::First {
                     renderer.update_draw_time();
@@ -384,9 +351,20 @@ impl Plugin for AskyPlugin {
             .add_system(asky_system::<Toggle>)
             .add_system(asky_system::<crate::Text>)
             .add_system(asky_system::<Number<u8>>)
+            .add_system(asky_system::<Number<u16>>)
+            .add_system(asky_system::<Number<u32>>)
+            .add_system(asky_system::<Number<u64>>)
+            .add_system(asky_system::<Number<u128>>)
+            .add_system(asky_system::<Number<i8>>)
+            .add_system(asky_system::<Number<i16>>)
+            .add_system(asky_system::<Number<i32>>)
+            .add_system(asky_system::<Number<i64>>)
+            .add_system(asky_system::<Number<i128>>)
             .add_system(asky_system::<Number<f32>>)
+            .add_system(asky_system::<Number<f64>>)
             .add_system(asky_system::<Select<'static, &'static str>>)
             .add_system(asky_system::<Password>)
+            .add_system(asky_system::<Message>)
             .add_system(asky_system::<MultiSelect<'static, &'static str>>);
     }
 }
