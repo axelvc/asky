@@ -4,7 +4,7 @@ use std::io;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyEvent, KeyCode};
+use crossterm::event::{KeyEvent};
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
@@ -141,7 +141,7 @@ mod tests {
     fn update_and_submit() {
         let events = [('y', true), ('Y', true), ('n', false), ('N', false)];
 
-        for (char, expected) in events {
+        for (char, _expected) in events {
             let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
@@ -177,7 +177,7 @@ mod tests {
             (KeyCode::Char('L'), false, true),
         ];
 
-        for (key, initial, expected) in events {
+        for (key, _initial, _expected) in events {
             let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(key);
 
