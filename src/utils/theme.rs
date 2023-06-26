@@ -42,13 +42,18 @@ pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStri
 pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStrings) {
 
     if draw_time == DrawTime::Last {
-        fmt_last_message2(&prompt.message, "", out);
+        // out.push((&prompt.message).to_owned().into());
+        fmt_echo(&prompt.message, out);
         return;
     }
 
-    fmt_msg2(&prompt.message, out);
-    out.push("\n".into());
-    fmt_toggle_options4(&["Press any key"], 0, out);
+    fmt_echo(&prompt.message, out);
+    // out.push((&prompt.message).to_owned().into());
+    // fmt_msg2(&prompt.message, out);
+    if let Some(action) = &prompt.action {
+        out.push("\n".into());
+        fmt_toggle_options4(&[&action.to_string()], 0, out);
+    }
 }
 
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
@@ -315,12 +320,16 @@ pub fn fmt_msg2(message: &str, out: &mut ColoredStrings<'_>) {
     out.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
 }
 
+pub fn fmt_echo(message: &str, out: &mut ColoredStrings<'_>) {
+    out.push(message.to_owned().into());
+}
+
 fn fmt_last_message(message: &str, answer: &str) -> String {
     format!("{} {} {}", "■".green(), message, answer.purple())
 }
 
 pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
-    out.0.extend([
+    out.extend([
         "■".green(),
         " ".into(),
         message.to_owned().into(),

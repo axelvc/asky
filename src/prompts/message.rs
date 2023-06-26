@@ -43,15 +43,26 @@ pub struct Message<'a> {
     /// Message used to display in the prompt.
     // pub message: &'a str,
     pub message: Cow<'a, str>,
+    pub action: Option<Cow<'a, str>>,
     /// Current formatter
     pub formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Message<'a> {
+    /// Create a new message prompt with an call to action, e.g., "Press Any Key".
+    pub fn with_option<T: Into<Cow<'a, str>>>(message: T, action: T) -> Self {
+        Message {
+            message: message.into(),
+            action: Some(action.into()),
+            formatter: Box::new(theme::fmt_message2),
+        }
+    }
+
     /// Create a new confirm prompt.
     pub fn new<T: Into<Cow<'a, str>>>(message: T) -> Self {
         Message {
             message: message.into(),
+            action: None,
             formatter: Box::new(theme::fmt_message2),
         }
     }
