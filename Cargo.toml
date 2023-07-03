@@ -21,6 +21,6 @@ default = ["terminal"]
 terminal = ["dep:crossterm", "colored/tty"]
 
 [[example]]
-name = "bevy_confirm"
-path = "examples/bevy/confirm.rs"
+name = "bevy"
+path = "examples/bevy.rs"
 required-features = [ "bevy" ]

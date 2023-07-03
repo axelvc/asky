@@ -7,12 +7,6 @@ use bevy::{
     window::{PresentMode},
 };
 
-
-
-
-
-
-
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
     let options = vec![
