@@ -2,10 +2,7 @@ use asky::bevy::*;
 
 use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
 
-use bevy::{
-    prelude::*,
-    window::{PresentMode},
-};
+use bevy::{prelude::*, window::PresentMode, core_pipeline::clear_color::ClearColorConfig };
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
@@ -60,8 +57,15 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
         },
     };
     commands.insert_resource(settings);
-    commands.spawn(Camera2dBundle::default());
-
+    // commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle {
+        camera_2d: Camera2d {
+            // disable clearing completely (pixels stay as they are)
+            // (preserves output from previous frame or camera/pass)
+            clear_color: ClearColorConfig::Custom(Color::BLACK),
+        },
+        ..Default::default()
+    });
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let message: Message<'static> = Message::new("My message");
     let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
