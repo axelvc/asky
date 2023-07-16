@@ -25,3 +25,8 @@ bevy = ["dep:bevy"]
 name = "bevy"
 path = "examples/bevy.rs"
 required-features = [ "bevy" ]
+
+[[example]]
+name = "bevy-confirm"
+path = "examples/bevy/confirm.rs"
+required-features = [ "bevy" ]
