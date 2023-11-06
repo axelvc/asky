@@ -347,24 +347,24 @@ pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(asky_system::<Confirm>)
-            .add_system(asky_system::<Toggle>)
-            .add_system(asky_system::<crate::Text>)
-            .add_system(asky_system::<Number<u8>>)
-            .add_system(asky_system::<Number<u16>>)
-            .add_system(asky_system::<Number<u32>>)
-            .add_system(asky_system::<Number<u64>>)
-            .add_system(asky_system::<Number<u128>>)
-            .add_system(asky_system::<Number<i8>>)
-            .add_system(asky_system::<Number<i16>>)
-            .add_system(asky_system::<Number<i32>>)
-            .add_system(asky_system::<Number<i64>>)
-            .add_system(asky_system::<Number<i128>>)
-            .add_system(asky_system::<Number<f32>>)
-            .add_system(asky_system::<Number<f64>>)
-            .add_system(asky_system::<Select<'static, &'static str>>)
-            .add_system(asky_system::<Password>)
-            .add_system(asky_system::<Message>)
-            .add_system(asky_system::<MultiSelect<'static, &'static str>>);
+        app.add_systems(Update, asky_system::<Confirm>)
+           .add_systems(Update, asky_system::<Toggle>)
+           .add_systems(Update, asky_system::<crate::Text>)
+           .add_systems(Update, asky_system::<Number<u8>>)
+           .add_systems(Update, asky_system::<Number<u16>>)
+           .add_systems(Update, asky_system::<Number<u32>>)
+           .add_systems(Update, asky_system::<Number<u64>>)
+           .add_systems(Update, asky_system::<Number<u128>>)
+           .add_systems(Update, asky_system::<Number<i8>>)
+           .add_systems(Update, asky_system::<Number<i16>>)
+           .add_systems(Update, asky_system::<Number<i32>>)
+           .add_systems(Update, asky_system::<Number<i64>>)
+           .add_systems(Update, asky_system::<Number<i128>>)
+           .add_systems(Update, asky_system::<Number<f32>>)
+           .add_systems(Update, asky_system::<Number<f64>>)
+           .add_systems(Update, asky_system::<Select<'static, &'static str>>)
+           .add_systems(Update, asky_system::<Password>)
+           .add_systems(Update, asky_system::<Message>)
+           .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>);
     }
 }

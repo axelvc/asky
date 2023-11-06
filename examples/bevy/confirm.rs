@@ -27,9 +27,9 @@ fn main() {
                 }),
                 ..default()
             }))
-        .add_plugin(AskyPlugin)
-        .add_startup_system(setup)
-        .add_system(response)
+        .add_plugins(AskyPlugin)
+        .add_systems(Startup, setup)
+        // .add_systems(Update, response)
         .run();
 }
 
@@ -60,7 +60,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 }
 
-fn setup(mut commands: Commands,
-         query: Query<(Asky<Confirm>, &Parent)>) {
+// fn setup(mut commands: Commands,
+//          query: Query<(Asky<Confirm>, &Parent)>) {
 
-}
+// }
