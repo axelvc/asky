@@ -42,6 +42,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(AskyPlugin)
+        .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, move |commands: Commands, asset: Res<AssetServer>| {
             setup(commands, asset, kind.as_str());
         })
@@ -127,7 +128,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
         "message" => {
             commands.spawn(node).insert(Asky(message, AskyState::Reading));
         }
-        _ => todo!("No example for {kind}.")
+        _ => todo!("Unexpected example requested '{kind}'.")
         // .insert(Asky(password, AskyState::Reading))
     }
 }

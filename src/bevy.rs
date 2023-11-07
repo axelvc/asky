@@ -18,7 +18,7 @@ pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
 pub enum AskyState {
     #[default]
     Reading,
-    Complete,
+    Complete(u8),
     Hidden,
 }
 
@@ -72,10 +72,10 @@ impl KeyEvent {
         mut key_evr: EventReader<KeyboardInput>,
     ) -> Self {
         Self {
-            chars: char_evr.iter().map(|e| e.char).collect(),
+            chars: char_evr.read().map(|e| e.char).collect(),
             // keys,
             codes: key_evr
-                .iter()
+                .read()
                 .filter_map(|e| {
                     if e.state == bevy::input::ButtonState::Pressed {
                         e.key_code
@@ -302,7 +302,7 @@ pub fn asky_system<T>(
     let key_event = KeyEvent::new(char_evr, key_evr);
     for (entity, mut prompt, children) in query.iter_mut() {
         match prompt.1 {
-            AskyState::Complete => {
+            AskyState::Complete(_) => {
                 continue;
             }
             AskyState::Hidden => {
@@ -321,7 +321,7 @@ pub fn asky_system<T>(
                 }
                 if prompt.handle_key(&key_event) {
                     // It's done.
-                    prompt.1 = AskyState::Complete;
+                    prompt.1 = AskyState::Complete(0);
                     render_state.draw_time = DrawTime::Last;
                 }
                 if let Some(children) = children {

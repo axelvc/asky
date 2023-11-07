@@ -473,7 +473,7 @@ fn fmt_line_validator(validator_result: &Result<(), &str>) -> String {
 
 fn fmt_line_validator2(validator_result: &Result<(), &str>, out: &mut ColoredStrings) {
     if let Err(e) = validator_result {
-        out.push(e.to_owned().red());
+        out.push(e.to_string().red());
     }
 }
 
