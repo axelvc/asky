@@ -8,7 +8,7 @@ use crossterm::event::{KeyEvent};
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
-use crate::utils::key_listener;
+use crate::utils::key_listener::listen;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
@@ -81,7 +81,7 @@ impl<'a> Message<'a> {
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<()> {
-        key_listener::listen(self, true)?;
+        listen(self, true)?;
         Ok(())
     }
 }
@@ -124,6 +124,7 @@ impl Printable for crate::bevy::Asky<Message<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_custom_formatter() {
