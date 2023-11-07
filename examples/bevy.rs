@@ -9,7 +9,7 @@ fn main() {
     let options = vec![
         "confirm",
         "toggle",
-        "text_input",
+        "text",
         "number",
         "float",
         "select",
@@ -127,7 +127,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
         "message" => {
             commands.spawn(node).insert(Asky(message, AskyState::Reading));
         }
-        _ => {}
+        _ => todo!("No example for {kind}.")
         // .insert(Asky(password, AskyState::Reading))
     }
 }

@@ -158,7 +158,9 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         if let Some(fg) = s.fgcolor() {
             style.color = convert(fg);
         }
-        let mut bundle = TextBundle::from_section(format!("{}", s), style);
+        // return <str as fmt::Display>::fmt(&s.input, f);
+        // Don't use format!("{}", s) or you could get ANSI escape sequences.
+        let mut bundle = TextBundle::from_section(s.input.to_owned(), style);
         if let Some(bg) = s.bgcolor() {
             bundle.background_color = BackgroundColor(convert(bg));
         }
