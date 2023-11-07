@@ -41,8 +41,8 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugin(AskyPlugin)
-        .add_startup_system(move |commands: Commands, asset: Res<AssetServer>| {
+        .add_plugins(AskyPlugin)
+        .add_systems(Startup, move |commands: Commands, asset: Res<AssetServer>| {
             setup(commands, asset, kind.as_str());
         })
         .run();
