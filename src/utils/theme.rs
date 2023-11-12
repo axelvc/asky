@@ -2,13 +2,13 @@ use colored::{ColoredString, ColoredStrings, Colorize};
 
 use crate::prompts::{
     confirm::Confirm,
+    message::Message,
     multi_select::MultiSelect,
     number::Number,
     password::Password,
     select::{Select, SelectInput, SelectOption},
     text::Text,
     toggle::Toggle,
-    message::Message,
 };
 
 use super::{num_like::NumLike, renderer::DrawTime};
@@ -40,7 +40,6 @@ pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStri
 }
 
 pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStrings) {
-
     if draw_time == DrawTime::Last {
         // out.push((&prompt.message).to_owned().into());
         fmt_echo(&prompt.message, out);
@@ -52,7 +51,7 @@ pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStri
     // fmt_msg2(&prompt.message, out);
     if let Some(action) = &prompt.action {
         out.push("\n".into());
-        fmt_toggle_options4(&[&action.to_string()], 0, out);
+        fmt_toggle_options4(&[action], 0, out);
     }
 }
 

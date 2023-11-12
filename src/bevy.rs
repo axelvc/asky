@@ -9,7 +9,7 @@ use std::io;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
+use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle};
 
 #[derive(Component, Debug, Clone)]
 pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
@@ -42,7 +42,7 @@ pub struct KeyEvent {
 
 impl KeyEvent {
     pub fn is_empty(&self) -> bool {
-       self.chars.is_empty() && self.codes.is_empty()
+        self.chars.is_empty() && self.codes.is_empty()
     }
 }
 
@@ -314,8 +314,7 @@ pub fn asky_system<T>(
                 }
             }
             AskyState::Reading => {
-                if !prompt.will_handle_key(&key_event)
-                    && render_state.draw_time != DrawTime::First
+                if !prompt.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
                 {
                     continue;
                 }
@@ -352,23 +351,23 @@ pub struct AskyPlugin;
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, asky_system::<Confirm>)
-           .add_systems(Update, asky_system::<Toggle>)
-           .add_systems(Update, asky_system::<crate::Text>)
-           .add_systems(Update, asky_system::<Number<u8>>)
-           .add_systems(Update, asky_system::<Number<u16>>)
-           .add_systems(Update, asky_system::<Number<u32>>)
-           .add_systems(Update, asky_system::<Number<u64>>)
-           .add_systems(Update, asky_system::<Number<u128>>)
-           .add_systems(Update, asky_system::<Number<i8>>)
-           .add_systems(Update, asky_system::<Number<i16>>)
-           .add_systems(Update, asky_system::<Number<i32>>)
-           .add_systems(Update, asky_system::<Number<i64>>)
-           .add_systems(Update, asky_system::<Number<i128>>)
-           .add_systems(Update, asky_system::<Number<f32>>)
-           .add_systems(Update, asky_system::<Number<f64>>)
-           .add_systems(Update, asky_system::<Select<'static, &'static str>>)
-           .add_systems(Update, asky_system::<Password>)
-           .add_systems(Update, asky_system::<Message>)
-           .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>);
+            .add_systems(Update, asky_system::<Toggle>)
+            .add_systems(Update, asky_system::<crate::Text>)
+            .add_systems(Update, asky_system::<Number<u8>>)
+            .add_systems(Update, asky_system::<Number<u16>>)
+            .add_systems(Update, asky_system::<Number<u32>>)
+            .add_systems(Update, asky_system::<Number<u64>>)
+            .add_systems(Update, asky_system::<Number<u128>>)
+            .add_systems(Update, asky_system::<Number<i8>>)
+            .add_systems(Update, asky_system::<Number<i16>>)
+            .add_systems(Update, asky_system::<Number<i32>>)
+            .add_systems(Update, asky_system::<Number<i64>>)
+            .add_systems(Update, asky_system::<Number<i128>>)
+            .add_systems(Update, asky_system::<Number<f32>>)
+            .add_systems(Update, asky_system::<Number<f64>>)
+            .add_systems(Update, asky_system::<Select<'static, &'static str>>)
+            .add_systems(Update, asky_system::<Password>)
+            .add_systems(Update, asky_system::<Message>)
+            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>);
     }
 }

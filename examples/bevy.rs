@@ -1,8 +1,8 @@
 use asky::bevy::*;
 
-use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
+use asky::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle};
 
-use bevy::{prelude::*, window::PresentMode, core_pipeline::clear_color::ClearColorConfig };
+use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, window::PresentMode};
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
@@ -43,9 +43,12 @@ fn main() {
         }))
         .add_plugins(AskyPlugin)
         .add_systems(Update, bevy::window::close_on_esc)
-        .add_systems(Startup, move |commands: Commands, asset: Res<AssetServer>| {
-            setup(commands, asset, kind.as_str());
-        })
+        .add_systems(
+            Startup,
+            move |commands: Commands, asset: Res<AssetServer>| {
+                setup(commands, asset, kind.as_str());
+            },
+        )
         .run();
 }
 
@@ -126,9 +129,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
                 .insert(Asky(number, AskyState::Reading));
         }
         "message" => {
-            commands.spawn(node).insert(Asky(message, AskyState::Reading));
+            commands
+                .spawn(node)
+                .insert(Asky(message, AskyState::Reading));
         }
-        _ => todo!("Unexpected example requested '{kind}'.")
-        // .insert(Asky(password, AskyState::Reading))
+        _ => todo!("Unexpected example requested '{kind}'."), // .insert(Asky(password, AskyState::Reading))
     }
 }

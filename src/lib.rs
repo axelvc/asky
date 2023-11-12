@@ -101,23 +101,24 @@
 
 mod prompts;
 pub mod utils;
+use std::borrow::Cow;
 
 #[cfg(feature = "bevy")]
 pub mod bevy;
 
 pub trait Valuable {
     type Output;
-    fn value(&self) -> Result<Self::Output, ()>;
+    fn value(&self) -> Result<Self::Output, Cow<'static, str>>;
 }
 
 pub use prompts::confirm::Confirm;
+pub use prompts::message::Message;
 pub use prompts::multi_select::MultiSelect;
 pub use prompts::number::Number;
 pub use prompts::password::Password;
 pub use prompts::select::Select;
 pub use prompts::text::Text;
 pub use prompts::toggle::Toggle;
-pub use prompts::message::Message;
 
 pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;

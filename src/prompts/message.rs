@@ -4,7 +4,7 @@ use std::io;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyEvent};
+use crossterm::event::KeyEvent;
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]

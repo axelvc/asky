@@ -1,8 +1,9 @@
+use std::borrow::Cow;
 use std::io;
 
-use crate::Valuable;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
+use crate::Valuable;
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
@@ -203,7 +204,7 @@ impl<T> MultiSelect<'_, T> {
 
 impl<T> Valuable for MultiSelect<'_, T> {
     type Output = u8;
-    fn value(&self) -> Result<u8, ()> {
+    fn value(&self) -> Result<u8, Cow<'static, str>> {
         todo!("implement as bitfield");
     }
 }

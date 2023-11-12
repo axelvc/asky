@@ -9,10 +9,10 @@ use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::Valuable;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
+use crate::Valuable;
 use colored::ColoredStrings;
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
@@ -98,7 +98,7 @@ impl Confirm<'_> {
 
 impl Valuable for Confirm<'_> {
     type Output = bool;
-    fn value(&self) -> Result<bool, ()> {
+    fn value(&self) -> Result<bool, Cow<'static, str>> {
         Ok(self.active)
     }
 }
