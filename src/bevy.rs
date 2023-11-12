@@ -18,7 +18,7 @@ pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
 pub enum AskyState {
     #[default]
     Reading,
-    Complete(u8),
+    Complete,
     Hidden,
 }
 
@@ -302,7 +302,7 @@ pub fn asky_system<T>(
     let key_event = KeyEvent::new(char_evr, key_evr);
     for (entity, mut prompt, children) in query.iter_mut() {
         match prompt.1 {
-            AskyState::Complete(_) => {
+            AskyState::Complete => {
                 continue;
             }
             AskyState::Hidden => {
@@ -321,7 +321,7 @@ pub fn asky_system<T>(
                 // For terminal it had an abort key handling happen here.
                 if prompt.handle_key(&key_event) {
                     // It's done.
-                    prompt.1 = AskyState::Complete(0);
+                    prompt.1 = AskyState::Complete;
                     render_state.draw_time = DrawTime::Last;
                 }
                 if let Some(children) = children {

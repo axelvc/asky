@@ -4,6 +4,9 @@ use asky::{Confirm, Message, Valuable};
 
 use bevy::{prelude::*, window::PresentMode};
 
+#[derive(Component)]
+pub struct Handled;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -51,12 +54,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn response(mut commands: Commands, mut query: Query<(Entity, &mut Asky<Confirm<'static>>)>) {
-    for (entity, mut prompt) in query.iter_mut() {
+fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'static>>), Without<Handled>>) {
+    for (entity, prompt) in query.iter_mut() {
         match prompt.1 {
-            AskyState::Complete(0) => {
-                // Mark the complete state someway so we don't repeat the same handling action.
-                prompt.1 = AskyState::Complete(1);
+            AskyState::Complete => {
                 let response = match prompt.0.value() {
                     Ok(yes) => {
                         if yes {
@@ -72,7 +73,8 @@ fn response(mut commands: Commands, mut query: Query<(Entity, &mut Asky<Confirm<
                     .spawn(NodeBundle { ..default() })
                     .insert(Asky(Message::new(response), AskyState::Reading))
                     .id();
-                commands.entity(entity).push_children(&[child]);
+                commands.entity(entity).push_children(&[child]).insert(Handled);
+
             }
             _ => {}
         }
