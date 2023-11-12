@@ -319,6 +319,7 @@ pub fn asky_system<T>(
                 {
                     continue;
                 }
+                // For terminal it had an abort key handling happen here.
                 if prompt.handle_key(&key_event) {
                     // It's done.
                     prompt.1 = AskyState::Complete(0);
@@ -334,6 +335,7 @@ pub fn asky_system<T>(
                     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
                 let _ = prompt.draw(&mut renderer);
+                // This is just to affirm that we're not recreating the nodes unless we need to.
                 eprint!(".");
                 if draw_time == DrawTime::First {
                     renderer.update_draw_time();

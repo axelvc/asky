@@ -9,6 +9,7 @@ use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
+use crate::Valuable;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
@@ -92,6 +93,13 @@ impl Confirm<'_> {
     fn update_and_submit(&mut self, active: bool) -> bool {
         self.active = active;
         true
+    }
+}
+
+impl Valuable for Confirm<'_> {
+    type Output = bool;
+    fn value(&self) -> Result<bool, ()> {
+        Ok(self.active)
     }
 }
 

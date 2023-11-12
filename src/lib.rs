@@ -105,6 +105,11 @@ pub mod utils;
 #[cfg(feature = "bevy")]
 pub mod bevy;
 
+pub trait Valuable {
+    type Output;
+    fn value(&self) -> Result<Self::Output, ()>;
+}
+
 pub use prompts::confirm::Confirm;
 pub use prompts::multi_select::MultiSelect;
 pub use prompts::number::Number;

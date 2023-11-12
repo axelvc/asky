@@ -1,6 +1,6 @@
 use asky::bevy::*;
 
-use asky::{Confirm, MultiSelect, Number, Password, Select, Toggle, Message};
+use asky::{Confirm, Message, Valuable};
 
 use bevy::{
     prelude::*,
@@ -28,6 +28,7 @@ fn main() {
                 ..default()
             }))
         .add_plugins(AskyPlugin)
+        .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
         .add_systems(Update, response)
         .run();
@@ -55,7 +56,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         };
     commands.spawn((node.clone(), Page))
         .with_children(|parent| {
-        parent.spawn(node).insert(Asky(confirm, AskyState::Reading));
+            parent.spawn(node).insert(Asky(confirm, AskyState::Reading));
         }
     );
 }
@@ -64,13 +65,17 @@ fn response(mut commands: Commands, mut query: Query<(Entity, &mut Asky<Confirm<
     for (entity, mut prompt) in query.iter_mut() {
         match prompt.1 {
             AskyState::Complete(0) => {
-                // commands.spawn(
-                println!("Got it");
                 // Mark the complete state someway so we don't repeat the same handling action.
                 prompt.1 = AskyState::Complete(1);
+                let response = match prompt.0.value() {
+                    Ok(yes) => if yes { "Great, me too." } else { "Oh, ok." }
+                    Err(_) => "Uh oh, had a problem."
+                };
+
                 let child = commands
                     .spawn(NodeBundle { ..default() })
-                    .insert(Asky(Message::new("Th."), AskyState::Reading)).id();
+                    .insert(Asky(Message::new(response),
+                                 AskyState::Reading)).id();
                 commands.entity(entity)
                     .push_children(&[child]);
             }

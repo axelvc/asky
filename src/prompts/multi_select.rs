@@ -1,5 +1,6 @@
 use std::io;
 
+use crate::Valuable;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 #[cfg(feature = "bevy")]
@@ -197,6 +198,13 @@ impl<T> MultiSelect<'_, T> {
             None => true,
             Some(min) => self.selected_count >= min,
         }
+    }
+}
+
+impl<T> Valuable for MultiSelect<'_, T> {
+    type Output = u8;
+    fn value(&self) -> Result<u8, ()> {
+        todo!("implement as bitfield");
     }
 }
 
