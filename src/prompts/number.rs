@@ -1,5 +1,5 @@
-use std::{io, str::FromStr};
-
+use std::io;
+use crate::Error;
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
@@ -15,12 +15,13 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
+use crate::Valuable;
 
 use super::text::{Direction, LineInput};
 use colored::ColoredStrings;
 
 type InputValidator<'a, T> =
-    dyn Fn(&str, Result<T, <T as FromStr>::Err>) -> Result<(), &'a str> + 'a + Send + Sync;
+    dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;
 type Formatter<'a, T> =
     dyn Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
@@ -64,11 +65,19 @@ pub struct Number<'a, T: NumLike> {
     /// Placeholder to show when the input is empty.
     pub placeholder: Option<&'a str>,
     /// Default value to submit when the input is empty.
-    pub default_value: Option<String>,
+    pub default_value: Option<T>,
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a, T>>>,
     formatter: Box<Formatter<'a, T>>,
+}
+
+impl<T: NumLike + Send> Valuable for Number<'_, T> {
+    type Output = T;
+    fn value(&self) -> Result<T, Error> {
+        // XXX: How do I convert T::Err into a string?
+        self.get_value()
+    }
 }
 
 impl<'a, T: NumLike + 'a> Number<'a, T> {
@@ -95,7 +104,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
 
     /// Set default value to submit when the input is empty.
     pub fn default(&mut self, value: T) -> &mut Self {
-        self.default_value = Some(value.to_string());
+        self.default_value = Some(value);
         self
     }
 
@@ -108,7 +117,7 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str, Result<T, T::Err>) -> Result<(), &'a str> + 'static + Send + Sync,
+        F: Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'static + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -127,17 +136,21 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
 
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<Result<T, T::Err>> {
+    pub fn prompt(&mut self) -> io::Result<Result<T, Error>> {
         key_listener::listen(self, false)?;
         Ok(self.get_value())
     }
 }
 
 impl<T: NumLike> Number<'_, T> {
-    fn get_value(&self) -> Result<T, T::Err> {
+    fn get_value(&self) -> Result<T, Error> {
         match self.input.value.is_empty() {
-            true => self.default_value.clone().unwrap_or_default().parse(),
-            false => self.input.value.parse(),
+            // FIXME: This is not good behavior, right?
+            true => match self.default_value {
+                Some(v) => Ok(v.clone()),
+                None => Err(Error::InvalidInput)
+            }
+            false => self.input.value.parse().map_err(|_| Error::InvalidInput),
         }
     }
 

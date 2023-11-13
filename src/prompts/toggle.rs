@@ -1,6 +1,8 @@
 use colored::ColoredStrings;
 use std::io;
 
+use crate::Error;
+use crate::Valuable;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -47,6 +49,14 @@ pub struct Toggle<'a> {
     /// Current state of the prompt.
     pub active: bool,
     formatter: Box<Formatter<'a>>,
+}
+
+
+impl Valuable for Toggle<'_> {
+    type Output = bool;
+    fn value(&self) -> Result<bool, Error> {
+        Ok(self.active)
+    }
 }
 
 impl<'a> Toggle<'a> {

@@ -1,5 +1,7 @@
 use std::io;
 
+use crate::Error;
+use crate::Valuable;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -351,8 +353,25 @@ impl<T> Printable for Select<'_, T> {
     }
 }
 
+impl<T> Valuable for Select<'_, T> {
+    type Output = usize;
+    fn value(&self) -> Result<usize, Error> {
+        let mut matches = self.options.iter().enumerate().filter(|(_, o)| o.active);
+        if let Some(first) = matches.next() {
+            let left = matches.count();
+            if left == 0 {
+                Ok(first.0)
+            } else {
+                Err(Error::InvalidInput) //"More than one option selected.".into())
+            }
+        } else {
+                Err(Error::InvalidInput) //"No option selected.".into())
+        }
+    }
+}
+
 #[cfg(feature = "bevy")]
-impl<T> Printable for crate::bevy::Asky<Select<'_, T>> {
+impl<T: Send> Printable for crate::bevy::Asky<Select<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);

@@ -1,4 +1,6 @@
 use std::io;
+// use std::borrow::Cow;
+use crate::Error;
 
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
@@ -17,6 +19,7 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
+use crate::Valuable;
 
 pub enum Direction {
     Left,
@@ -119,6 +122,12 @@ pub struct Text<'a> {
     formatter: Box<Formatter<'a>>,
 }
 
+impl<'a> Valuable for Text<'a> {
+    type Output = String;
+    fn value(&self) -> Result<String, Error> {
+        Ok(self.input.value.to_string())
+    }
+}
 impl<'a> Text<'a> {
     /// Create a new text prompt.
     pub fn new(message: &'a str) -> Self {

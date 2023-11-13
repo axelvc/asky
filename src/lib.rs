@@ -101,14 +101,19 @@
 
 mod prompts;
 pub mod utils;
-use std::borrow::Cow;
 
 #[cfg(feature = "bevy")]
 pub mod bevy;
 
 pub trait Valuable {
-    type Output;
-    fn value(&self) -> Result<Self::Output, Cow<'static, str>>;
+    type Output: Send;
+    fn value(&self) -> Result<Self::Output, Error>;
+}
+#[derive(Debug)]
+pub enum Error {
+    Cancel,
+    InvalidInput,
+    ValidationFail,
 }
 
 pub use prompts::confirm::Confirm;

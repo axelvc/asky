@@ -271,7 +271,7 @@ pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (Strin
 
     (
         [
-            fmt_line_message(prompt.message, &prompt.default_value.as_deref()),
+            fmt_line_message(prompt.message, &prompt.default_value.map(|x| x.to_string()).as_deref()),
             fmt_line_input(
                 &prompt.input.value,
                 &prompt.placeholder,
@@ -294,8 +294,7 @@ pub fn fmt_number2<T: NumLike>(
         fmt_last_message2(prompt.message, &prompt.input.value, out);
         return [0, 0];
     }
-
-    fmt_line_message2(prompt.message, &prompt.default_value.as_deref(), out);
+    fmt_line_message2(prompt.message, &prompt.default_value.map(|x| x.to_string()).as_deref(), out);
     out.push("\n".into());
     fmt_line_input2(
         &prompt.input.value,

@@ -1,6 +1,6 @@
-use std::borrow::Cow;
 use std::io;
 
+use crate::Error;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 use crate::Valuable;
@@ -204,7 +204,7 @@ impl<T> MultiSelect<'_, T> {
 
 impl<T> Valuable for MultiSelect<'_, T> {
     type Output = u8;
-    fn value(&self) -> Result<u8, Cow<'static, str>> {
+    fn value(&self) -> Result<u8, Error> {
         todo!("implement as bitfield");
     }
 }

@@ -2,6 +2,7 @@ use crate::utils::renderer::{Printable, Renderer};
 use crate::DrawTime;
 use crate::Typeable;
 use bevy::input::keyboard::KeyboardInput;
+use promise_out::{pair::Producer, Promise};
 
 use bevy::prelude::*;
 use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
@@ -9,27 +10,29 @@ use std::io;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle};
+use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error};
 
-#[derive(Component, Debug, Clone)]
-pub struct Asky<T: Typeable<KeyEvent>>(pub T, pub AskyState);
+#[derive(Component, Debug)]
+pub struct Asky<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum AskyState {
+#[derive(Debug, Default)]
+pub enum AskyState<T> {
     #[default]
     Reading,
+    Waiting(Producer<T, Error>),
     Complete,
     Hidden,
 }
 
-impl<T: Typeable<KeyEvent>> Deref for Asky<T> {
+
+impl<T: Typeable<KeyEvent> + Valuable> Deref for Asky<T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T: Typeable<KeyEvent>> DerefMut for Asky<T> {
+impl<T: Typeable<KeyEvent> + Valuable> DerefMut for Asky<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -296,7 +299,7 @@ pub fn asky_system<T>(
     mut render_state: Local<BevyRendererState>,
     mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
 ) where
-    T: Typeable<KeyEvent> + Send + Sync + 'static,
+    T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static,
     Asky<T>: Printable,
 {
     let key_event = KeyEvent::new(char_evr, key_evr);
@@ -313,15 +316,21 @@ pub fn asky_system<T>(
                     }
                 }
             }
-            AskyState::Reading => {
+            AskyState::Waiting(_) | AskyState::Reading => {
                 if !prompt.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
                 {
                     continue;
                 }
-                // For terminal it had an abort key handling happen here.
+                // For the terminal it had an abort key handling happen here.
                 if prompt.handle_key(&key_event) {
                     // It's done.
-                    prompt.1 = AskyState::Complete;
+                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
+                    if let AskyState::Waiting(promise) = waiting_maybe {
+                        match prompt.0.value() {
+                            Ok(v) => promise.resolve(v),
+                            Err(e) => promise.reject(e)
+                        }
+                    }
                     render_state.draw_time = DrawTime::Last;
                 }
                 if let Some(children) = children {

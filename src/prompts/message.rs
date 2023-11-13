@@ -7,11 +7,13 @@ use bevy::input::keyboard::KeyCode as BKeyCode;
 use crossterm::event::KeyEvent;
 use std::borrow::Cow;
 
+use crate::Error;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
+use crate::Valuable;
 use colored::ColoredStrings;
 
 type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
@@ -46,6 +48,13 @@ pub struct Message<'a> {
     pub action: Option<Cow<'a, str>>,
     /// Current formatter
     pub formatter: Box<Formatter<'a>>,
+}
+
+impl Valuable for Message<'_> {
+    type Output = ();
+    fn value(&self) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 impl<'a> Message<'a> {

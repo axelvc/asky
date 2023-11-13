@@ -4,7 +4,7 @@ use std::{fmt::Display, str::FromStr};
 /// Also allows to custom handle they based on the type.
 ///
 /// [`Number`]: crate::Number
-pub trait NumLike: Default + Display + FromStr {
+pub trait NumLike: Default + Display + FromStr + Send + Copy {
     /// Check if it is a floating point number.
     fn is_float() -> bool {
         false

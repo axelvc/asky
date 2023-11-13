@@ -1,5 +1,7 @@
 use std::io;
 
+use crate::Error;
+use crate::Valuable;
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
@@ -63,6 +65,13 @@ pub struct Password<'a> {
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
     formatter: Box<Formatter<'a>>,
+}
+
+impl Valuable for Password<'_> {
+    type Output = String;
+    fn value(&self) -> Result<String, Error> {
+        Ok(self.input.value.to_string())
+    }
 }
 
 impl<'a> Password<'a> {
