@@ -93,46 +93,46 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
         "multi_select" => {
             commands
                 .spawn(node)
-                .insert(Asky(multi_select, AskyState::Reading));
+                .insert(AskyNode(multi_select, AskyState::Reading));
         }
         "select" => {
             commands
                 .spawn(node)
-                .insert(Asky(select, AskyState::Reading));
+                .insert(AskyNode(select, AskyState::Reading));
         }
         "confirm" => {
             commands
                 .spawn(node)
-                .insert(Asky(confirm, AskyState::Reading));
+                .insert(AskyNode(confirm, AskyState::Reading));
         }
         "toggle" => {
             commands
                 .spawn(node)
-                .insert(Asky(toggle, AskyState::Reading));
+                .insert(AskyNode(toggle, AskyState::Reading));
         }
         "text" => {
             commands
                 .spawn(node)
-                .insert(Asky(text_input, AskyState::Reading));
+                .insert(AskyNode(text_input, AskyState::Reading));
         }
         "password" => {
             commands
                 .spawn(node)
-                .insert(Asky(password, AskyState::Reading));
+                .insert(AskyNode(password, AskyState::Reading));
         }
         "float" => {
-            commands.spawn(node).insert(Asky(float, AskyState::Reading));
+            commands.spawn(node).insert(AskyNode(float, AskyState::Reading));
         }
         "number" => {
             commands
                 .spawn(node)
-                .insert(Asky(number, AskyState::Reading));
+                .insert(AskyNode(number, AskyState::Reading));
         }
         "message" => {
             commands
                 .spawn(node)
-                .insert(Asky(message, AskyState::Reading));
+                .insert(AskyNode(message, AskyState::Reading));
         }
-        _ => todo!("Unexpected example requested '{kind}'."), // .insert(Asky(password, AskyState::Reading))
+        _ => todo!("Unexpected example requested '{kind}'."), // .insert(AskyNode(password, AskyState::Reading))
     }
 }

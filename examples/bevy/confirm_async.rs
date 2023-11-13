@@ -58,7 +58,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     let (promise, waiter) = Producer::<bool, Error>::new();
     commands.spawn(node.clone()).with_children(|parent| {
-        parent.spawn(node).insert(Asky(confirm, AskyState::Waiting(promise)));
+        parent.spawn(node).insert(AskyNode(confirm, AskyState::Waiting(promise)));
     });
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {

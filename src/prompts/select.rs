@@ -371,7 +371,7 @@ impl<T> Valuable for Select<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T: Send> Printable for crate::bevy::Asky<Select<'_, T>> {
+impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);

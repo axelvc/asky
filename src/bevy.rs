@@ -13,7 +13,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error};
 
 #[derive(Component, Debug)]
-pub struct Asky<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
+pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
 
 #[derive(Debug, Default)]
 pub enum AskyState<T> {
@@ -25,14 +25,14 @@ pub enum AskyState<T> {
 }
 
 
-impl<T: Typeable<KeyEvent> + Valuable> Deref for Asky<T> {
+impl<T: Typeable<KeyEvent> + Valuable> Deref for AskyNode<T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T: Typeable<KeyEvent> + Valuable> DerefMut for Asky<T> {
+impl<T: Typeable<KeyEvent> + Valuable> DerefMut for AskyNode<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -297,10 +297,10 @@ pub fn asky_system<T>(
     key_evr: EventReader<KeyboardInput>,
     asky_settings: Res<BevyAskySettings>,
     mut render_state: Local<BevyRendererState>,
-    mut query: Query<(Entity, &mut Asky<T>, Option<&Children>)>,
+    mut query: Query<(Entity, &mut AskyNode<T>, Option<&Children>)>,
 ) where
     T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static,
-    Asky<T>: Printable,
+    AskyNode<T>: Printable,
 {
     let key_event = KeyEvent::new(char_evr, key_evr);
     for (entity, mut prompt, children) in query.iter_mut() {

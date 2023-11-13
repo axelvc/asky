@@ -261,7 +261,7 @@ impl<T> Printable for MultiSelect<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T> Printable for Asky<MultiSelect<'_, T>> {
+impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);

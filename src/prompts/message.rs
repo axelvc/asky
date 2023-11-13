@@ -122,7 +122,7 @@ impl Printable for Message<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Printable for crate::bevy::Asky<Message<'_>> {
+impl Printable for crate::bevy::AskyNode<Message<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);

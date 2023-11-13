@@ -267,7 +267,7 @@ impl<T: NumLike> Printable for Number<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T: NumLike> Printable for cbevy::Asky<Number<'_, T>> {
+impl<T: NumLike> Printable for cbevy::AskyNode<Number<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);

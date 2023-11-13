@@ -50,11 +50,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     };
     commands.spawn(node.clone()).with_children(|parent| {
-        parent.spawn(node).insert(Asky(confirm, AskyState::Reading));
+        parent.spawn(node).insert(AskyNode(confirm, AskyState::Reading));
     });
 }
 
-fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'static>>), Without<Handled>>) {
+fn response(mut commands: Commands, mut query: Query<(Entity, &AskyNode<Confirm<'static>>), Without<Handled>>) {
     for (entity, prompt) in query.iter_mut() {
         match prompt.1 {
             AskyState::Complete => {
@@ -71,7 +71,7 @@ fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'sta
 
                 let child = commands
                     .spawn(NodeBundle { ..default() })
-                    .insert(Asky(Message::new(response), AskyState::Reading))
+                    .insert(AskyNode(Message::new(response), AskyState::Reading))
                     .id();
                 commands.entity(entity).push_children(&[child]).insert(Handled);
 
