@@ -34,6 +34,11 @@ path = "examples/bevy/confirm.rs"
 required-features = [ "bevy" ]
 
 [[example]]
+name = "bevy-confirm-raw-async"
+path = "examples/bevy/confirm_raw_async.rs"
+required-features = [ "bevy" ]
+
+[[example]]
 name = "bevy-confirm-async"
 path = "examples/bevy/confirm_async.rs"
 required-features = [ "bevy" ]

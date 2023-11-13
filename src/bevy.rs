@@ -1,17 +1,22 @@
 use crate::utils::renderer::{Printable, Renderer};
+use promise_out::{pair::{Producer, Consumer}, Promise};
 use crate::DrawTime;
 use crate::Typeable;
-use bevy::input::keyboard::KeyboardInput;
-use promise_out::{pair::Producer, Promise};
+use bevy::{input::keyboard::KeyboardInput, ecs::system::SystemParam};
 
 use bevy::prelude::*;
 use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
 use std::io;
+use std::future::Future;
 
 use std::ops::{Deref, DerefMut};
 
 use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error};
+use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
+use futures_lite::future;
 
+#[derive(Component, Debug)]
+pub struct AskyPage;
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
 
@@ -22,6 +27,45 @@ pub enum AskyState<T> {
     Waiting(Producer<T, Error>),
     Complete,
     Hidden,
+}
+
+#[derive(SystemParam)]
+pub struct Asky<'w, 's> {
+    commands: Commands<'w, 's>,
+    page: Query<'w, 's, &'static AskyPage>,
+}
+
+impl<'w, 's> Asky<'w, 's> {
+    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T) -> Consumer<T::Output, Error> {
+        let node = NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            ..default()
+        };
+
+        let (promise, waiter) = Producer::<T::Output, Error>::new();
+        self.commands.spawn(node.clone()).with_children(|parent| {
+            parent.spawn(node).insert(AskyNode(prompt, AskyState::Waiting(promise)));
+        });
+        // let thread_pool = AsyncComputeTaskPool::get();
+        // let task = thread_pool.spawn(async move {
+        //     let msg = match waiter.await {
+        //         Ok(yes) => {
+        //             if yes {
+        //                 "Great, me too."
+        //             } else {
+        //                 "Oh, ok."
+        //             }
+        //         },
+        //         Err(_) => "Uh oh, had a problem.",
+        //     };
+        //     println!("{}", msg);
+        // });
+        // self.commands.spawn(OnComplete(task));
+        waiter
+    }
 }
 
 

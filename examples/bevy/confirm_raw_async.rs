@@ -32,9 +32,8 @@ fn main() {
         .add_plugins(AskyPlugin)
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
-        .add_systems(Startup, ask_question)
         // .add_systems(Update, response)
-        // .add_systems(Update, handle_tasks::<()>)
+        .add_systems(Update, handle_tasks::<()>)
         .run();
 }
 
@@ -48,23 +47,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     commands.insert_resource(settings);
     commands.spawn(Camera2dBundle::default());
-}
 
-// fn ask_name<'a>(mut prompt: Prompt) -> impl Future<Output = ()> {
-//     async move {
-//         if let Ok(first_name) = prompt.read::<String>("What's your first name? ").await {
-//             if let Ok(last_name) = prompt.read::<String>("What's your last name? ").await {
-//                 prompt.message(format!("Hello, {first_name} {last_name}!"));
-//             }
-//         } else {
-//             eprintln!("Got err in ask name");
-//         }
-//     }
-// }
-
-fn ask_question(mut asky: Asky, mut commands: Commands) {
     let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
-    let waiter = asky.listen(confirm);
+    let node = NodeBundle {
+        style: Style {
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        ..default()
+    };
+    let (promise, waiter) = Producer::<bool, Error>::new();
+    commands.spawn(node.clone()).with_children(|parent| {
+        parent.spawn(node).insert(AskyNode(confirm, AskyState::Waiting(promise)));
+    });
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {
         let msg = match waiter.await {
@@ -94,3 +89,31 @@ fn handle_tasks<T: Send + 'static>(
         }
     }
 }
+
+
+// fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'static>>), Without<Handled>>) {
+//     for (entity, prompt) in query.iter_mut() {
+//         match prompt.1 {
+//             AskyState::Complete => {
+//                 let response = match prompt.0.value() {
+//                     Ok(yes) => {
+//                         if yes {
+//                             "Great, me too."
+//                         } else {
+//                             "Oh, ok."
+//                         }
+//                     }
+//                     Err(_) => "Uh oh, had a problem.",
+//                 };
+
+//                 let child = commands
+//                     .spawn(NodeBundle::default())
+//                     .insert(Asky(Message::new(response), AskyState::Reading))
+//                     .id();
+//                 commands.entity(entity).push_children(&[child]).insert(Handled);
+
+//             }
+//             _ => {}
+//         }
+//     }
+// }
