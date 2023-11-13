@@ -31,12 +31,15 @@ pub enum AskyState<T> {
 
 #[derive(SystemParam)]
 pub struct Asky<'w, 's> {
+// pub struct Asky {
     commands: Commands<'w, 's>,
     page: Query<'w, 's, &'static AskyPage>,
 }
 
 impl<'w, 's> Asky<'w, 's> {
-    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T) -> Consumer<T::Output, Error> {
+// impl Asky {
+    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T)
+                                                                            -> Consumer<T::Output, Error> {
         let node = NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
@@ -49,22 +52,36 @@ impl<'w, 's> Asky<'w, 's> {
         self.commands.spawn(node.clone()).with_children(|parent| {
             parent.spawn(node).insert(AskyNode(prompt, AskyState::Waiting(promise)));
         });
-        // let thread_pool = AsyncComputeTaskPool::get();
-        // let task = thread_pool.spawn(async move {
-        //     let msg = match waiter.await {
-        //         Ok(yes) => {
-        //             if yes {
-        //                 "Great, me too."
-        //             } else {
-        //                 "Oh, ok."
-        //             }
-        //         },
-        //         Err(_) => "Uh oh, had a problem.",
-        //     };
-        //     println!("{}", msg);
-        // });
-        // self.commands.spawn(OnComplete(task));
         waiter
+    }
+}
+
+#[derive(Component)]
+pub struct TaskSink<T>(pub Task<T>);
+
+impl<T: Send + 'static> TaskSink<T> {
+    pub fn new(future: impl Future<Output = T> + Send + 'static) -> Self {
+        let thread_pool = AsyncComputeTaskPool::get();
+        let task = thread_pool.spawn(future);
+        Self(task)
+    }
+}
+pub fn task_sink<T: Send + 'static>(
+    In(future): In<impl Future<Output = T> + Send + 'static>,
+    mut commands: Commands,
+) {
+    eprintln!("spawn task sink for type {:?}", std::any::type_name::<T>());
+    commands.spawn(TaskSink::new(future));
+}
+
+pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<()>)>) {
+    for (entity, mut task) in &mut tasks {
+        if future::block_on(future::poll_once(&mut task.0)).is_some() {
+            eprintln!("Got () poll task");
+            // Once
+            //
+            commands.entity(entity).despawn();
+        }
     }
 }
 
@@ -421,6 +438,8 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, asky_system::<Select<'static, &'static str>>)
             .add_systems(Update, asky_system::<Password>)
             .add_systems(Update, asky_system::<Message>)
-            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>);
+            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
+            .add_systems(Update, poll_tasks)
+            ;
     }
 }

@@ -1,5 +1,6 @@
 use asky::bevy::*;
 use asky::Error;
+use std::future::Future;
 use promise_out::{pair::Producer, Promise};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
@@ -32,7 +33,8 @@ fn main() {
         .add_plugins(AskyPlugin)
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
-        .add_systems(Startup, ask_question)
+        .add_systems(Startup, ask_question2.pipe(task_sink))
+        // .add_systems(Startup, ask_question3.pipe(task_sink))
         // .add_systems(Update, response)
         // .add_systems(Update, handle_tasks::<()>)
         .run();
@@ -59,6 +61,43 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 //         } else {
 //             eprintln!("Got err in ask name");
 //         }
+//     }
+// }
+
+fn ask_question2<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = ()> {
+    let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+    let promise = asky.listen(confirm);
+    async move {
+        let msg = match promise.await {
+                Ok(yes) => {
+                    if yes {
+                        "Great, me too."
+                    } else {
+                        "Oh, ok."
+                    }
+                },
+                Err(_) => "Uh oh, had a problem.",
+        };
+        println!("{}", msg);
+    }
+}
+
+// FIXME: This doesn't work because it captures Asky's private fields.
+// fn ask_question3<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = ()> {
+//     async move {
+//         let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+//         let promise = asky.listen(confirm);
+//         let msg = match promise.await {
+//                 Ok(yes) => {
+//                     if yes {
+//                         "Great, me too."
+//                     } else {
+//                         "Oh, ok."
+//                     }
+//                 },
+//                 Err(_) => "Uh oh, had a problem.",
+//         };
+//         println!("{}", msg);
 //     }
 // }
 
