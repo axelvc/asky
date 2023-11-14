@@ -80,7 +80,6 @@ impl Asky {
             commands.entity(entity).clear_children();
             if let Some(children) = children_maybe {
                 for child in children.iter() {
-                    eprintln!("despawning children");
                     commands.entity(*child).despawn_recursive();
                 }
             }
@@ -133,7 +132,6 @@ pub fn future_sink<T: Send + 'static, F: Future<Output = T>+ Send + 'static>(
     In(future): In<F>,
     mut commands: Commands,
 ) {
-    eprintln!("spawn task sink for type {:?}", std::any::type_name::<T>());
     commands.spawn(TaskSink::new(future));
 }
 
@@ -142,7 +140,6 @@ pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'sta
     mut commands: Commands,
 ) {
     if let Some(future) = future_maybe {
-        eprintln!("spawn task sink option for type {:?}", std::any::type_name::<T>());
         commands.spawn(TaskSink::new(future));
     }
 }
@@ -150,7 +147,6 @@ pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'sta
 pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<()>)>) {
     for (entity, mut task) in &mut tasks {
         if block_on(future::poll_once(&mut task.0)).is_some() {
-            eprintln!("Got () poll task");
             // Once
             //
             commands.entity(entity).despawn();
