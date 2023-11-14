@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use promise_out::{pair::{Producer, Consumer}, Promise};
 use crate::DrawTime;
 use crate::Typeable;
-use bevy::{input::keyboard::KeyboardInput, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
+use bevy::{input::keyboard::KeyboardInput, utils::Duration, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
 
 use bevy::prelude::*;
 use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
@@ -17,9 +17,10 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
 
 #[derive(Component, Debug)]
-pub struct AskyPage;
-#[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
+
+#[derive(Component, Debug)]
+struct AskyDelay(Timer, Option<Producer<(), Error>>);
 
 #[derive(Debug, Default)]
 pub enum AskyState<T> {
@@ -30,11 +31,21 @@ pub enum AskyState<T> {
     Hidden,
 }
 
+fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>, time: Res<Time>) {
+    for (id, mut asky_delay) in query.iter_mut() {
+        asky_delay.0.tick(time.delta());
+        if asky_delay.0.finished() {
+            asky_delay.1.take().expect("Promise not there").resolve(());
+            commands.entity(id).despawn();
+        }
+    }
+}
+
+
 // #[derive(SystemParam)]
 // pub struct Asky<'w, 's> {
 pub struct Asky {
     // commands: Commands<'w, 's>,
-    // page: Query<'w, 's, &'static AskyPage>,
     config: AskyParamConfig,
 }
 
@@ -43,10 +54,11 @@ pub struct AskyParamConfig {
     pub(crate) state: Arc<Mutex<AskyParamState>>,
 }
 
-type Closure = dyn FnOnce(Entity, &mut Commands, Option<&Children>) -> Result<(), Error> + 'static + Send + Sync;
+// type ClosureCommand = dyn FnOnce(&mut Commands) -> Result<(), Error> + 'static + Send + Sync;
+type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>) -> Result<(), Error> + 'static + Send + Sync;
 // #[derive(Debug)]
 pub struct AskyParamState {
-    pub(crate) closures: Vec<(Box<Closure>, Entity)>,
+    pub(crate) closures: Vec<(Box<Closure>, Option<Entity>)>,
 }
 
 // impl<'w, 's> Asky<'w, 's> {
@@ -58,7 +70,7 @@ impl Asky {
     pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T, dest: Entity)
                                                                             -> Consumer<T::Output, Error> {
         let (promise, waiter) = Producer::<T::Output, Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands, _children: Option<&Children>| {
+        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, entity: Option<Entity>, _children: Option<&Children>| {
 
             let node = NodeBundle {
                 style: Style {
@@ -68,16 +80,16 @@ impl Asky {
                 ..default()
             };
             let id = commands.spawn((node, AskyNode(prompt, AskyState::Waiting(promise)))).id();
-            commands.entity(entity).push_children(&[id]); 
+            commands.entity(entity.unwrap()).push_children(&[id]); 
             Ok(())
-        }), dest));
+        }), Some(dest)));
         waiter
     }
 
     pub fn clear(&mut self, dest: Entity) -> Consumer<(), Error> {
         let (promise, waiter) = Producer::<(), Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands, children_maybe: Option<&Children>| {
-            commands.entity(entity).clear_children();
+        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, entity: Option<Entity>, children_maybe: Option<&Children>| {
+            commands.entity(entity.unwrap()).clear_children();
             if let Some(children) = children_maybe {
                 for child in children.iter() {
                     commands.entity(*child).despawn_recursive();
@@ -85,16 +97,24 @@ impl Asky {
             }
             promise.resolve(());
             Ok(())
-        }), dest));
+        }), Some(dest)));
         waiter
     }
 
+    pub fn delay(&mut self, duration: Duration) -> Consumer<(), Error> {
+        let (promise, waiter) = Producer::<(), Error>::new();
+        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, _entity: Option<Entity>, _children_maybe: Option<&Children>| {
+            commands.spawn(AskyDelay(Timer::new(duration, TimerMode::Once), Some(promise)));
+            Ok(())
+        }), None));
+        waiter
+    }
 }
 
 fn run_closures(config: ResMut<AskyParamConfig>, mut commands: Commands, query: Query<Option<&Children>>) {
-        for (closure, id) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
-            let children = query.get(id).expect("Unable to get children");
-            let _ = closure(id, &mut commands, children);
+        for (closure, id_maybe) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
+            let children = id_maybe.map(|id| query.get(id).expect("Unable to get children")).unwrap_or(None);
+            let _ = closure(&mut commands, id_maybe, children);
         }
 }
 
@@ -510,6 +530,7 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
             .add_systems(Update, poll_tasks)
             .add_systems(Update, run_closures)
+            .add_systems(Update, run_timers)
             ;
     }
 }

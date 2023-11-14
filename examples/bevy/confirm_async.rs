@@ -1,7 +1,7 @@
 use asky::bevy::*;
 use std::future::Future;
 use asky::{Confirm, Message, Text};
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{prelude::*, window::PresentMode, utils::Duration};
 
 #[derive(Component)]
 struct Page;
@@ -55,9 +55,11 @@ fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Fu
     if let Ok(id) = query.get_single() {
         Some(async move {
             if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
-                // let _ = asky.clear(id).await;
+                let _ = asky.delay(Duration::from_secs(1)).await;
+                let _ = asky.clear(id).await;
                 if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
-                    // let _ = asky.clear(id).await;
+                    let _ = asky.delay(Duration::from_secs(1)).await;
+                    let _ = asky.clear(id).await;
                     let _ = asky.listen(Message::new(format!("Hello, {first_name} {last_name}!")), id).await;
                 }
             } else {

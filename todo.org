@@ -1,0 +1,3 @@
+#+title: Todo
+* TODO Use AskyPlugin to accept settings
+* TODO Figure out how to do replacement
