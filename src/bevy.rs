@@ -43,8 +43,7 @@ pub struct AskyParamConfig {
     pub(crate) state: Arc<Mutex<AskyParamState>>,
 }
 
-type Closure = dyn FnOnce(Entity, &mut Commands) -> Result<(), Error> + 'static + Send + Sync;
-
+type Closure = dyn FnOnce(Entity, &mut Commands, Option<&Children>) -> Result<(), Error> + 'static + Send + Sync;
 // #[derive(Debug)]
 pub struct AskyParamState {
     pub(crate) closures: Vec<(Box<Closure>, Entity)>,
@@ -59,7 +58,7 @@ impl Asky {
     pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T, dest: Entity)
                                                                             -> Consumer<T::Output, Error> {
         let (promise, waiter) = Producer::<T::Output, Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands| {
+        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands, _children: Option<&Children>| {
 
             let node = NodeBundle {
                 style: Style {
@@ -74,11 +73,29 @@ impl Asky {
         }), dest));
         waiter
     }
+
+    pub fn clear(&mut self, dest: Entity) -> Consumer<(), Error> {
+        let (promise, waiter) = Producer::<(), Error>::new();
+        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands, children_maybe: Option<&Children>| {
+            commands.entity(entity).clear_children();
+            if let Some(children) = children_maybe {
+                for child in children.iter() {
+                    eprintln!("despawning children");
+                    commands.entity(*child).despawn_recursive();
+                }
+            }
+            promise.resolve(());
+            Ok(())
+        }), dest));
+        waiter
+    }
+
 }
 
-fn run_closures(config: ResMut<AskyParamConfig>, mut commands: Commands) {
+fn run_closures(config: ResMut<AskyParamConfig>, mut commands: Commands, query: Query<Option<&Children>>) {
         for (closure, id) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
-            let _ = closure(id, &mut commands);
+            let children = query.get(id).expect("Unable to get children");
+            let _ = closure(id, &mut commands, children);
         }
 }
 

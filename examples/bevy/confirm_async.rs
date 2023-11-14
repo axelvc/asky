@@ -1,7 +1,6 @@
 use asky::bevy::*;
 use std::future::Future;
 use asky::{Confirm, Message, Text};
-
 use bevy::{prelude::*, window::PresentMode};
 
 #[derive(Component)]
@@ -12,7 +11,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Bevy Asky Example".into(),
-                resolution: (600., 400.).into(),
+                resolution: (1000., 400.).into(),
                 present_mode: PresentMode::AutoVsync,
                 // Tells wasm to resize the window according to the available canvas
                 fit_canvas_to_parent: true,
@@ -56,7 +55,9 @@ fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Fu
     if let Ok(id) = query.get_single() {
         Some(async move {
             if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
+                let _ = asky.clear(id).await;
                 if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
+                    let _ = asky.clear(id).await;
                     let _ = asky.listen(Message::new(format!("Hello, {first_name} {last_name}!")), id).await;
                 }
             } else {
@@ -74,14 +75,14 @@ fn ask_question(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<imp
             let confirm = Confirm::new("Do you like coffee?");
             let promise = asky.listen(confirm, id);
             let msg = match promise.await {
-                    Ok(yes) => {
-                        if yes {
-                            "Great, me too."
-                        } else {
-                            "Oh, ok."
-                        }
-                    },
-                    Err(_) => "Uh oh, had a problem.",
+                Ok(yes) => {
+                    if yes {
+                        "Great, me too."
+                    } else {
+                        "Oh, ok."
+                    }
+                },
+                Err(_) => "Uh oh, had a problem.",
             };
             let _ = asky.listen(Message::new(msg), id);
         })
@@ -96,14 +97,14 @@ fn ask_question2(query: Query<Entity, Added<Page>>, mut asky: Asky) -> impl Futu
         let confirm = Confirm::new("Do you like coffee?");
         let promise = asky.listen(confirm, id);
         let msg = match promise.await {
-                Ok(yes) => {
-                    if yes {
-                        "Great, me too."
-                    } else {
-                        "Oh, ok."
-                    }
-                },
-                Err(_) => "Uh oh, had a problem.",
+            Ok(yes) => {
+                if yes {
+                    "Great, me too."
+                } else {
+                    "Oh, ok."
+                }
+            },
+            Err(_) => "Uh oh, had a problem.",
         };
         println!("{}", msg);
     }
