@@ -76,7 +76,7 @@ impl Asky {
     }
 }
 
-fn run_closures(mut config: ResMut<AskyParamConfig>, mut commands: Commands) {
+fn run_closures(config: ResMut<AskyParamConfig>, mut commands: Commands) {
         for (closure, id) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
             let _ = closure(id, &mut commands);
         }
