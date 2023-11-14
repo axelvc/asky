@@ -60,7 +60,15 @@ impl Asky {
                                                                             -> Consumer<T::Output, Error> {
         let (promise, waiter) = Producer::<T::Output, Error>::new();
         self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands| {
-            let id = commands.spawn(AskyNode(prompt, AskyState::Waiting(promise))).id();
+
+            let node = NodeBundle {
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                },
+                ..default()
+            };
+            let id = commands.spawn((node, AskyNode(prompt, AskyState::Waiting(promise)))).id();
             commands.entity(entity).push_children(&[id]); 
             Ok(())
         }), dest));
@@ -68,12 +76,18 @@ impl Asky {
     }
 }
 
+fn run_closures(mut config: ResMut<AskyParamConfig>, mut commands: Commands) {
+        for (closure, id) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
+            let _ = closure(id, &mut commands);
+        }
+}
+
 unsafe impl SystemParam for Asky {
     type State = AskyParamConfig;
     type Item<'w, 's> = Asky;
 
     fn init_state(world: &mut World, _system_meta: &mut SystemMeta) -> Self::State {
-        world.get_resource_mut::<AskyParamConfig>().unwrap().clone()
+        world.get_resource_mut::<AskyParamConfig>().expect("No AskyParamConfig setup.").clone()
     }
 
     #[inline]
@@ -97,12 +111,23 @@ impl<T: Send + 'static> TaskSink<T> {
         Self(task)
     }
 }
-pub fn task_sink<T: Send + 'static>(
-    In(future): In<impl Future<Output = T> + Send + 'static>,
+
+pub fn future_sink<T: Send + 'static, F: Future<Output = T>+ Send + 'static>(
+    In(future): In<F>,
     mut commands: Commands,
 ) {
     eprintln!("spawn task sink for type {:?}", std::any::type_name::<T>());
     commands.spawn(TaskSink::new(future));
+}
+
+pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'static>(
+    In(future_maybe): In<Option<F>>,
+    mut commands: Commands,
+) {
+    if let Some(future) = future_maybe {
+        eprintln!("spawn task sink option for type {:?}", std::any::type_name::<T>());
+        commands.spawn(TaskSink::new(future));
+    }
 }
 
 pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<()>)>) {
@@ -115,7 +140,6 @@ pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSin
         }
     }
 }
-
 
 impl<T: Typeable<KeyEvent> + Valuable> Deref for AskyNode<T> {
     type Target = T;
@@ -451,7 +475,8 @@ pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, asky_system::<Confirm>)
+         app.insert_resource(AskyParamConfig { state: Arc::new(Mutex::new(AskyParamState { closures: Vec::new() })) })
+            .add_systems(Update, asky_system::<Confirm>)
             .add_systems(Update, asky_system::<Toggle>)
             .add_systems(Update, asky_system::<crate::Text>)
             .add_systems(Update, asky_system::<Number<u8>>)
@@ -471,6 +496,7 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, asky_system::<Message>)
             .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
             .add_systems(Update, poll_tasks)
+            .add_systems(Update, run_closures)
             ;
     }
 }

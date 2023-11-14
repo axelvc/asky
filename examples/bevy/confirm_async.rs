@@ -1,5 +1,5 @@
 use asky::bevy::*;
-use asky::Error;
+// use asky::Error;
 use std::future::Future;
 use promise_out::{pair::Producer, Promise};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
@@ -9,10 +9,9 @@ use asky::{Confirm, Message};
 use bevy::{prelude::*, window::PresentMode};
 
 #[derive(Component)]
-pub struct Handled;
-
+struct Handled;
 #[derive(Component)]
-pub struct Page;
+struct Page;
 #[derive(Component)]
 struct OnComplete<T: Send>(Task<T>);
 
@@ -34,10 +33,13 @@ fn main() {
         }))
         .add_plugins(AskyPlugin)
         .add_systems(Update, bevy::window::close_on_esc)
+        // .add_systems(Startup, (setup, (ask_question2.pipe(task_sink)).after(setup)))
         .add_systems(Startup, setup)
-        // .add_systems(Startup, ask_question2.pipe(task_sink))
-        .add_systems(Startup, ask_question4.pipe(ask_question5).pipe(task_sink))
-        // .add_systems(Startup, ask_question3.pipe(task_sink))
+        // .add_systems(Startup, ask_question.after(setup))
+        // .add_systems(Update, ask_question)
+        .add_systems(Update, ask_question4.pipe(option_future_sink))
+        // .add_systems(Startup, ask_question4.pipe(ask_question5).pipe(future_sink))
+        // .add_systems(Startup, ask_question3.pipe(future_sink))
         // .add_systems(Update, response)
         // .add_systems(Update, handle_tasks::<()>)
         .run();
@@ -60,7 +62,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         ..default()
     };
+    eprintln!("add Page");
     commands.spawn((node, Page));
+    // commands.spawn(node).insert(Page);
 }
 
 // fn ask_name<'a>(mut prompt: Prompt) -> impl Future<Output = ()> {
@@ -75,10 +79,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 //     }
 // }
 
-fn ask_question2<'a>(mut asky: Asky, mut commands: Commands, query: Query<(Entity, Page)>) -> impl Future<Output = ()> {
-    let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
-    let promise = asky.listen(confirm);
+fn ask_question2<'a>(query: Query<Entity, Added<Page>>, mut commands: Commands, mut asky: Asky) -> impl Future<Output = ()> {
+    let id = query.get_single().expect("No Page");
     async move {
+        let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+        let promise = asky.listen(confirm, id);
         let msg = match promise.await {
                 Ok(yes) => {
                     if yes {
@@ -93,31 +98,25 @@ fn ask_question2<'a>(mut asky: Asky, mut commands: Commands, query: Query<(Entit
     }
 }
 
-fn ask_question4<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = &'a str> {
-    let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
-    let promise = asky.listen(confirm);
-    async move {
-        let msg = match promise.await {
-                Ok(yes) => {
-                    if yes {
-                        "Great, me too."
-                    } else {
-                        "Oh, ok."
-                    }
-                },
-                Err(_) => "Uh oh, had a problem.",
-        };
-        msg
-    }
-}
-
-fn ask_question5<'a>(In(future): In<impl Future<Output = &'a str> + Send + 'static>,
-                     mut asky: Asky) -> impl Future<Output = ()> {
-    let message = Message::new("Got it");
-    let promise = asky.listen(message);
-    async move {
-        promise.await;
-        eprintln!("Done");
+fn ask_question4<'a>(mut asky: Asky, mut commands: Commands, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
+    if let Ok(id) = query.get_single() {
+        Some(async move {
+            let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+            let promise = asky.listen(confirm, id);
+            let msg = match promise.await {
+                    Ok(yes) => {
+                        if yes {
+                            "Great, me too."
+                        } else {
+                            "Oh, ok."
+                        }
+                    },
+                    Err(_) => "Uh oh, had a problem.",
+            };
+            let _ = asky.listen(Message::new(msg), id);
+        })
+    } else {
+        None
     }
 }
 
@@ -141,9 +140,11 @@ fn ask_question5<'a>(In(future): In<impl Future<Output = &'a str> + Send + 'stat
 //     }
 // }
 
-fn ask_question(mut asky: Asky, mut commands: Commands) {
+fn ask_question(query: Query<Entity, Added<Page>>, mut commands: Commands, mut asky: Asky) {
+    if let Ok(id) = query.get_single() {
+        eprintln!("runnning");
     let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
-    let waiter = asky.listen(confirm);
+    let waiter = asky.listen(confirm, id);
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {
         let msg = match waiter.await {
@@ -159,6 +160,7 @@ fn ask_question(mut asky: Asky, mut commands: Commands) {
         println!("{}", msg);
     });
     commands.spawn(OnComplete(task));
+    }
 }
 
 fn handle_tasks<T: Send + 'static>(
