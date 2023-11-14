@@ -4,13 +4,15 @@ use std::future::Future;
 use promise_out::{pair::Producer, Promise};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
-use asky::Confirm;
+use asky::{Confirm, Message};
 
 use bevy::{prelude::*, window::PresentMode};
 
 #[derive(Component)]
 pub struct Handled;
 
+#[derive(Component)]
+pub struct Page;
 #[derive(Component)]
 struct OnComplete<T: Send>(Task<T>);
 
@@ -33,7 +35,8 @@ fn main() {
         .add_plugins(AskyPlugin)
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
-        .add_systems(Startup, ask_question2.pipe(task_sink))
+        // .add_systems(Startup, ask_question2.pipe(task_sink))
+        .add_systems(Startup, ask_question4.pipe(ask_question5).pipe(task_sink))
         // .add_systems(Startup, ask_question3.pipe(task_sink))
         // .add_systems(Update, response)
         // .add_systems(Update, handle_tasks::<()>)
@@ -50,6 +53,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     commands.insert_resource(settings);
     commands.spawn(Camera2dBundle::default());
+    let node = NodeBundle {
+        style: Style {
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        ..default()
+    };
+    commands.spawn((node, Page));
 }
 
 // fn ask_name<'a>(mut prompt: Prompt) -> impl Future<Output = ()> {
@@ -64,7 +75,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 //     }
 // }
 
-fn ask_question2<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = ()> {
+fn ask_question2<'a>(mut asky: Asky, mut commands: Commands, query: Query<(Entity, Page)>) -> impl Future<Output = ()> {
     let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
     let promise = asky.listen(confirm);
     async move {
@@ -81,6 +92,35 @@ fn ask_question2<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Outp
         println!("{}", msg);
     }
 }
+
+fn ask_question4<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = &'a str> {
+    let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+    let promise = asky.listen(confirm);
+    async move {
+        let msg = match promise.await {
+                Ok(yes) => {
+                    if yes {
+                        "Great, me too."
+                    } else {
+                        "Oh, ok."
+                    }
+                },
+                Err(_) => "Uh oh, had a problem.",
+        };
+        msg
+    }
+}
+
+fn ask_question5<'a>(In(future): In<impl Future<Output = &'a str> + Send + 'static>,
+                     mut asky: Asky) -> impl Future<Output = ()> {
+    let message = Message::new("Got it");
+    let promise = asky.listen(message);
+    async move {
+        promise.await;
+        eprintln!("Done");
+    }
+}
+
 
 // FIXME: This doesn't work because it captures Asky's private fields.
 // fn ask_question3<'a>(mut asky: Asky, mut commands: Commands) -> impl Future<Output = ()> {

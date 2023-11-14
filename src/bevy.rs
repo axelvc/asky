@@ -1,8 +1,9 @@
 use crate::utils::renderer::{Printable, Renderer};
+use std::sync::{Arc, Mutex};
 use promise_out::{pair::{Producer, Consumer}, Promise};
 use crate::DrawTime;
 use crate::Typeable;
-use bevy::{input::keyboard::KeyboardInput, ecs::system::SystemParam};
+use bevy::{input::keyboard::KeyboardInput, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
 
 use bevy::prelude::*;
 use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
@@ -29,30 +30,60 @@ pub enum AskyState<T> {
     Hidden,
 }
 
-#[derive(SystemParam)]
-pub struct Asky<'w, 's> {
-// pub struct Asky {
-    commands: Commands<'w, 's>,
-    page: Query<'w, 's, &'static AskyPage>,
+// #[derive(SystemParam)]
+// pub struct Asky<'w, 's> {
+pub struct Asky {
+    // commands: Commands<'w, 's>,
+    // page: Query<'w, 's, &'static AskyPage>,
+    config: AskyParamConfig,
 }
 
-impl<'w, 's> Asky<'w, 's> {
-// impl Asky {
-    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T)
-                                                                            -> Consumer<T::Output, Error> {
-        let node = NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
-            ..default()
-        };
+#[derive(Resource, Clone)]
+pub struct AskyParamConfig {
+    pub(crate) state: Arc<Mutex<AskyParamState>>,
+}
 
+type Closure = dyn FnOnce(Entity, &mut Commands) -> Result<(), Error> + 'static + Send + Sync;
+
+// #[derive(Debug)]
+pub struct AskyParamState {
+    pub(crate) closures: Vec<(Box<Closure>, Entity)>,
+}
+
+// impl<'w, 's> Asky<'w, 's> {
+impl Asky {
+    fn new(config: AskyParamConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T, dest: Entity)
+                                                                            -> Consumer<T::Output, Error> {
         let (promise, waiter) = Producer::<T::Output, Error>::new();
-        self.commands.spawn(node.clone()).with_children(|parent| {
-            parent.spawn(node).insert(AskyNode(prompt, AskyState::Waiting(promise)));
-        });
+        self.config.state.lock().unwrap().closures.push((Box::new(move |entity: Entity, commands: &mut Commands| {
+            let id = commands.spawn(AskyNode(prompt, AskyState::Waiting(promise))).id();
+            commands.entity(entity).push_children(&[id]); 
+            Ok(())
+        }), dest));
         waiter
+    }
+}
+
+unsafe impl SystemParam for Asky {
+    type State = AskyParamConfig;
+    type Item<'w, 's> = Asky;
+
+    fn init_state(world: &mut World, _system_meta: &mut SystemMeta) -> Self::State {
+        world.get_resource_mut::<AskyParamConfig>().unwrap().clone()
+    }
+
+    #[inline]
+    unsafe fn get_param<'w, 's>(
+        state: &'s mut Self::State,
+        _system_meta: &SystemMeta,
+        _world: UnsafeWorldCell<'w>,
+        _change_tick: Tick,
+    ) -> Self::Item<'w, 's> {
+        Asky::new(state.clone())
     }
 }
 
@@ -76,7 +107,7 @@ pub fn task_sink<T: Send + 'static>(
 
 pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<()>)>) {
     for (entity, mut task) in &mut tasks {
-        if future::block_on(future::poll_once(&mut task.0)).is_some() {
+        if block_on(future::poll_once(&mut task.0)).is_some() {
             eprintln!("Got () poll task");
             // Once
             //
