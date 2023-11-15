@@ -126,6 +126,7 @@ impl Printable for crate::bevy::AskyNode<Message<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.hide_cursor()?;
         renderer.print(out)
     }
 }
