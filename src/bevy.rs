@@ -155,6 +155,13 @@ pub fn future_sink<T: Send + 'static, F: Future<Output = T>+ Send + 'static>(
     commands.spawn(TaskSink::new(future));
 }
 
+// pub fn future_result_sink<T: Send + 'static, F: Future<Output = Result<T, Error>> + Send + 'static>(
+//     In(future): In<F>,
+//     mut commands: Commands,
+// ) {
+//     commands.spawn(TaskSink::new(future));
+// }
+
 pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'static>(
     In(future_maybe): In<Option<F>>,
     mut commands: Commands,
@@ -164,12 +171,27 @@ pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'sta
     }
 }
 
-pub fn poll_tasks(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<()>)>) {
+pub fn poll_tasks<T: Send + Sync + 'static>(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<T>)>) {
     for (entity, mut task) in &mut tasks {
         if block_on(future::poll_once(&mut task.0)).is_some() {
             // Once
-            //
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub fn poll_tasks_err<T: Send + Sync + 'static>(mut commands: Commands, _asky: Asky, mut tasks: Query<(Entity, &mut TaskSink<Result<T, Error>>)>) {
+    for (entity, mut task) in &mut tasks {
+        if let Some(result) = block_on(future::poll_once(&mut task.0)) {
+            // Once
+            if let Err(_error) = result {
+                eprintln!("Got here.");
+                // FIXME: I need the right entity to make this work.
+                // let _ = asky.listen(Message::new(format!("{:?}", error)), entity);
+                commands.entity(entity).despawn();
+            } else {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }
@@ -466,12 +488,18 @@ pub fn asky_system<T>(
                 }
             }
             AskyState::Waiting(_) | AskyState::Reading => {
-                if !prompt.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
+                if !is_abort_key(&key_event) && !prompt.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
                 {
                     continue;
                 }
                 // For the terminal it had an abort key handling happen here.
-                if prompt.handle_key(&key_event) {
+                if is_abort_key(&key_event) {
+                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
+                    if let AskyState::Waiting(promise) = waiting_maybe {
+                        promise.reject(Error::Cancel);
+                    }
+                    render_state.draw_time = DrawTime::Last;
+                } else if prompt.handle_key(&key_event) {
                     // It's done.
                     let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
                     if let AskyState::Waiting(promise) = waiting_maybe {
@@ -504,6 +532,15 @@ pub fn asky_system<T>(
     }
 }
 
+fn is_abort_key(key: &KeyEvent) -> bool {
+    for code in &key.codes {
+        if code == &KeyCode::Escape {
+            return true;
+        }
+    }
+    false
+}
+
 pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
@@ -528,7 +565,8 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, asky_system::<Password>)
             .add_systems(Update, asky_system::<Message>)
             .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
-            .add_systems(Update, poll_tasks)
+            .add_systems(Update, poll_tasks::<()>)
+            .add_systems(Update, poll_tasks_err::<()>)
             .add_systems(Update, run_closures)
             .add_systems(Update, run_timers)
             ;
