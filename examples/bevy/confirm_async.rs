@@ -23,7 +23,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(AskyPlugin)
-        .add_systems(Update, bevy::window::close_on_esc)
+        // .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
         // .add_systems(Update, ask_question.pipe(future_sink))
         // .add_systems(Update, ask_question.pipe(option_future_sink))
@@ -79,7 +79,7 @@ fn ask_name_clear(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<i
                     let _ = asky.listen(Message::new(format!("Hello, {first_name} {last_name}!")), id).await;
                 }
             } else {
-                eprintln!("Got err in ask name");
+                eprintln!("Got err in ask name.");
             }
         })
     } else {
