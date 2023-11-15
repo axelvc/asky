@@ -356,16 +356,13 @@ impl<T> Printable for Select<'_, T> {
 impl<T> Valuable for Select<'_, T> {
     type Output = usize;
     fn value(&self) -> Result<usize, Error> {
-        let mut matches = self.options.iter().enumerate().filter(|(_, o)| o.active);
-        if let Some(first) = matches.next() {
-            let left = matches.count();
-            if left == 0 {
-                Ok(first.0)
-            } else {
-                Err(Error::InvalidInput) //"More than one option selected.".into())
-            }
+
+        let focused = &self.options[self.input.focused];
+
+        if !focused.disabled {
+            Ok(self.input.focused)
         } else {
-                Err(Error::InvalidInput) //"No option selected.".into())
+            Err(Error::InvalidCount { expected: 1, actual: 0 })
         }
     }
 }

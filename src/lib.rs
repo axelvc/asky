@@ -113,6 +113,7 @@ pub trait Valuable {
 pub enum Error {
     Cancel,
     InvalidInput,
+    InvalidCount { expected: usize, actual: usize },
     ValidationFail,
 }
 
