@@ -18,7 +18,7 @@ use crate::utils::{
 use crate::Valuable;
 
 use super::text::{Direction, LineInput};
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;

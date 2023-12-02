@@ -19,7 +19,7 @@ use crate::utils::{
 };
 
 use super::text::{Direction, InputValidator, LineInput};
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
 type Formatter<'a> =
     dyn Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;

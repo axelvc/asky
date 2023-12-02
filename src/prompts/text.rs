@@ -10,7 +10,7 @@ use bevy::input::keyboard::KeyCode as BKeyCode;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
 
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;

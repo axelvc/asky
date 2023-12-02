@@ -14,9 +14,9 @@ use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Valuable;
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
-type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
+type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///

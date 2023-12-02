@@ -1,4 +1,6 @@
-use colored::{ColoredString, ColoredStrings, Colorize};
+use colored::{ColoredString, Colorize};
+use crate::ColoredStrings;
+use std::borrow::Borrow;
 
 use crate::prompts::{
     confirm::Confirm,
@@ -40,7 +42,7 @@ pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStri
 }
 
 pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStrings) {
-    out.push(prompt.message.to_string().into());
+    out.push(prompt.message.as_ref().into());
 }
 
 pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
@@ -302,23 +304,23 @@ fn fmt_message(message: &str) -> String {
     format!("{} {}", "▣".blue(), message)
 }
 
-pub fn fmt_msg2(message: &str, out: &mut ColoredStrings<'_>) {
-    out.extend(["▣".blue(), " ".into(), message.to_owned().into()]);
+pub fn fmt_msg2(message: &str, out: &mut ColoredStrings) {
+    out.extend(["▣".blue(), " ".into(), message.into()]);
 }
 
-pub fn fmt_echo(message: &str, out: &mut ColoredStrings<'_>) {
-    out.push(message.to_owned().into());
+pub fn fmt_echo(message: &str, out: &mut ColoredStrings) {
+    out.push(message.into());
 }
 
 fn fmt_last_message(message: &str, answer: &str) -> String {
     format!("{} {} {}", "■".green(), message, answer.purple())
 }
 
-pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings<'_>) {
+pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings) {
     out.extend([
         "■".green(),
         " ".into(),
-        message.to_owned().into(),
+        message.into(),
         " ".into(),
         answer.to_owned().purple(),
     ]);

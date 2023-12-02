@@ -21,7 +21,7 @@ use crate::utils::{
 
 use super::select::{Direction, SelectInput, SelectOption};
 
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
 type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

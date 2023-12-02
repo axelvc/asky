@@ -1,4 +1,4 @@
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 use std::io;
 
 use crate::Error;

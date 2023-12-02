@@ -14,9 +14,10 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Valuable;
 use crate::Error;
-use colored::ColoredStrings;
+// use colored::ColoredStrings;
+use crate::ColoredStrings;
 
-type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings<'a>) + 'a + Send + Sync;
+type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///

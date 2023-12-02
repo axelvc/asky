@@ -16,7 +16,7 @@ use crate::utils::{
     theme,
 };
 
-use colored::ColoredStrings;
+use crate::ColoredStrings;
 
 pub enum Direction {
     Up,
