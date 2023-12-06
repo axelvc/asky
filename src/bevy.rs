@@ -418,17 +418,17 @@ fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr
 //     })
 // }
 
-trait DivideAndSeparate {
-    fn divide_and_separate<I, T, U, F>(self, f: F) -> DividedIterator<I, T, U, F>
+trait DivideAndSeparate : Iterator + Sized {
+    fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<Self, Self::Item, U, F>
     where
-        I: Iterator<Item = T>,
-        F: Fn(T) -> Result<U, (Option<U>, Option<U>)>;
+        F: Fn(Self::Item) -> Result<U, (Option<U>, Option<U>)>;
 }
 
 struct DividedIterator<I, T, U, F>
     where
     I: Iterator<Item = T>,
     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+    Self: Sized
 {
     source_iter: I,
     predicate: F,
@@ -479,14 +479,12 @@ impl<I,T> DivideAndSeparate for I where I: Iterator<Item = T> {
 /// that emits None between the divisions.
 ///
 ///
-fn divide_and_separate<T, U, F>(self, f: F) -> DividedIterator<Self, T, U, F>
+fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<I, I::Item, U, F>
     where
     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
 {
-
-
     DividedIterator {
-        source_iter: iter,
+        source_iter: self,
         predicate: f,
         buffer: Vec::new()
     }
@@ -764,7 +762,7 @@ mod tests {
     fn test_divide_and_separate_left() {
         let a: [u32; 4] = [1,2,3,4];
         // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(x), None)) });
+        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((Some(x), None)) });
 
         assert_eq!(iter.next(), Some(1));
         assert_eq!(iter.next(), Some(2));
@@ -779,7 +777,7 @@ mod tests {
     fn test_divide_and_separate_right() {
         let a: [u32; 4] = [1,2,3,4];
         // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) });
+        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) });
 
         assert_eq!(iter.next(), Some(1));
         assert_eq!(iter.next(), None);
@@ -796,7 +794,7 @@ mod tests {
     fn test_divide_and_separate_peekable() {
         let a: [u32; 4] = [1,2,3,4];
         // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }).peekable();
+        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }).peekable();
         let mut v: Vec<u32> = Vec::new();
 
         while iter.peek().is_some() {
