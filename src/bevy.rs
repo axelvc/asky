@@ -374,57 +374,88 @@ fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr
     ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
 }
 
-// fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr<'a>> {
-//     ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
-// }
-
-// fn divide_and_separate<I,T,U,F>(iter: impl Iterator<Item = T>, f: F) -> impl Iterator<Item = I>
-//                                     F: Fn(T) -> Result<U, U> {
-
-// }
-
-// fn divide_and_separate<I, T, U, F>(iter: I, f: F) -> impl Iterator<Item = U>
-// where
-//     I: Iterator<Item = T>,
-//     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-// {
-// fn divide_and_separate<T, U, F>(iter: impl Iterator<Item = T>, f: F) -> impl Iterator<Item = U>
-// where
-//     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-// {
-//     iter.scan(Vec::<Option<U>>::with_capacity(2), |state, x| {
-//         if state.len() > 0 {
-//             state.pop()
-//         } else {
-//             match f(x) {
-//                 Ok(z) => Some(z),
-//                 Err(a) => {
-//                     if a.0.is_some() && a.1.is_some() {
-//                         state.push(a.1);
-//                         state.push(None);
-//                         a.0
-//                     } else if a.0.is_some() && a.1.is_none() {
-//                         state.push(None);
-//                         a.0
-//                     } else if a.0.is_none() && a.1.is_some() {
-//                         state.push(a.1);
-//                         None
-//                     } else {
-//                         None
-//                     }
-//                 }
-//             }
-//         }
-//     })
-// }
-
-trait DivideAndSeparate : Iterator + Sized {
-    fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<Self, Self::Item, U, F>
+pub trait DivideAndSeparate : Iterator + Sized {
+    /// Given an iterator, separate it with a separator closure into an unfused
+    /// iterator that emits None between divisions. The separator is fed
+    /// elements from the self iterator.
+    ///
+    /// When it returns `Ok(x)`, `x` will be emitted by the `DividedIterator` as
+    /// the next item. Without any `Err(_)` divide_and_separate degenerates into
+    /// [`map`][].
+    ///
+    /// ```
+    /// use asky::bevy::DivideAndSeparate;
+    /// assert_eq!([1,2,3].into_iter().divide_and_separate(|x| Ok(x)).collect::<Vec<i32>>(), [1,2,3]);
+    /// ```
+    ///
+    /// When the separator returns `Err(None, None)` `DividedIterator` will not
+    /// emit an element and end the current iterator and begin the next
+    /// iterator.
+    ///
+    /// ```
+    /// use asky::bevy::DivideAndSeparate;
+    /// let mut v: Vec<i32> = Vec::new();
+    /// let mut iter = [1,2,3].into_iter().divide_and_separate(|x| {
+    ///     if x == 2 { Err((None, None)) } else { Ok(x) }
+    /// });
+    /// v.extend(iter.by_ref()); // Use by_ref() so the iterator isn't consumed by `extend()`.
+    /// assert_eq!(v, [1]);
+    /// v.clear();
+    /// v.extend(iter.by_ref());
+    /// assert_eq!(v, [3]);
+    /// ```
+    ///
+    /// When the separator returns `Err(Some(a), Some(b))`, the
+    /// `DividedIterator` will end the current iterator with a and begin the
+    /// next iterator with b.
+    ///
+    /// ```
+    /// # use asky::bevy::DivideAndSeparate;
+    /// let mut v: Vec<i32> = Vec::new();
+    /// let mut iter = [1,2,3].into_iter().divide_and_separate(|x| {
+    ///     if x % 2 == 0 { Err((Some(x), Some(x * 2))) } else { Ok(x) }
+    /// });
+    /// v.extend(iter.by_ref()); // Use by_ref() so the iterator isn't consumed by `extend()`.
+    /// assert_eq!(v, [1, 2]);
+    /// v.clear();
+    /// v.extend(iter.by_ref());
+    /// assert_eq!(v, [4, 3]);
+    /// ```
+    ///
+    /// Note: When first designing this trait, I wanted to return an iterator of
+    /// iterators. However, I couldn't exercise the second iterator if the first
+    /// iterator hasn't been fully evaluated. Still it may be useful to think of this
+    /// as being like an iterator of iterators you just need to handle it
+    /// carefully. The iterator will signal the end of the sequences with None:
+    /// `a1, a2, ..., None, b1, b2, ..., None, c1, c2, ..., None, None`.
+    ///
+    /// We can use [`peekable()`][] to find out if our iterator is finished.
+    ///
+    /// ```
+    /// # use asky::bevy::DivideAndSeparate;
+    /// let mut iter = [1,2,3,4].into_iter().divide_and_separate(|x| {
+    ///     if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }
+    /// })
+    /// .peekable();
+    /// let mut v: Vec<u32> = Vec::new();
+    /// while iter.peek().is_some() {
+    ///     v.extend(iter.by_ref());
+    ///     v.push(0);
+    /// }
+    /// assert_eq!(v, [1,
+    /// 0,
+    ///                2, 3,
+    /// 0,
+    ///                4,
+    /// 0]);
+    /// ```
+    ///
+    fn divide_and_separate<U, F>(self, separator: F) -> DividedIterator<Self, Self::Item, U, F>
     where
         F: Fn(Self::Item) -> Result<U, (Option<U>, Option<U>)>;
 }
 
-struct DividedIterator<I, T, U, F>
+pub struct DividedIterator<I, T, U, F>
     where
     I: Iterator<Item = T>,
     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
@@ -473,22 +504,16 @@ where
 }
 
 impl<I,T> DivideAndSeparate for I where I: Iterator<Item = T> {
-
-
-/// Given an iterator separate it with a function f into an unfused iterator
-/// that emits None between the divisions.
-///
-///
-fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<I, I::Item, U, F>
-    where
-    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-{
-    DividedIterator {
-        source_iter: self,
-        predicate: f,
-        buffer: Vec::new()
+    fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<I, I::Item, U, F>
+        where
+        F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+    {
+        DividedIterator {
+            source_iter: self,
+            predicate: f,
+            buffer: Vec::new()
+        }
     }
-}
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
