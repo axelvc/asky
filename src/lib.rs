@@ -49,7 +49,7 @@
 //! Confirm::new("Do you like Rust?")
 //!     .format(|prompt, _draw_time, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
-//!         out.push(format!("{} {}\n", prompt.message, state).into());
+//!         out.push(format!("{} {}\n", prompt.message, state).as_str().into());
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -80,7 +80,7 @@
 //!         let x = (prefix.len() + cursor_col);
 //!         let y = 1;
 //!
-//!         out.push(format!("{}\n{} {}", prompt.message, prefix, prompt.input.value).into());
+//!         out.push(format!("{}\n{} {}", prompt.message, prefix, prompt.input.value).as_str().into());
 //!         [x, y]
 //!     })
 //!     .prompt();

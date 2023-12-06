@@ -302,7 +302,7 @@ mod tests {
 
         assert_eq!(text.default_value, None);
         text.default(10);
-        assert_eq!(text.default_value, Some(String::from("10")));
+        assert_eq!(text.default_value, Some(10));
     }
 
     #[test]
@@ -358,7 +358,7 @@ mod tests {
         prompt.input.set_value(&String::from("10"));
         prompt.default(20);
 
-        assert_eq!(prompt.get_value(), Ok(10));
+        assert_eq!(prompt.get_value().unwrap(), 10);
     }
 
     #[test]
@@ -367,7 +367,7 @@ mod tests {
         prompt.input.set_value("");
         prompt.default(20);
 
-        assert_eq!(prompt.get_value(), Ok(20));
+        assert_eq!(prompt.get_value().unwrap(), 20);
     }
 
     #[test]

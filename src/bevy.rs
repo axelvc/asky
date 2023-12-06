@@ -6,15 +6,16 @@ use crate::Typeable;
 use bevy::{input::keyboard::KeyboardInput, utils::Duration, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
 
 use bevy::prelude::*;
-use colored::{Color as Colored, ColoredString, ColoredStrings, Colorize};
+use colored::{Color as Colored, ColoredString, Colorize};
 use std::io;
 use std::future::Future;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error};
+use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error, ColoredStrings};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
+use text_style::{self, StyledString, StyledStr, AnsiColor, AnsiMode};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -328,30 +329,31 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         }
     }
 
-    pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
-        if let Some(fg) = s.fgcolor() {
-            style.color = convert(fg);
-        }
-        // return <str as fmt::Display>::fmt(&s.input, f);
-        // Don't use format!("{}", s) or you could get ANSI escape sequences.
-        let mut bundle = TextBundle::from_section(s.input.to_owned(), style);
-        if let Some(bg) = s.bgcolor() {
-            bundle.background_color = BackgroundColor(convert(bg));
-        }
-        bundle
-    }
+    // pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
+    //     if let Some(fg) = s.fgcolor() {
+    //         style.color = convert(fg);
+    //     }
+    //     // return <str as fmt::Display>::fmt(&s.input, f);
+    //     // Don't use format!("{}", s) or you could get ANSI escape sequences.
+    //     let mut bundle = TextBundle::from_section(s.input.to_owned(), style);
+    //     if let Some(bg) = s.bgcolor() {
+    //         bundle.background_color = BackgroundColor(convert(bg));
+    //     }
+    //     bundle
+    // }
 
     fn cursorify(
-        cs: ColoredString,
+        cs: StyledString,
         i: usize,
-        cursor_color: colored::Color,
-    ) -> impl Iterator<Item = ColoredString> {
-        let to_colored_string = |s: String| -> ColoredString {
-            let mut c = cs.clone();
-            c.input = s.into();
-            c
+        cursor_color: text_style::Color,
+    ) -> impl Iterator<Item = StyledString> {
+        let to_colored_string = |s: String| -> StyledString {
+            StyledString {
+                s: s,
+                ..cs.clone()
+            }
         };
-        let mut input = cs.input.to_string();
+        let mut input = cs.s.to_string();
         let mut right = None;
         if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
             let (l, r) = input.split_at(byte_index);
@@ -360,12 +362,135 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         }
         let cursor = Some(
             to_colored_string(input.pop().expect("Could not get cursor").to_string())
-                .on_color(cursor_color),
+                .on(cursor_color),
         );
         let left = Some(to_colored_string(input));
         left.into_iter()
             .chain(cursor.into_iter().chain(right.into_iter()))
     }
+}
+
+fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr<'a>> {
+    ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
+}
+
+// fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr<'a>> {
+//     ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
+// }
+
+// fn divide_and_separate<I,T,U,F>(iter: impl Iterator<Item = T>, f: F) -> impl Iterator<Item = I>
+//                                     F: Fn(T) -> Result<U, U> {
+
+// }
+
+// fn divide_and_separate<I, T, U, F>(iter: I, f: F) -> impl Iterator<Item = U>
+// where
+//     I: Iterator<Item = T>,
+//     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+// {
+// fn divide_and_separate<T, U, F>(iter: impl Iterator<Item = T>, f: F) -> impl Iterator<Item = U>
+// where
+//     F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+// {
+//     iter.scan(Vec::<Option<U>>::with_capacity(2), |state, x| {
+//         if state.len() > 0 {
+//             state.pop()
+//         } else {
+//             match f(x) {
+//                 Ok(z) => Some(z),
+//                 Err(a) => {
+//                     if a.0.is_some() && a.1.is_some() {
+//                         state.push(a.1);
+//                         state.push(None);
+//                         a.0
+//                     } else if a.0.is_some() && a.1.is_none() {
+//                         state.push(None);
+//                         a.0
+//                     } else if a.0.is_none() && a.1.is_some() {
+//                         state.push(a.1);
+//                         None
+//                     } else {
+//                         None
+//                     }
+//                 }
+//             }
+//         }
+//     })
+// }
+
+trait DivideAndSeparate {
+    fn divide_and_separate<I, T, U, F>(self, f: F) -> DividedIterator<I, T, U, F>
+    where
+        I: Iterator<Item = T>,
+        F: Fn(T) -> Result<U, (Option<U>, Option<U>)>;
+}
+
+struct DividedIterator<I, T, U, F>
+    where
+    I: Iterator<Item = T>,
+    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+{
+    source_iter: I,
+    predicate: F,
+    buffer: Vec<Option<U>>,
+}
+
+impl<I, T, U, F> Iterator for DividedIterator<I, T, U, F>
+where
+    I: Iterator<Item = T>,
+    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+{
+    type Item = U;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buffer.len() > 0 {
+            self.buffer.pop().unwrap()
+        } else {
+            match self.source_iter.next() {
+                Some(x) =>
+                    match (self.predicate)(x) {
+                        Ok(z) => Some(z),
+                        Err(a) => {
+                            if a.0.is_some() && a.1.is_some() {
+                                self.buffer.push(a.1);
+                                self.buffer.push(None);
+                                a.0
+                            } else if a.0.is_some() && a.1.is_none() {
+                                self.buffer.push(None);
+                                a.0
+                            } else if a.0.is_none() && a.1.is_some() {
+                                self.buffer.push(a.1);
+                                None
+                            } else {
+                                None
+                            }
+                        }
+                    },
+                None => None
+            }
+        }
+    }
+}
+
+impl<I,T> DivideAndSeparate for I where I: Iterator<Item = T> {
+
+
+/// Given an iterator separate it with a function f into an unfused iterator
+/// that emits None between the divisions.
+///
+///
+fn divide_and_separate<T, U, F>(self, f: F) -> DividedIterator<Self, T, U, F>
+    where
+    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
+{
+
+
+    DividedIterator {
+        source_iter: iter,
+        predicate: f,
+        buffer: Vec::new()
+    }
+}
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
@@ -381,46 +506,50 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     }
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-        let style = self.settings.style.clone();
+        let style = self.settings.style.clone().into();
+        let white = text_style::Color::Ansi { color: AnsiColor::White, mode: AnsiMode::Dark };
+
         self.commands.entity(self.column).with_children(|column| {
-            for lines in strings
-                .split('\n')
+            for lines in strings.0
                 .into_iter()
-                .enumerate()
-                .map(|(i, mut colored_line)| {
-                    if self.state.cursor_visible && i == self.state.cursor_pos[1] {
-                        let mut length = 0;
-                        let mut inserted = false;
-                        for i in 0..colored_line.len() {
-                            if self.state.cursor_pos[0]
-                                < length + colored_line[i].input.chars().count()
-                            {
-                                // The cursor is in this one.
-                                let part = colored_line.remove(i);
-                                for (j, new_part) in BevyRenderer::cursorify(
-                                    part,
-                                    self.state.cursor_pos[0] - length,
-                                    colored::Color::White,
-                                )
-                                .enumerate()
-                                {
-                                    colored_line.insert(i + j, new_part)
-                                }
-                                inserted = true;
-                                break;
-                            }
-                            length += colored_line[i].input.chars().count();
-                        }
-                        if !inserted && self.state.cursor_pos[0] >= length {
-                            // Cursor is actually one character past string.
-                            colored_line.push(" ".on_color(colored::Color::White));
-                        }
-                    }
-                    colored_line
-                        .0
-                        .into_iter()
-                        .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
-                })
+                .map(StyledString::from)
+                // .split('\n')
+                // .into_iter()
+                // .enumerate()
+                // .map(|(i, mut colored_line)| {
+                //     if self.state.cursor_visible && i == self.state.cursor_pos[1] {
+                //         let mut length = 0;
+                //         let mut inserted = false;
+                //         for i in 0..colored_line.len() {
+                //             if self.state.cursor_pos[0]
+                //                 < length + colored_line[i].input.chars().count()
+                //             {
+                //                 // The cursor is in this one.
+                //                 let part = colored_line.remove(i);
+                //                 for (j, new_part) in BevyRenderer::cursorify(
+                //                     part,
+                //                     self.state.cursor_pos[0] - length,
+                //                     white
+                //                 )
+                //                 .enumerate()
+                //                 {
+                //                     colored_line.insert(i + j, new_part)
+                //                 }
+                //                 inserted = true;
+                //                 break;
+                //             }
+                //             length += colored_line[i].input.chars().count();
+                //         }
+                //         if !inserted && self.state.cursor_pos[0] >= length {
+                //             // Cursor is actually one character past string.
+                //             colored_line.push(" ".on(white));
+                //         }
+                //     }
+                //     colored_line
+                //         .0
+                //         .into_iter()
+                //         .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
+                // })
             {
                 column
                     .spawn(NodeBundle {
@@ -431,9 +560,11 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                         ..default()
                     })
                     .with_children(|parent| {
-                        for line in lines {
-                            parent.spawn(line);
-                        }
+                        // text_style::bevy::render_iter(parent, &style.into(), lines);
+                        text_style::bevy::render(parent, &style, &lines);
+                        // for line in lines {
+                        //     parent.spawn(line);
+                        // }
                     });
             }
         });
@@ -570,5 +701,108 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, run_closures)
             .add_systems(Update, run_timers)
             ;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // use super::divide_and_separate;
+    // #[test]
+    // fn test_divide_and_partition() {
+    //     let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    //     let result: Vec<Vec<i32>> = divide_and_separate(data.into_iter(), |x| {
+    //         if x % 2 == 0 {
+    //             Ok(())
+    //         } else {
+    //             Err(())
+    //         }
+    //     })
+    //     .collect();
+
+    //     println!("{:?}", result);
+    // }
+
+    #[test]
+    fn test_scan() {
+        let a = [1, 2, 3, 4];
+
+        let mut iter = a.iter().scan(0, |state, &x| {
+            // each iteration, we'll multiply the state by the element ...
+            *state += 1;
+
+            // ... and terminate if the state exceeds 6
+            if *state % 2 == 0 {
+                return None;
+            }
+            // ... else yield the negation of the state
+            Some(-x)
+        });
+
+        assert_eq!(iter.next(), Some(-1));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(-3));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_divide_and_separate() {
+        let a: [u32; 4] = [1,2,3,4];
+        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
+        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, None)) });
+
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_divide_and_separate_left() {
+        let a: [u32; 4] = [1,2,3,4];
+        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
+        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(x), None)) });
+
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_divide_and_separate_right() {
+        let a: [u32; 4] = [1,2,3,4];
+        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
+        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) });
+
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+
+    #[test]
+    fn test_divide_and_separate_peekable() {
+        let a: [u32; 4] = [1,2,3,4];
+        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
+        let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }).peekable();
+        let mut v: Vec<u32> = Vec::new();
+
+        while iter.peek().is_some() {
+            v.extend(iter.by_ref());
+            v.push(100);
+        }
+        assert_eq!(v, [1,100, 2,3, 100,4, 100]);
     }
 }
