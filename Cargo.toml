@@ -16,6 +16,7 @@ colored = { version = "2.0.0", default-features = false }
 # colored = { path = "../colored", default-features = false }
 # colored = { git = "https://github.com/shanecelis/colored.git", branch="colored_strings", default-features = false }
 crossterm = { version = "0.26.0", optional = true }
+divide-and-separate = { version = "0.1.0", path = "../divide-and-separate" }
 futures-lite = "2.0.1"
 promise_out = "1.0.0"
 # text-style = "0.3.0"

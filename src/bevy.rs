@@ -15,7 +15,8 @@ use std::ops::{Deref, DerefMut};
 use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error, ColoredStrings};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
-use text_style::{self, StyledString, StyledStr, AnsiColor, AnsiMode};
+use text_style::{self, StyledString, StyledStr, AnsiColor, AnsiMode, bevy::TextStyleParams};
+use divide_and_separate::DivideAndSeparate;
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -374,148 +375,6 @@ fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr
     ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
 }
 
-pub trait DivideAndSeparate : Iterator + Sized {
-    /// Given an iterator, separate it with a separator closure into an unfused
-    /// iterator that emits None between divisions. The separator is fed
-    /// elements from the self iterator.
-    ///
-    /// When it returns `Ok(x)`, `x` will be emitted by the `DividedIterator` as
-    /// the next item. Without any `Err(_)` divide_and_separate degenerates into
-    /// [`map`][].
-    ///
-    /// ```
-    /// use asky::bevy::DivideAndSeparate;
-    /// assert_eq!([1,2,3].into_iter().divide_and_separate(|x| Ok(x)).collect::<Vec<i32>>(), [1,2,3]);
-    /// ```
-    ///
-    /// When the separator returns `Err(None, None)` `DividedIterator` will not
-    /// emit an element and end the current iterator and begin the next
-    /// iterator.
-    ///
-    /// ```
-    /// use asky::bevy::DivideAndSeparate;
-    /// let mut v: Vec<i32> = Vec::new();
-    /// let mut iter = [1,2,3].into_iter().divide_and_separate(|x| {
-    ///     if x == 2 { Err((None, None)) } else { Ok(x) }
-    /// });
-    /// v.extend(iter.by_ref()); // Use by_ref() so the iterator isn't consumed by `extend()`.
-    /// assert_eq!(v, [1]);
-    /// v.clear();
-    /// v.extend(iter.by_ref());
-    /// assert_eq!(v, [3]);
-    /// ```
-    ///
-    /// When the separator returns `Err(Some(a), Some(b))`, the
-    /// `DividedIterator` will end the current iterator with a and begin the
-    /// next iterator with b.
-    ///
-    /// ```
-    /// # use asky::bevy::DivideAndSeparate;
-    /// let mut v: Vec<i32> = Vec::new();
-    /// let mut iter = [1,2,3].into_iter().divide_and_separate(|x| {
-    ///     if x % 2 == 0 { Err((Some(x), Some(x * 2))) } else { Ok(x) }
-    /// });
-    /// v.extend(iter.by_ref()); // Use by_ref() so the iterator isn't consumed by `extend()`.
-    /// assert_eq!(v, [1, 2]);
-    /// v.clear();
-    /// v.extend(iter.by_ref());
-    /// assert_eq!(v, [4, 3]);
-    /// ```
-    ///
-    /// Note: When first designing this trait, I wanted to return an iterator of
-    /// iterators. However, I couldn't exercise the second iterator if the first
-    /// iterator hasn't been fully evaluated. Still it may be useful to think of this
-    /// as being like an iterator of iterators you just need to handle it
-    /// carefully. The iterator will signal the end of the sequences with None:
-    /// `a1, a2, ..., None, b1, b2, ..., None, c1, c2, ..., None, None`.
-    ///
-    /// We can use [`peekable()`][] to find out if our iterator is finished.
-    ///
-    /// ```
-    /// # use asky::bevy::DivideAndSeparate;
-    /// let mut iter = [1,2,3,4].into_iter().divide_and_separate(|x| {
-    ///     if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }
-    /// })
-    /// .peekable();
-    /// let mut v: Vec<u32> = Vec::new();
-    /// while iter.peek().is_some() {
-    ///     v.extend(iter.by_ref());
-    ///     v.push(0);
-    /// }
-    /// assert_eq!(v, [1,
-    /// 0,
-    ///                2, 3,
-    /// 0,
-    ///                4,
-    /// 0]);
-    /// ```
-    ///
-    fn divide_and_separate<U, F>(self, separator: F) -> DividedIterator<Self, Self::Item, U, F>
-    where
-        F: Fn(Self::Item) -> Result<U, (Option<U>, Option<U>)>;
-}
-
-pub struct DividedIterator<I, T, U, F>
-    where
-    I: Iterator<Item = T>,
-    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-    Self: Sized
-{
-    source_iter: I,
-    predicate: F,
-    buffer: Vec<Option<U>>,
-}
-
-impl<I, T, U, F> Iterator for DividedIterator<I, T, U, F>
-where
-    I: Iterator<Item = T>,
-    F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-{
-    type Item = U;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.buffer.len() > 0 {
-            self.buffer.pop().unwrap()
-        } else {
-            match self.source_iter.next() {
-                Some(x) =>
-                    match (self.predicate)(x) {
-                        Ok(z) => Some(z),
-                        Err(a) => {
-                            if a.0.is_some() && a.1.is_some() {
-                                self.buffer.push(a.1);
-                                self.buffer.push(None);
-                                a.0
-                            } else if a.0.is_some() && a.1.is_none() {
-                                self.buffer.push(None);
-                                a.0
-                            } else if a.0.is_none() && a.1.is_some() {
-                                self.buffer.push(a.1);
-                                None
-                            } else {
-                                None
-                            }
-                        }
-                    },
-                None => None
-            }
-        }
-    }
-}
-
-impl<I,T> DivideAndSeparate for I where I: Iterator<Item = T> {
-    fn divide_and_separate<U, F>(self, f: F) -> DividedIterator<I, I::Item, U, F>
-        where
-        F: Fn(T) -> Result<U, (Option<U>, Option<U>)>,
-    {
-        DividedIterator {
-            source_iter: self,
-            predicate: f,
-            buffer: Vec::new()
-        }
-    }
-}
-
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
@@ -529,14 +388,39 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     }
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-        let style = self.settings.style.clone().into();
         let white = text_style::Color::Ansi { color: AnsiColor::White, mode: AnsiMode::Dark };
 
         self.commands.entity(self.column).with_children(|column| {
-            for lines in strings.0
+            let mut lines =
+                strings.0
                 .into_iter()
                 .map(StyledString::from)
-                // .split('\n')
+                .flat_map(|mut s| {
+                    let mut a = vec![];
+                    let mut b = None;
+                    if s.s.contains('\n') {
+                        let str = std::mem::replace(&mut s.s, String::new());
+                        a.extend(str.split_inclusive('\n')
+                            .map(move |line| StyledString { s: line.to_string(), ..s.clone() }));
+                    } else {
+                        b = Some(s);
+                    }
+                    // a.into_iter().flatten().chain(b.into_iter())
+                    a.into_iter().chain(b.into_iter())
+                })
+                .divide_and_separate(|x| {
+                    if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
+                        Err((Some(x), None))
+                    } else {
+                        Ok(x)
+                    }
+                })
+                .peekable();
+
+            while lines.peek().is_some() {
+
+
+            // for lines in                 // .split('\n')
                 // .into_iter()
                 // .enumerate()
                 // .map(|(i, mut colored_line)| {
@@ -573,7 +457,8 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                 //         .into_iter()
                 //         .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
                 // })
-            {
+            // {
+                let style:TextStyleParams = self.settings.style.clone().into();
                 column
                     .spawn(NodeBundle {
                         style: Style {
@@ -583,8 +468,9 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                         ..default()
                     })
                     .with_children(|parent| {
-                        // text_style::bevy::render_iter(parent, &style.into(), lines);
-                        text_style::bevy::render(parent, &style, &lines);
+                        text_style::bevy::render_string_iter(parent, &style.into(), lines.by_ref());
+                        // text_style::bevy::render_iter(parent, &style.into(), lines.by_ref().map(StyledStr::from));
+                        // text_style::bevy::render(parent, &style, &lines);
                         // for line in lines {
                         //     parent.spawn(line);
                         // }
@@ -770,62 +656,4 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
-    #[test]
-    fn test_divide_and_separate() {
-        let a: [u32; 4] = [1,2,3,4];
-        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, None)) });
-
-        assert_eq!(iter.next(), Some(1));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), Some(3));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn test_divide_and_separate_left() {
-        let a: [u32; 4] = [1,2,3,4];
-        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((Some(x), None)) });
-
-        assert_eq!(iter.next(), Some(1));
-        assert_eq!(iter.next(), Some(2));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), Some(3));
-        assert_eq!(iter.next(), Some(4));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn test_divide_and_separate_right() {
-        let a: [u32; 4] = [1,2,3,4];
-        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) });
-
-        assert_eq!(iter.next(), Some(1));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), Some(2));
-        assert_eq!(iter.next(), Some(3));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), Some(4));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), None);
-    }
-
-
-    #[test]
-    fn test_divide_and_separate_peekable() {
-        let a: [u32; 4] = [1,2,3,4];
-        // let mut iter = divide_and_separate(a.into_iter(), |x| if x % 2 == 1 { Ok(x) } else { Err((Some(2), None)) });
-        let mut iter = a.into_iter().divide_and_separate(|x| if x % 2 == 1 { Ok(x) } else { Err((None, Some(x))) }).peekable();
-        let mut v: Vec<u32> = Vec::new();
-
-        while iter.peek().is_some() {
-            v.extend(iter.by_ref());
-            v.push(100);
-        }
-        assert_eq!(v, [1,100, 2,3, 100,4, 100]);
-    }
 }
