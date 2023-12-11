@@ -1,5 +1,5 @@
 use colored::*;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Range};
 use std::fmt;
 
 /// A collection of colored strings. It can be used like a `Vec<ColoredString>`.

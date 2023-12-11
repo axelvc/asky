@@ -342,7 +342,7 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
     //     }
     //     bundle
     // }
-
+}
     fn cursorify(
         cs: StyledString,
         i: usize,
@@ -369,7 +369,35 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         left.into_iter()
             .chain(cursor.into_iter().chain(right.into_iter()))
     }
-}
+
+    fn cursorify_iter(iter: impl Iterator<Item = StyledString>,
+                      i: usize,
+                      cursor_color: text_style::Color) -> impl Iterator<Item = StyledString> {
+        let mut count = 0;
+        let a = iter.flat_map(move |ss| {
+            let l = ss.s.chars().count();
+            let has_index = i < count + l && i >= count;
+            // let a = has_index.then_some(cursorify(ss, i - count, cursor_color.clone()));
+            // let b = (! has_index).then_some(ss);
+
+            let mut a = None;
+            let mut b = None;
+            if has_index {
+                a = Some(cursorify(ss, i - count, cursor_color.clone()));
+            } else {
+                b = Some(ss);
+            }
+            // has_index.then_some
+            // let b = (! has_index).then_some(ss);
+
+            count += l;
+            a.into_iter().flatten().chain(b.into_iter())
+        });
+
+        // This cursor may go beyond the string, often only by 1.
+        let b = (i > count).then_some(StyledString::plain(" ".into()).on(cursor_color));
+        a.chain(b.into_iter())
+    }
 
 fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr<'a>> {
     ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
@@ -405,7 +433,6 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                     } else {
                         b = Some(s);
                     }
-                    // a.into_iter().flatten().chain(b.into_iter())
                     a.into_iter().chain(b.into_iter())
                 })
                 .divide_and_separate(|x| {
@@ -417,6 +444,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                 })
                 .peekable();
 
+            let mut line_num = 0;
             while lines.peek().is_some() {
 
 
@@ -468,13 +496,19 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                         ..default()
                     })
                     .with_children(|parent| {
-                        text_style::bevy::render_string_iter(parent, &style.into(), lines.by_ref());
+
+                        if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
+                            text_style::bevy::render_string_iter(parent, &style.into(), cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white));
+                        } else {
+                            text_style::bevy::render_string_iter(parent, &style.into(), lines.by_ref());
+                        }
                         // text_style::bevy::render_iter(parent, &style.into(), lines.by_ref().map(StyledStr::from));
                         // text_style::bevy::render(parent, &style, &lines);
                         // for line in lines {
                         //     parent.spawn(line);
                         // }
                     });
+                line_num += 1;
             }
         });
         Ok(())
