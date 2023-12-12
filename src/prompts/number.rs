@@ -147,7 +147,7 @@ impl<T: NumLike> Number<'_, T> {
         match self.input.value.is_empty() {
             // FIXME: This is not good behavior, right?
             true => match self.default_value {
-                Some(v) => Ok(v.clone()),
+                Some(v) => Ok(v),
                 None => Err(Error::InvalidInput)
             }
             false => self.input.value.parse().map_err(|_| Error::InvalidInput),

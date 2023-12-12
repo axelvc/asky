@@ -1,12 +1,12 @@
 use colored::*;
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Deref, DerefMut};
 use std::fmt;
 
 /// A collection of colored strings. It can be used like a `Vec<ColoredString>`.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct ColoredStrings(pub Vec<ColoredString>);
 
-impl<'a> Deref for ColoredStrings {
+impl Deref for ColoredStrings {
     type Target = Vec<ColoredString>;
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -6,7 +6,7 @@ use crate::Typeable;
 use bevy::{input::keyboard::KeyboardInput, utils::Duration, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
 
 use bevy::prelude::*;
-use colored::{Color as Colored, ColoredString, Colorize};
+// use colored::{Color as Colored, ColoredString, Colorize};
 use std::io;
 use std::future::Future;
 
@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error, ColoredStrings};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use futures_lite::future;
-use text_style::{self, StyledString, StyledStr, AnsiColor, AnsiMode, bevy::TextStyleParams};
+use text_style::{self, StyledString, AnsiColor, AnsiMode, bevy::TextStyleParams};
 use divide_and_separate::DivideAndSeparate;
 
 #[derive(Component, Debug)]
@@ -269,28 +269,6 @@ pub struct BevyAskySettings {
     pub style: TextStyle,
 }
 
-fn convert(c: Colored) -> Color {
-    match c {
-        Colored::Black => Color::BLACK,
-        Colored::Red => Color::rgb_u8(204, 0, 0),
-        Colored::Green => Color::rgb_u8(78, 154, 6),
-        Colored::Yellow => Color::rgb_u8(196, 160, 0),
-        Colored::Blue => Color::rgb_u8(114, 159, 207),
-        Colored::Magenta => Color::rgb_u8(117, 80, 123),
-        Colored::Cyan => Color::rgb_u8(6, 152, 154),
-        Colored::White => Color::rgb_u8(211, 215, 207),
-        Colored::BrightBlack => Color::rgb_u8(85, 87, 83),
-        Colored::BrightRed => Color::rgb_u8(239, 41, 41),
-        Colored::BrightGreen => Color::rgb_u8(138, 226, 52),
-        Colored::BrightYellow => Color::rgb_u8(252, 233, 79),
-        Colored::BrightBlue => Color::rgb_u8(50, 175, 255),
-        Colored::BrightMagenta => Color::rgb_u8(173, 127, 168),
-        Colored::BrightCyan => Color::rgb_u8(52, 226, 226),
-        Colored::BrightWhite => Color::rgb_u8(255, 255, 255),
-        Colored::TrueColor { r, g, b } => Color::rgb_u8(r, g, b),
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct BevyRendererState {
     pub(crate) draw_time: DrawTime,
@@ -399,10 +377,6 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
         a.chain(b.into_iter())
     }
 
-fn split<'a>(ss: &'a StyledStr<'_>, pat: char) -> impl Iterator<Item = StyledStr<'a>> {
-    ss.s.split(pat).map(|str| StyledStr { s: str, ..ss.clone() })
-}
-
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
@@ -498,9 +472,9 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                     .with_children(|parent| {
 
                         if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
-                            text_style::bevy::render_string_iter(parent, &style.into(), cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white));
+                            text_style::bevy::render_iter(parent, &style.into(), cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white));
                         } else {
-                            text_style::bevy::render_string_iter(parent, &style.into(), lines.by_ref());
+                            text_style::bevy::render_iter(parent, &style.into(), lines.by_ref());
                         }
                         // text_style::bevy::render_iter(parent, &style.into(), lines.by_ref().map(StyledStr::from));
                         // text_style::bevy::render(parent, &style, &lines);

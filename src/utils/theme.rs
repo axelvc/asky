@@ -1,6 +1,5 @@
 use colored::{ColoredString, Colorize};
 use crate::ColoredStrings;
-use std::borrow::Borrow;
 
 use crate::prompts::{
     confirm::Confirm,
@@ -41,7 +40,7 @@ pub fn fmt_confirm2(prompt: &Confirm, draw_time: DrawTime, out: &mut ColoredStri
     fmt_toggle_options3(options, prompt.active, out);
 }
 
-pub fn fmt_message2(prompt: &Message, draw_time: DrawTime, out: &mut ColoredStrings) {
+pub fn fmt_message2(prompt: &Message, _draw_time: DrawTime, out: &mut ColoredStrings) {
     out.push(prompt.message.as_ref().into());
 }
 
