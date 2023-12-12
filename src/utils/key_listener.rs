@@ -27,7 +27,7 @@ pub fn listen(
     prompt: &mut (impl Printable + Typeable<KeyEvent>),
     hide_cursor: bool,
 ) -> io::Result<()> {
-    let mut renderer = super::renderer::TermRenderer::new();
+    let mut renderer = crate::terminal::TermRenderer::new();
 
     prompt.draw(&mut renderer)?;
 

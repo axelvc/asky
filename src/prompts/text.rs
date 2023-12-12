@@ -240,15 +240,10 @@ impl Typeable<cbevy::KeyEvent> for Text<'_> {
         }
 
         for code in &key.codes {
-            if match code {
-                BKeyCode::Return => true,
-                BKeyCode::Back => true,
-                BKeyCode::Delete => true,
-                BKeyCode::Left => true,
-                BKeyCode::Right => true,
-                _ => false,
-            } {
-                return true;
+            use BKeyCode::*;
+            match code {
+                Return | Back | Delete | Left | Right => return true,
+                _ => ()
             }
         }
         false

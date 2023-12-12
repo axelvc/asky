@@ -132,3 +132,5 @@ pub use utils::colored_strings::ColoredStrings;
 pub use utils::key_listener::Typeable;
 pub use utils::num_like::NumLike;
 pub use utils::renderer::DrawTime;
+#[cfg(feature = "terminal")]
+mod terminal;
