@@ -121,7 +121,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
                 .insert(AskyNode(password, AskyState::Reading));
         }
         "float" => {
-            commands.spawn(node).insert(AskyNode(float, AskyState::Reading));
+            commands
+                .spawn(node)
+                .insert(AskyNode(float, AskyState::Reading));
         }
         "number" => {
             commands

@@ -356,13 +356,15 @@ impl<T> Printable for Select<'_, T> {
 impl<T> Valuable for Select<'_, T> {
     type Output = usize;
     fn value(&self) -> Result<usize, Error> {
-
         let focused = &self.options[self.input.focused];
 
         if !focused.disabled {
             Ok(self.input.focused)
         } else {
-            Err(Error::InvalidCount { expected: 1, actual: 0 })
+            Err(Error::InvalidCount {
+                expected: 1,
+                actual: 0,
+            })
         }
     }
 }

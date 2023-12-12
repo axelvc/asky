@@ -1,11 +1,11 @@
-use std::io;
-use crate::Error;
 #[cfg(feature = "bevy")]
 use crate::bevy as cbevy;
+use crate::Error;
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;
 #[cfg(feature = "terminal")]
 use crossterm::event::{KeyCode, KeyEvent};
+use std::io;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -148,8 +148,8 @@ impl<T: NumLike> Number<'_, T> {
             // FIXME: This is not good behavior, right?
             true => match self.default_value {
                 Some(v) => Ok(v),
-                None => Err(Error::InvalidInput)
-            }
+                None => Err(Error::InvalidInput),
+            },
             false => self.input.value.parse().map_err(|_| Error::InvalidInput),
         }
     }

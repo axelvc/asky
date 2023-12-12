@@ -1,6 +1,6 @@
 use colored::*;
-use std::ops::{Deref, DerefMut};
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 /// A collection of colored strings. It can be used like a `Vec<ColoredString>`.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]

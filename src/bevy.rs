@@ -1,22 +1,36 @@
 use crate::utils::renderer::{Printable, Renderer};
-use std::sync::{Arc, Mutex};
-use promise_out::{pair::{Producer, Consumer}, Promise};
 use crate::DrawTime;
 use crate::Typeable;
-use bevy::{input::keyboard::KeyboardInput, utils::Duration, ecs::{world::unsafe_world_cell::UnsafeWorldCell, component::Tick, system::{SystemParam, SystemMeta}}};
+use bevy::{
+    ecs::{
+        component::Tick,
+        system::{SystemMeta, SystemParam},
+        world::unsafe_world_cell::UnsafeWorldCell,
+    },
+    input::keyboard::KeyboardInput,
+    utils::Duration,
+};
+use promise_out::{
+    pair::{Consumer, Producer},
+    Promise,
+};
+use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
 // use colored::{Color as Colored, ColoredString, Colorize};
-use std::io;
 use std::future::Future;
+use std::io;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle, Valuable, Error, ColoredStrings};
-use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
-use futures_lite::future;
-use text_style::{self, StyledString, AnsiColor, AnsiMode, bevy::TextStyleParams};
+use crate::{
+    ColoredStrings, Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
+    Valuable,
+};
+use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use divide_and_separate::DivideAndSeparate;
+use futures_lite::future;
+use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -43,7 +57,6 @@ fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>
     }
 }
 
-
 // #[derive(SystemParam)]
 // pub struct Asky<'w, 's> {
 pub struct Asky {
@@ -57,7 +70,10 @@ pub struct AskyParamConfig {
 }
 
 // type ClosureCommand = dyn FnOnce(&mut Commands) -> Result<(), Error> + 'static + Send + Sync;
-type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>) -> Result<(), Error> + 'static + Send + Sync;
+type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>) -> Result<(), Error>
+    + 'static
+    + Send
+    + Sync;
 // #[derive(Debug)]
 pub struct AskyParamState {
     pub(crate) closures: Vec<(Box<Closure>, Option<Entity>)>,
@@ -69,55 +85,95 @@ impl Asky {
         Self { config }
     }
 
-    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(&mut self, prompt: T, dest: Entity)
-                                                                            -> Consumer<T::Output, Error> {
+    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(
+        &mut self,
+        prompt: T,
+        dest: Entity,
+    ) -> Consumer<T::Output, Error> {
         let (promise, waiter) = Producer::<T::Output, Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, entity: Option<Entity>, _children: Option<&Children>| {
-
-            let node = NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Column,
-                    ..default()
+        self.config.state.lock().unwrap().closures.push((
+            Box::new(
+                move |commands: &mut Commands,
+                      entity: Option<Entity>,
+                      _children: Option<&Children>| {
+                    let node = NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Column,
+                            ..default()
+                        },
+                        ..default()
+                    };
+                    let id = commands
+                        .spawn((node, AskyNode(prompt, AskyState::Waiting(promise))))
+                        .id();
+                    commands.entity(entity.unwrap()).push_children(&[id]);
+                    Ok(())
                 },
-                ..default()
-            };
-            let id = commands.spawn((node, AskyNode(prompt, AskyState::Waiting(promise)))).id();
-            commands.entity(entity.unwrap()).push_children(&[id]); 
-            Ok(())
-        }), Some(dest)));
+            ),
+            Some(dest),
+        ));
         waiter
     }
 
     pub fn clear(&mut self, dest: Entity) -> Consumer<(), Error> {
         let (promise, waiter) = Producer::<(), Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, entity: Option<Entity>, children_maybe: Option<&Children>| {
-            commands.entity(entity.unwrap()).clear_children();
-            if let Some(children) = children_maybe {
-                for child in children.iter() {
-                    commands.entity(*child).despawn_recursive();
-                }
-            }
-            promise.resolve(());
-            Ok(())
-        }), Some(dest)));
+        self.config.state.lock().unwrap().closures.push((
+            Box::new(
+                move |commands: &mut Commands,
+                      entity: Option<Entity>,
+                      children_maybe: Option<&Children>| {
+                    commands.entity(entity.unwrap()).clear_children();
+                    if let Some(children) = children_maybe {
+                        for child in children.iter() {
+                            commands.entity(*child).despawn_recursive();
+                        }
+                    }
+                    promise.resolve(());
+                    Ok(())
+                },
+            ),
+            Some(dest),
+        ));
         waiter
     }
 
     pub fn delay(&mut self, duration: Duration) -> Consumer<(), Error> {
         let (promise, waiter) = Producer::<(), Error>::new();
-        self.config.state.lock().unwrap().closures.push((Box::new(move |commands: &mut Commands, _entity: Option<Entity>, _children_maybe: Option<&Children>| {
-            commands.spawn(AskyDelay(Timer::new(duration, TimerMode::Once), Some(promise)));
-            Ok(())
-        }), None));
+        self.config.state.lock().unwrap().closures.push((
+            Box::new(
+                move |commands: &mut Commands,
+                      _entity: Option<Entity>,
+                      _children_maybe: Option<&Children>| {
+                    commands.spawn(AskyDelay(
+                        Timer::new(duration, TimerMode::Once),
+                        Some(promise),
+                    ));
+                    Ok(())
+                },
+            ),
+            None,
+        ));
         waiter
     }
 }
 
-fn run_closures(config: ResMut<AskyParamConfig>, mut commands: Commands, query: Query<Option<&Children>>) {
-        for (closure, id_maybe) in config.state.lock().expect("Unable to lock mutex").closures.drain(0..) {
-            let children = id_maybe.map(|id| query.get(id).expect("Unable to get children")).unwrap_or(None);
-            let _ = closure(&mut commands, id_maybe, children);
-        }
+fn run_closures(
+    config: ResMut<AskyParamConfig>,
+    mut commands: Commands,
+    query: Query<Option<&Children>>,
+) {
+    for (closure, id_maybe) in config
+        .state
+        .lock()
+        .expect("Unable to lock mutex")
+        .closures
+        .drain(0..)
+    {
+        let children = id_maybe
+            .map(|id| query.get(id).expect("Unable to get children"))
+            .unwrap_or(None);
+        let _ = closure(&mut commands, id_maybe, children);
+    }
 }
 
 unsafe impl SystemParam for Asky {
@@ -125,7 +181,10 @@ unsafe impl SystemParam for Asky {
     type Item<'w, 's> = Asky;
 
     fn init_state(world: &mut World, _system_meta: &mut SystemMeta) -> Self::State {
-        world.get_resource_mut::<AskyParamConfig>().expect("No AskyParamConfig setup.").clone()
+        world
+            .get_resource_mut::<AskyParamConfig>()
+            .expect("No AskyParamConfig setup.")
+            .clone()
     }
 
     #[inline]
@@ -150,7 +209,7 @@ impl<T: Send + 'static> TaskSink<T> {
     }
 }
 
-pub fn future_sink<T: Send + 'static, F: Future<Output = T>+ Send + 'static>(
+pub fn future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'static>(
     In(future): In<F>,
     mut commands: Commands,
 ) {
@@ -173,7 +232,10 @@ pub fn option_future_sink<T: Send + 'static, F: Future<Output = T> + Send + 'sta
     }
 }
 
-pub fn poll_tasks<T: Send + Sync + 'static>(mut commands: Commands, mut tasks: Query<(Entity, &mut TaskSink<T>)>) {
+pub fn poll_tasks<T: Send + Sync + 'static>(
+    mut commands: Commands,
+    mut tasks: Query<(Entity, &mut TaskSink<T>)>,
+) {
     for (entity, mut task) in &mut tasks {
         if block_on(future::poll_once(&mut task.0)).is_some() {
             // Once
@@ -182,7 +244,11 @@ pub fn poll_tasks<T: Send + Sync + 'static>(mut commands: Commands, mut tasks: Q
     }
 }
 
-pub fn poll_tasks_err<T: Send + Sync + 'static>(mut commands: Commands, _asky: Asky, mut tasks: Query<(Entity, &mut TaskSink<Result<T, Error>>)>) {
+pub fn poll_tasks_err<T: Send + Sync + 'static>(
+    mut commands: Commands,
+    _asky: Asky,
+    mut tasks: Query<(Entity, &mut TaskSink<Result<T, Error>>)>,
+) {
     for (entity, mut task) in &mut tasks {
         if let Some(result) = block_on(future::poll_once(&mut task.0)) {
             // Once
@@ -321,61 +387,57 @@ impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
     //     bundle
     // }
 }
-    fn cursorify(
-        cs: StyledString,
-        i: usize,
-        cursor_color: text_style::Color,
-    ) -> impl Iterator<Item = StyledString> {
-        let to_colored_string = |s: String| -> StyledString {
-            StyledString {
-                s: s,
-                ..cs.clone()
-            }
-        };
-        let mut input = cs.s.to_string();
-        let mut right = None;
-        if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
-            let (l, r) = input.split_at(byte_index);
-            right = Some(to_colored_string(r.to_owned()));
-            input = l.to_owned();
+fn cursorify(
+    cs: StyledString,
+    i: usize,
+    cursor_color: text_style::Color,
+) -> impl Iterator<Item = StyledString> {
+    let to_colored_string = |s: String| -> StyledString { StyledString { s: s, ..cs.clone() } };
+    let mut input = cs.s.to_string();
+    let mut right = None;
+    if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
+        let (l, r) = input.split_at(byte_index);
+        right = Some(to_colored_string(r.to_owned()));
+        input = l.to_owned();
+    }
+    let cursor = Some(
+        to_colored_string(input.pop().expect("Could not get cursor").to_string()).on(cursor_color),
+    );
+    let left = Some(to_colored_string(input));
+    left.into_iter()
+        .chain(cursor.into_iter().chain(right.into_iter()))
+}
+
+fn cursorify_iter(
+    iter: impl Iterator<Item = StyledString>,
+    i: usize,
+    cursor_color: text_style::Color,
+) -> impl Iterator<Item = StyledString> {
+    let mut count = 0;
+    let a = iter.flat_map(move |ss| {
+        let l = ss.s.chars().count();
+        let has_index = i < count + l && i >= count;
+        // let a = has_index.then_some(cursorify(ss, i - count, cursor_color.clone()));
+        // let b = (! has_index).then_some(ss);
+
+        let mut a = None;
+        let mut b = None;
+        if has_index {
+            a = Some(cursorify(ss, i - count, cursor_color.clone()));
+        } else {
+            b = Some(ss);
         }
-        let cursor = Some(
-            to_colored_string(input.pop().expect("Could not get cursor").to_string())
-                .on(cursor_color),
-        );
-        let left = Some(to_colored_string(input));
-        left.into_iter()
-            .chain(cursor.into_iter().chain(right.into_iter()))
-    }
+        // has_index.then_some
+        // let b = (! has_index).then_some(ss);
 
-    fn cursorify_iter(iter: impl Iterator<Item = StyledString>,
-                      i: usize,
-                      cursor_color: text_style::Color) -> impl Iterator<Item = StyledString> {
-        let mut count = 0;
-        let a = iter.flat_map(move |ss| {
-            let l = ss.s.chars().count();
-            let has_index = i < count + l && i >= count;
-            // let a = has_index.then_some(cursorify(ss, i - count, cursor_color.clone()));
-            // let b = (! has_index).then_some(ss);
+        count += l;
+        a.into_iter().flatten().chain(b.into_iter())
+    });
 
-            let mut a = None;
-            let mut b = None;
-            if has_index {
-                a = Some(cursorify(ss, i - count, cursor_color.clone()));
-            } else {
-                b = Some(ss);
-            }
-            // has_index.then_some
-            // let b = (! has_index).then_some(ss);
-
-            count += l;
-            a.into_iter().flatten().chain(b.into_iter())
-        });
-
-        // This cursor may go beyond the string, often only by 1.
-        let b = (i > count).then_some(StyledString::plain(" ".into()).on(cursor_color));
-        a.chain(b.into_iter())
-    }
+    // This cursor may go beyond the string, often only by 1.
+    let b = (i > count).then_some(StyledString::plain(" ".into()).on(cursor_color));
+    a.chain(b.into_iter())
+}
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     fn draw_time(&self) -> DrawTime {
@@ -390,11 +452,14 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
     }
 
     fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-        let white = text_style::Color::Ansi { color: AnsiColor::White, mode: AnsiMode::Dark };
+        let white = text_style::Color::Ansi {
+            color: AnsiColor::White,
+            mode: AnsiMode::Dark,
+        };
 
         self.commands.entity(self.column).with_children(|column| {
-            let mut lines =
-                strings.0
+            let mut lines = strings
+                .0
                 .into_iter()
                 .map(StyledString::from)
                 .flat_map(|mut s| {
@@ -402,8 +467,10 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                     let mut b = None;
                     if s.s.contains('\n') {
                         let str = std::mem::replace(&mut s.s, String::new());
-                        a.extend(str.split_inclusive('\n')
-                            .map(move |line| StyledString { s: line.to_string(), ..s.clone() }));
+                        a.extend(str.split_inclusive('\n').map(move |line| StyledString {
+                            s: line.to_string(),
+                            ..s.clone()
+                        }));
                     } else {
                         b = Some(s);
                     }
@@ -420,9 +487,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 
             let mut line_num = 0;
             while lines.peek().is_some() {
-
-
-            // for lines in                 // .split('\n')
+                // for lines in                 // .split('\n')
                 // .into_iter()
                 // .enumerate()
                 // .map(|(i, mut colored_line)| {
@@ -459,8 +524,8 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                 //         .into_iter()
                 //         .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
                 // })
-            // {
-                let style:TextStyleParams = self.settings.style.clone().into();
+                // {
+                let style: TextStyleParams = self.settings.style.clone().into();
                 column
                     .spawn(NodeBundle {
                         style: Style {
@@ -470,9 +535,12 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                         ..default()
                     })
                     .with_children(|parent| {
-
                         if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
-                            text_style::bevy::render_iter(parent, &style.into(), cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white));
+                            text_style::bevy::render_iter(
+                                parent,
+                                &style.into(),
+                                cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white),
+                            );
                         } else {
                             text_style::bevy::render_iter(parent, &style.into(), lines.by_ref());
                         }
@@ -536,7 +604,9 @@ pub fn asky_system<T>(
                 }
             }
             AskyState::Waiting(_) | AskyState::Reading => {
-                if !is_abort_key(&key_event) && !prompt.will_handle_key(&key_event) && render_state.draw_time != DrawTime::First
+                if !is_abort_key(&key_event)
+                    && !prompt.will_handle_key(&key_event)
+                    && render_state.draw_time != DrawTime::First
                 {
                     continue;
                 }
@@ -553,7 +623,7 @@ pub fn asky_system<T>(
                     if let AskyState::Waiting(promise) = waiting_maybe {
                         match prompt.0.value() {
                             Ok(v) => promise.resolve(v),
-                            Err(e) => promise.reject(e)
+                            Err(e) => promise.reject(e),
                         }
                     }
                     render_state.draw_time = DrawTime::Last;
@@ -593,31 +663,34 @@ pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
-         app.insert_resource(AskyParamConfig { state: Arc::new(Mutex::new(AskyParamState { closures: Vec::new() })) })
-            .add_systems(Update, asky_system::<Confirm>)
-            .add_systems(Update, asky_system::<Toggle>)
-            .add_systems(Update, asky_system::<crate::Text>)
-            .add_systems(Update, asky_system::<Number<u8>>)
-            .add_systems(Update, asky_system::<Number<u16>>)
-            .add_systems(Update, asky_system::<Number<u32>>)
-            .add_systems(Update, asky_system::<Number<u64>>)
-            .add_systems(Update, asky_system::<Number<u128>>)
-            .add_systems(Update, asky_system::<Number<i8>>)
-            .add_systems(Update, asky_system::<Number<i16>>)
-            .add_systems(Update, asky_system::<Number<i32>>)
-            .add_systems(Update, asky_system::<Number<i64>>)
-            .add_systems(Update, asky_system::<Number<i128>>)
-            .add_systems(Update, asky_system::<Number<f32>>)
-            .add_systems(Update, asky_system::<Number<f64>>)
-            .add_systems(Update, asky_system::<Select<'static, &'static str>>)
-            .add_systems(Update, asky_system::<Password>)
-            .add_systems(Update, asky_system::<Message>)
-            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
-            .add_systems(Update, poll_tasks::<()>)
-            .add_systems(Update, poll_tasks_err::<()>)
-            .add_systems(Update, run_closures)
-            .add_systems(Update, run_timers)
-            ;
+        app.insert_resource(AskyParamConfig {
+            state: Arc::new(Mutex::new(AskyParamState {
+                closures: Vec::new(),
+            })),
+        })
+        .add_systems(Update, asky_system::<Confirm>)
+        .add_systems(Update, asky_system::<Toggle>)
+        .add_systems(Update, asky_system::<crate::Text>)
+        .add_systems(Update, asky_system::<Number<u8>>)
+        .add_systems(Update, asky_system::<Number<u16>>)
+        .add_systems(Update, asky_system::<Number<u32>>)
+        .add_systems(Update, asky_system::<Number<u64>>)
+        .add_systems(Update, asky_system::<Number<u128>>)
+        .add_systems(Update, asky_system::<Number<i8>>)
+        .add_systems(Update, asky_system::<Number<i16>>)
+        .add_systems(Update, asky_system::<Number<i32>>)
+        .add_systems(Update, asky_system::<Number<i64>>)
+        .add_systems(Update, asky_system::<Number<i128>>)
+        .add_systems(Update, asky_system::<Number<f32>>)
+        .add_systems(Update, asky_system::<Number<f64>>)
+        .add_systems(Update, asky_system::<Select<'static, &'static str>>)
+        .add_systems(Update, asky_system::<Password>)
+        .add_systems(Update, asky_system::<Message>)
+        .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
+        .add_systems(Update, poll_tasks::<()>)
+        .add_systems(Update, poll_tasks_err::<()>)
+        .add_systems(Update, run_closures)
+        .add_systems(Update, run_timers);
     }
 }
 
@@ -663,5 +736,4 @@ mod tests {
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
     }
-
 }

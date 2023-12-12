@@ -51,7 +51,6 @@ pub struct Toggle<'a> {
     formatter: Box<Formatter<'a>>,
 }
 
-
 impl Valuable for Toggle<'_> {
     type Output = bool;
     fn value(&self) -> Result<bool, Error> {

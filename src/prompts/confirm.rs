@@ -12,8 +12,8 @@ use crate::utils::key_listener;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
-use crate::Valuable;
 use crate::Error;
+use crate::Valuable;
 // use colored::ColoredStrings;
 use crate::ColoredStrings;
 

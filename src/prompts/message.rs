@@ -7,14 +7,14 @@ use bevy::input::keyboard::KeyCode as BKeyCode;
 use crossterm::event::KeyEvent;
 use std::borrow::Cow;
 
-use crate::Error;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
-use crate::Valuable;
 use crate::ColoredStrings;
+use crate::Error;
+use crate::Valuable;
 
 type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

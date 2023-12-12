@@ -1,9 +1,9 @@
 use asky::bevy::*;
-use asky::Error;
-use promise_out::{pair::Producer, Promise};
-use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
-use futures_lite::future;
 use asky::Confirm;
+use asky::Error;
+use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
+use futures_lite::future;
+use promise_out::{pair::Producer, Promise};
 
 use bevy::{prelude::*, window::PresentMode};
 
@@ -58,7 +58,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     let (promise, waiter) = Producer::<bool, Error>::new();
     commands.spawn(node.clone()).with_children(|parent| {
-        parent.spawn(node).insert(AskyNode(confirm, AskyState::Waiting(promise)));
+        parent
+            .spawn(node)
+            .insert(AskyNode(confirm, AskyState::Waiting(promise)));
     });
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {
@@ -69,7 +71,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 } else {
                     "Oh, ok."
                 }
-            },
+            }
             Err(_) => "Uh oh, had a problem.",
         };
         println!("{}", msg);
@@ -83,13 +85,11 @@ fn handle_tasks<T: Send + 'static>(
 ) {
     for (entity, mut task) in &mut transform_tasks {
         if let Some(_) = block_on(future::poll_once(&mut task.0)) {
-
             // Task is complete, so remove task component from entity
             commands.entity(entity).remove::<OnComplete<T>>();
         }
     }
 }
-
 
 // fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'static>>), Without<Handled>>) {
 //     for (entity, prompt) in query.iter_mut() {

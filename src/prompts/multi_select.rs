@@ -1,8 +1,8 @@
 use std::io;
 
-use crate::Error;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
+use crate::Error;
 use crate::Valuable;
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;

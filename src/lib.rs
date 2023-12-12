@@ -128,7 +128,7 @@ pub use prompts::toggle::Toggle;
 
 pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;
+pub use utils::colored_strings::ColoredStrings;
 pub use utils::key_listener::Typeable;
 pub use utils::num_like::NumLike;
 pub use utils::renderer::DrawTime;
-pub use utils::colored_strings::ColoredStrings;

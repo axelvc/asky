@@ -1,7 +1,7 @@
 use asky::bevy::*;
-use std::future::Future;
 use asky::{Confirm, Message, Text};
-use bevy::{prelude::*, window::PresentMode, utils::Duration};
+use bevy::{prelude::*, utils::Duration, window::PresentMode};
+use std::future::Future;
 
 #[derive(Component)]
 struct Page;
@@ -56,7 +56,12 @@ fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Fu
         Some(async move {
             if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
                 if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
-                    let _ = asky.listen(Message::new(format!("Hello, {first_name} {last_name}!")), id).await;
+                    let _ = asky
+                        .listen(
+                            Message::new(format!("Hello, {first_name} {last_name}!")),
+                            id,
+                        )
+                        .await;
                 }
             } else {
                 eprintln!("Got err in ask name.");
@@ -67,7 +72,10 @@ fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Fu
     }
 }
 
-fn ask_name_clear(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
+fn ask_name_clear(
+    mut asky: Asky,
+    query: Query<Entity, Added<Page>>,
+) -> Option<impl Future<Output = ()>> {
     if let Ok(id) = query.get_single() {
         Some(async move {
             if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
@@ -76,7 +84,12 @@ fn ask_name_clear(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<i
                 if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
                     let _ = asky.delay(Duration::from_secs(1)).await;
                     let _ = asky.clear(id).await;
-                    let _ = asky.listen(Message::new(format!("Hello, {first_name} {last_name}!")), id).await;
+                    let _ = asky
+                        .listen(
+                            Message::new(format!("Hello, {first_name} {last_name}!")),
+                            id,
+                        )
+                        .await;
                 }
             } else {
                 eprintln!("Got err in ask name.");
@@ -87,7 +100,10 @@ fn ask_name_clear(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<i
     }
 }
 
-fn ask_question(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
+fn ask_question(
+    mut asky: Asky,
+    query: Query<Entity, Added<Page>>,
+) -> Option<impl Future<Output = ()>> {
     if let Ok(id) = query.get_single() {
         Some(async move {
             let confirm = Confirm::new("Do you like coffee?");
@@ -99,7 +115,7 @@ fn ask_question(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<imp
                     } else {
                         "Oh, ok."
                     }
-                },
+                }
                 Err(_) => "Uh oh, had a problem.",
             };
             let _ = asky.listen(Message::new(msg), id);
@@ -109,7 +125,10 @@ fn ask_question(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<imp
     }
 }
 
-fn ask_question2(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
+fn ask_question2(
+    mut asky: Asky,
+    query: Query<Entity, Added<Page>>,
+) -> Option<impl Future<Output = ()>> {
     if let Ok(id) = query.get_single() {
         Some(async move {
             let confirm = Confirm::new("Do you like coffee?");
@@ -121,7 +140,7 @@ fn ask_question2(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<im
                     } else {
                         "Oh, ok."
                     }
-                },
+                }
                 Err(_) => "Uh oh, had a problem.",
             };
             println!("{}", msg);

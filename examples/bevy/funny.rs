@@ -1,7 +1,7 @@
 use asky::bevy::*;
+use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text};
+use bevy::{prelude::*, utils::Duration, window::PresentMode};
 use std::future::Future;
-use asky::{Confirm, Message, Text, Select, Error, MultiSelect, Password};
-use bevy::{prelude::*, window::PresentMode, utils::Duration};
 
 #[derive(Component)]
 struct Page;
@@ -53,41 +53,84 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
     };
     let id = commands.spawn(node).id();
     async move {
-        let yes = asky.listen(Confirm::new("Want to see something cool?"), id).await?;
-        let _ = asky.listen(Message::new(if yes
-                                         { "Oh, good!" }
-                                         else
-                                         { "Oh, nevermind." }), id).await?;
-        if ! yes { return Ok(()); }
-        let lang = asky.listen(Select::new("Which do you prefer?",
-                                           ["brainfuck", "rust", "x86 machine code"]), id).await?;
-        let _ = asky.listen(Message::new(if lang == 1
-                                         { "Me too!" }
-                                         else
-                                         { "More power to you." }), id).await?;
-        let bitfield = asky.listen(MultiSelect::new("What engines do you use?",
-                                                    ["Unity", "Unreal", "Godot", "bevy"]), id).await?;
-        let _ = asky.listen(Message::new(if bitfield & 0b1000 != 0
-                                         { "Well, have I got news for you!" }
-                                         else
-                                         { "Those are also great." }), id).await?;
-        let _ = asky.listen(Message::new("The asky lib works for bevy now!"), id).await?;
+        let yes = asky
+            .listen(Confirm::new("Want to see something cool?"), id)
+            .await?;
+        let _ = asky
+            .listen(
+                Message::new(if yes { "Oh, good!" } else { "Oh, nevermind." }),
+                id,
+            )
+            .await?;
+        if !yes {
+            return Ok(());
+        }
+        let lang = asky
+            .listen(
+                Select::new(
+                    "Which do you prefer?",
+                    ["brainfuck", "rust", "x86 machine code"],
+                ),
+                id,
+            )
+            .await?;
+        let _ = asky
+            .listen(
+                Message::new(if lang == 1 {
+                    "Me too!"
+                } else {
+                    "More power to you."
+                }),
+                id,
+            )
+            .await?;
+        let bitfield = asky
+            .listen(
+                MultiSelect::new(
+                    "What engines do you use?",
+                    ["Unity", "Unreal", "Godot", "bevy"],
+                ),
+                id,
+            )
+            .await?;
+        let _ = asky
+            .listen(
+                Message::new(if bitfield & 0b1000 != 0 {
+                    "Well, have I got news for you!"
+                } else {
+                    "Those are also great."
+                }),
+                id,
+            )
+            .await?;
+        let _ = asky
+            .listen(Message::new("The asky lib works for bevy now!"), id)
+            .await?;
         let _ = asky.listen(Message::new("So..."), id).await?;
-        let _ = asky.listen(Confirm::new("Let's sign you up on our email list."), id).await?;
+        let _ = asky
+            .listen(Confirm::new("Let's sign you up on our email list."), id)
+            .await?;
         let email = asky.listen(Text::new("What's your email?"), id).await?;
-        let password = match asky.listen(Password::new("I'm gonna need your password too."), id).await {
-            Ok(p) =>
-                {
-                    let _ = asky.listen(Message::new("Heh heh."), id).await?;
-                    p
-                }
-            Err(_) =>
-                asky.listen(Password::new("Please, I need it for real."), id).await?
+        let password = match asky
+            .listen(Password::new("I'm gonna need your password too."), id)
+            .await
+        {
+            Ok(p) => {
+                let _ = asky.listen(Message::new("Heh heh."), id).await?;
+                p
+            }
+            Err(_) => {
+                asky.listen(Password::new("Please, I need it for real."), id)
+                    .await?
+            }
         };
         let _ = asky.listen(Message::new("Just kidding."), id).await?;
-        let _ = asky.listen(Message::new("I don't NEED your password."), id).await?;
-        let _ = asky.listen(Message::new("I just wanted it for REASONS."), id).await?;
+        let _ = asky
+            .listen(Message::new("I don't NEED your password."), id)
+            .await?;
+        let _ = asky
+            .listen(Message::new("I just wanted it for REASONS."), id)
+            .await?;
         Ok::<(), Error>(())
     }
 }
-
