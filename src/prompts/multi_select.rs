@@ -8,18 +8,16 @@ use crate::Valuable;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use super::select::{Direction, SelectInput, SelectOption};
+use super::select::{SelectInput, SelectOption};
 
 use crate::ColoredStrings;
 
@@ -169,7 +167,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
 }
 
 impl<T> MultiSelect<'_, T> {
-    fn toggle_focused(&mut self) {
+    pub(crate) fn toggle_focused(&mut self) {
         let selected = self.input.focused;
         let focused = &self.options[selected];
 
@@ -194,7 +192,7 @@ impl<T> MultiSelect<'_, T> {
     }
 
     /// Only submit if the minimum are selected
-    fn validate_to_submit(&self) -> bool {
+    pub(crate) fn validate_to_submit(&self) -> bool {
         match self.min {
             None => true,
             Some(min) => self.selected_count >= min,
@@ -210,29 +208,6 @@ impl<T> Valuable for MultiSelect<'_, T> {
             answer |= 1 << i;
         }
         Ok(answer)
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl<T> Typeable for MultiSelect<'_, T> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
-            // select/unselect
-            KeyCode::Char(' ') => self.toggle_focused(),
-            // update focus
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
-            _ => (),
-        }
-
-        submit
     }
 }
 

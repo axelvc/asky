@@ -4,11 +4,9 @@ use std::io;
 use crate::Error;
 use crate::Valuable;
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -97,25 +95,6 @@ impl<'a> Toggle<'a> {
 impl Toggle<'_> {
     fn get_value(&self) -> &str {
         self.options[self.active as usize]
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl Typeable for Toggle<'_> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit focused/initial option
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            // update focus option
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
-            _ => (),
-        }
-
-        submit
     }
 }
 

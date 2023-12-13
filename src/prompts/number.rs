@@ -4,12 +4,10 @@ use crate::Error;
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 use std::io;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
@@ -17,7 +15,7 @@ use crate::utils::{
 };
 use crate::Valuable;
 
-use super::text::{Direction, LineInput};
+use super::text::{LineInput};
 use crate::ColoredStrings;
 
 type InputValidator<'a, T> =
@@ -76,7 +74,14 @@ impl<T: NumLike + Send> Valuable for Number<'_, T> {
     type Output = T;
     fn value(&self) -> Result<T, Error> {
         // XXX: How do I convert T::Err into a string?
-        self.get_value()
+        match self.input.value.is_empty() {
+            // FIXME: This is not good behavior, right?
+            true => match self.default_value {
+                Some(v) => Ok(v),
+                None => Err(Error::InvalidInput),
+            },
+            false => self.input.value.parse().map_err(|_| Error::InvalidInput),
+        }
     }
 }
 
@@ -138,23 +143,13 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Result<T, Error>> {
         key_listener::listen(self, false)?;
-        Ok(self.get_value())
+        Ok(self.value())
     }
 }
 
 impl<T: NumLike> Number<'_, T> {
-    fn get_value(&self) -> Result<T, Error> {
-        match self.input.value.is_empty() {
-            // FIXME: This is not good behavior, right?
-            true => match self.default_value {
-                Some(v) => Ok(v),
-                None => Err(Error::InvalidInput),
-            },
-            false => self.input.value.parse().map_err(|_| Error::InvalidInput),
-        }
-    }
 
-    fn insert(&mut self, ch: char) {
+    pub(crate) fn insert(&mut self, ch: char) {
         let is_valid = match ch {
             '-' | '+' => T::is_signed() && self.input.col == 0,
             '.' => T::is_float() && !self.input.value.contains('.'),
@@ -166,38 +161,15 @@ impl<T: NumLike> Number<'_, T> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
+    pub(crate) fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
-            self.validator_result = validator(&self.input.value, self.get_value());
+            self.validator_result = validator(&self.input.value, self.value());
         }
 
         self.validator_result.is_ok()
     }
 }
 
-#[cfg(feature = "terminal")]
-impl<T: NumLike> Typeable for Number<'_, T> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter => submit = self.validate_to_submit(),
-            // type
-            KeyCode::Char(c) => self.insert(c),
-            // remove delete
-            KeyCode::Backspace => self.input.backspace(),
-            KeyCode::Delete => self.input.delete(),
-            // move cursor
-            KeyCode::Left => self.input.move_cursor(Direction::Left),
-            KeyCode::Right => self.input.move_cursor(Direction::Right),
-            _ => (),
-        }
-
-        submit
-    }
-}
 
 #[cfg(feature = "bevy")]
 impl<T: NumLike> Typeable<cbevy::KeyEvent> for Number<'_, T> {

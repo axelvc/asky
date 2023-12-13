@@ -2,15 +2,12 @@ use std::io;
 
 use crate::Error;
 use crate::Valuable;
-#[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -298,31 +295,10 @@ impl<'a, T: 'a> Select<'a, T> {
 
 impl<T> Select<'_, T> {
     /// Only submit if the option isn't disabled.
-    fn validate_to_submit(&self) -> bool {
+    pub(crate) fn validate_to_submit(&self) -> bool {
         let focused = &self.options[self.input.focused];
 
         !focused.disabled
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl<T> Typeable for Select<'_, T> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
-            // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
-            _ => (),
-        }
-
-        submit
     }
 }
 

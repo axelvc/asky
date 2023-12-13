@@ -1,9 +1,11 @@
 use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm};
+use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle};
+use crate::utils::num_like::NumLike;
 
 use crossterm::{cursor, execute, queue, style::Print, terminal};
 use crossterm::event::{KeyCode, KeyEvent};
 use crate::utils::key_listener::{Typeable};
+use crate::prompts::text::Direction;
 
 pub struct TermRenderer {
     pub draw_time: DrawTime,
@@ -152,6 +154,119 @@ impl Typeable for Confirm<'_> {
             KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
             // submit current/initial value
             KeyCode::Enter | KeyCode::Backspace => submit = true,
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+// Number
+impl<T: NumLike> Typeable for Number<'_, T> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter => submit = self.validate_to_submit(),
+            // type
+            KeyCode::Char(c) => self.insert(c),
+            // remove delete
+            KeyCode::Backspace => self.input.backspace(),
+            KeyCode::Delete => self.input.delete(),
+            // move cursor
+            KeyCode::Left => self.input.move_cursor(Direction::Left),
+            KeyCode::Right => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+// Select
+impl<T> Typeable for Select<'_, T> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::select::Direction;
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
+            // update value
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+// MultiSelect
+impl<T> Typeable for MultiSelect<'_, T> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::select::Direction;
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
+            // select/unselect
+            KeyCode::Char(' ') => self.toggle_focused(),
+            // update focus
+            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+// Password
+impl Typeable for Password<'_> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter => submit = self.validate_to_submit(),
+            // type
+            KeyCode::Char(c) => self.input.insert(c),
+            // remove delete
+            KeyCode::Backspace => self.input.backspace(),
+            KeyCode::Delete => self.input.delete(),
+            // move cursor
+            KeyCode::Left => self.input.move_cursor(Direction::Left),
+            KeyCode::Right => self.input.move_cursor(Direction::Right),
+            _ => (),
+        };
+
+        submit
+    }
+}
+
+// Toggle
+impl Typeable for Toggle<'_> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
+
+        match key.code {
+            // submit focused/initial option
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            // update focus option
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
             _ => (),
         }
 

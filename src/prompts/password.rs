@@ -8,17 +8,15 @@ use crate::Valuable;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use super::text::{Direction, InputValidator, LineInput};
+use super::text::{InputValidator, LineInput};
 use crate::ColoredStrings;
 
 type Formatter<'a> =
@@ -151,36 +149,12 @@ impl Password<'_> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
+    pub(crate) fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
             self.validator_result = validator(self.get_value());
         }
 
         self.validator_result.is_ok()
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl Typeable for Password<'_> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter => submit = self.validate_to_submit(),
-            // type
-            KeyCode::Char(c) => self.input.insert(c),
-            // remove delete
-            KeyCode::Backspace => self.input.backspace(),
-            KeyCode::Delete => self.input.delete(),
-            // move cursor
-            KeyCode::Left => self.input.move_cursor(Direction::Left),
-            KeyCode::Right => self.input.move_cursor(Direction::Right),
-            _ => (),
-        };
-
-        submit
     }
 }
 
