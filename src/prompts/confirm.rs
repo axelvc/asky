@@ -106,7 +106,8 @@ impl Valuable for Confirm<'_> {
 }
 
 #[cfg(feature = "terminal")]
-impl Typeable<KeyEvent> for Confirm<'_> {
+impl Typeable for Confirm<'_> {
+    type Key = KeyEvent;
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 

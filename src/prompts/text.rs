@@ -7,16 +7,10 @@ use crate::bevy as cbevy;
 #[cfg(feature = "bevy")]
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
-#[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
-
 use crate::ColoredStrings;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
+    renderer::DrawTime,
     theme,
 };
 use crate::Valuable;
@@ -119,7 +113,7 @@ pub struct Text<'a> {
     /// State of the validation of the user input
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    formatter: Box<Formatter<'a>>,
+    pub (crate) formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Valuable for Text<'a> {
@@ -185,6 +179,7 @@ impl<'a> Text<'a> {
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<String> {
+        use crate::utils::key_listener;
         key_listener::listen(self, false)?;
         Ok(self.get_value().to_owned())
     }
@@ -198,35 +193,12 @@ impl Text<'_> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
+    pub(crate) fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
             self.validator_result = validator(self.get_value());
         }
 
         self.validator_result.is_ok()
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl Typeable<KeyEvent> for Text<'_> {
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter => submit = self.validate_to_submit(),
-            // type
-            KeyCode::Char(c) => self.input.insert(c),
-            // remove delete
-            KeyCode::Backspace => self.input.backspace(),
-            KeyCode::Delete => self.input.delete(),
-            // move cursor
-            KeyCode::Left => self.input.move_cursor(Direction::Left),
-            KeyCode::Right => self.input.move_cursor(Direction::Right),
-            _ => (),
-        };
-
-        submit
     }
 }
 
@@ -275,16 +247,6 @@ impl Typeable<cbevy::KeyEvent> for Text<'_> {
         }
 
         submit
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl Printable for Text<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)?;
-        renderer.set_cursor(cursor)
     }
 }
 

@@ -176,7 +176,8 @@ impl<T: NumLike> Number<'_, T> {
 }
 
 #[cfg(feature = "terminal")]
-impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
+impl<T: NumLike> Typeable for Number<'_, T> {
+    type Key = KeyEvent;
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 

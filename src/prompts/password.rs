@@ -161,7 +161,8 @@ impl Password<'_> {
 }
 
 #[cfg(feature = "terminal")]
-impl Typeable<KeyEvent> for Password<'_> {
+impl Typeable for Password<'_> {
+    type Key = KeyEvent;
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 

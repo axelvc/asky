@@ -95,7 +95,8 @@ impl<'a> Message<'a> {
 }
 
 #[cfg(feature = "terminal")]
-impl Typeable<KeyEvent> for Message<'_> {
+impl Typeable for Message<'_> {
+    type Key = KeyEvent;
     fn handle_key(&mut self, _key: &KeyEvent) -> bool {
         true
     }

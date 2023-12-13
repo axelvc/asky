@@ -1,7 +1,9 @@
 use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::Renderer};
+use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text};
 
 use crossterm::{cursor, execute, queue, style::Print, terminal};
+use crossterm::event::{KeyCode, KeyEvent};
+use crate::utils::key_listener::{Typeable};
 
 pub struct TermRenderer {
     pub draw_time: DrawTime,
@@ -98,5 +100,39 @@ impl Renderer for TermRenderer {
 impl Default for TermRenderer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Text
+impl Typeable for Text<'_> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::text::Direction::*;
+        let mut submit = false;
+
+        match key.code {
+            // submit
+            KeyCode::Enter => submit = self.validate_to_submit(),
+            // type
+            KeyCode::Char(c) => self.input.insert(c),
+            // remove delete
+            KeyCode::Backspace => self.input.backspace(),
+            KeyCode::Delete => self.input.delete(),
+            // move cursor
+            KeyCode::Left => self.input.move_cursor(Left),
+            KeyCode::Right => self.input.move_cursor(Right),
+            _ => (),
+        };
+
+        submit
+    }
+}
+
+impl Printable for Text<'_> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
+        renderer.set_cursor(cursor)
     }
 }
