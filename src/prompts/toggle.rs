@@ -13,7 +13,6 @@ use crate::utils::{
 };
 
 #[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -46,7 +45,7 @@ pub struct Toggle<'a> {
     pub options: [&'a str; 2],
     /// Current state of the prompt.
     pub active: bool,
-    formatter: Box<Formatter<'a>>,
+    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl Valuable for Toggle<'_> {
@@ -98,34 +97,8 @@ impl Toggle<'_> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl Typeable<BKeyCode> for Toggle<'_> {
-    fn handle_key(&mut self, key: &BKeyCode) -> bool {
-        let mut submit = false;
-
-        match key {
-            // update value
-            BKeyCode::Left | BKeyCode::H => self.active = false,
-            BKeyCode::Right | BKeyCode::L => self.active = true,
-            // submit current/initial value
-            BKeyCode::Return | BKeyCode::Back => submit = true,
-            _ => (),
-        }
-
-        submit
-    }
-}
 
 impl Printable for Toggle<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl Printable for crate::bevy::AskyNode<Toggle<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);

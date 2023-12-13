@@ -5,7 +5,6 @@ use crate::bevy::*;
 use crate::Error;
 use crate::Valuable;
 #[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 
@@ -208,27 +207,6 @@ impl<T> Valuable for MultiSelect<'_, T> {
             answer |= 1 << i;
         }
         Ok(answer)
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl<T> Typeable<BKeyCode> for MultiSelect<'_, T> {
-    fn handle_key(&mut self, key: &BKeyCode) -> bool {
-        let mut submit = false;
-
-        match key {
-            // submit
-            BKeyCode::Return | BKeyCode::Back => submit = self.validate_to_submit(),
-            BKeyCode::Space => self.toggle_focused(),
-            // update value
-            BKeyCode::Up | BKeyCode::K => self.input.move_cursor(Direction::Up),
-            BKeyCode::Down | BKeyCode::J => self.input.move_cursor(Direction::Down),
-            BKeyCode::Left | BKeyCode::H => self.input.move_cursor(Direction::Left),
-            BKeyCode::Right | BKeyCode::L => self.input.move_cursor(Direction::Right),
-            _ => (),
-        }
-
-        submit
     }
 }
 

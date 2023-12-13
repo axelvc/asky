@@ -1,15 +1,11 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
-#[cfg(feature = "terminal")]
-use crossterm::event::KeyEvent;
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
-use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::ColoredStrings;
@@ -94,39 +90,11 @@ impl<'a> Message<'a> {
     }
 }
 
-#[cfg(feature = "terminal")]
-impl Typeable for Message<'_> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, _key: &KeyEvent) -> bool {
-        true
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl Typeable<BKeyCode> for Message<'_> {
-    fn will_handle_key(&self, _key: &BKeyCode) -> bool {
-        true
-    }
-
-    fn handle_key(&mut self, _key: &BKeyCode) -> bool {
-        true
-    }
-}
 
 impl Printable for Message<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl Printable for crate::bevy::AskyNode<Message<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.hide_cursor()?;
         renderer.print(out)
     }
 }

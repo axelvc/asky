@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle};
+use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle, Message};
 use crate::utils::num_like::NumLike;
 
 use crossterm::{cursor, execute, queue, style::Print, terminal};
@@ -106,8 +106,7 @@ impl Default for TermRenderer {
 }
 
 // Text
-impl Typeable for Text<'_> {
-    type Key = KeyEvent;
+impl Typeable<KeyEvent> for Text<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         use crate::prompts::text::Direction::*;
         let mut submit = false;
@@ -140,8 +139,7 @@ impl Printable for Text<'_> {
 }
 
 // Confirm
-impl Typeable for Confirm<'_> {
-    type Key = KeyEvent;
+impl Typeable<KeyEvent> for Confirm<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -162,8 +160,7 @@ impl Typeable for Confirm<'_> {
 }
 
 // Number
-impl<T: NumLike> Typeable for Number<'_, T> {
-    type Key = KeyEvent;
+impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -186,8 +183,7 @@ impl<T: NumLike> Typeable for Number<'_, T> {
 }
 
 // Select
-impl<T> Typeable for Select<'_, T> {
-    type Key = KeyEvent;
+impl<T> Typeable<KeyEvent> for Select<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         use crate::prompts::select::Direction;
         let mut submit = false;
@@ -208,8 +204,7 @@ impl<T> Typeable for Select<'_, T> {
 }
 
 // MultiSelect
-impl<T> Typeable for MultiSelect<'_, T> {
-    type Key = KeyEvent;
+impl<T> Typeable<KeyEvent> for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         use crate::prompts::select::Direction;
         let mut submit = false;
@@ -232,8 +227,7 @@ impl<T> Typeable for MultiSelect<'_, T> {
 }
 
 // Password
-impl Typeable for Password<'_> {
-    type Key = KeyEvent;
+impl Typeable<KeyEvent> for Password<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -256,8 +250,7 @@ impl Typeable for Password<'_> {
 }
 
 // Toggle
-impl Typeable for Toggle<'_> {
-    type Key = KeyEvent;
+impl Typeable<KeyEvent> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         let mut submit = false;
 
@@ -271,5 +264,11 @@ impl Typeable for Toggle<'_> {
         }
 
         submit
+    }
+}
+
+impl Typeable<KeyEvent> for Message<'_> {
+    fn handle_key(&mut self, _key: &KeyEvent) -> bool {
+        true
     }
 }

@@ -2,11 +2,6 @@ use std::io;
 // use std::borrow::Cow;
 use crate::Error;
 
-#[cfg(feature = "bevy")]
-use crate::bevy as cbevy;
-#[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
-
 use crate::ColoredStrings;
 
 use crate::utils::{
@@ -202,64 +197,6 @@ impl Text<'_> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl Typeable<cbevy::KeyEvent> for Text<'_> {
-    fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
-        for c in key.chars.iter() {
-            if !c.is_control() {
-                return true;
-            }
-        }
-
-        for code in &key.codes {
-            use BKeyCode::*;
-            match code {
-                Return | Back | Delete | Left | Right => return true,
-                _ => ()
-            }
-        }
-        false
-    }
-
-    fn handle_key(&mut self, key: &cbevy::KeyEvent) -> bool {
-        let mut submit = false;
-
-        for c in key.chars.iter() {
-            if !c.is_control() {
-                self.input.insert(*c);
-            }
-        }
-
-        for code in &key.codes {
-            match code {
-                // submit
-                BKeyCode::Return => submit = self.validate_to_submit(),
-                // type
-                // BKeyCode::Char(c) => self.input.insert(c),
-                // remove delete
-                BKeyCode::Back => self.input.backspace(),
-                BKeyCode::Delete => self.input.delete(),
-                // move cursor
-                BKeyCode::Left => self.input.move_cursor(Direction::Left),
-                BKeyCode::Right => self.input.move_cursor(Direction::Right),
-                _ => (),
-            };
-        }
-
-        submit
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl Printable for cbevy::AskyNode<Text<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
 
 #[cfg(test)]
 mod tests {

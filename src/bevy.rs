@@ -1,5 +1,6 @@
 use crate::utils::renderer::{Printable, Renderer};
-use crate::DrawTime;
+
+use crate::{DrawTime, NumLike};
 use crate::Typeable;
 use bevy::{
     ecs::{
@@ -7,7 +8,7 @@ use bevy::{
         system::{SystemMeta, SystemParam},
         world::unsafe_world_cell::UnsafeWorldCell,
     },
-    input::keyboard::KeyboardInput,
+    input::keyboard::{KeyboardInput, KeyCode},
     utils::Duration,
 };
 use promise_out::{
@@ -25,7 +26,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     ColoredStrings, Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
-    Valuable,
+    Valuable
 };
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use divide_and_separate::DivideAndSeparate;
@@ -735,5 +736,327 @@ mod tests {
         assert_eq!(iter.next(), Some(-3));
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
+    }
+}
+
+impl Typeable<KeyCode> for Confirm<'_> {
+    fn will_handle_key(&self, key: &KeyCode) -> bool {
+        match key {
+            KeyCode::Left | KeyCode::H => true,
+            KeyCode::Right | KeyCode::L => true,
+            KeyCode::Y => true,
+            KeyCode::N => true,
+            KeyCode::Return | KeyCode::Back => true,
+            _ => false,
+        }
+    }
+
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        let mut submit = false;
+
+        match key {
+            // update value
+            KeyCode::Left | KeyCode::H => self.active = false,
+            KeyCode::Right | KeyCode::L => self.active = true,
+            // update value and submit
+            KeyCode::Y => submit = self.update_and_submit(true),
+            KeyCode::N => submit = self.update_and_submit(false),
+            // submit current/initial value
+            KeyCode::Return | KeyCode::Back => submit = true,
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        use crate::prompts::select::Direction;
+        let mut submit = false;
+
+        match key {
+            // submit
+            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            KeyCode::Space => self.toggle_focused(),
+            // update value
+            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            if match code {
+                // submit
+                KeyCode::Return => true,
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => true,
+                KeyCode::Delete => true,
+                // move cursor
+                KeyCode::Left => true,
+                KeyCode::Right => true,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+
+        false
+    }
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::text::Direction;
+        let mut submit = false;
+
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                self.insert(*c);
+            }
+        }
+
+        for code in &key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
+
+        submit
+    }
+}
+
+impl Typeable<KeyEvent> for Password<'_> {
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            if match code {
+                // submit
+                KeyCode::Return => true,
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => true,
+                KeyCode::Delete => true,
+                // move cursor
+                KeyCode::Left => true,
+                KeyCode::Right => true,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+
+        false
+    }
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::text::Direction;
+        let mut submit = false;
+
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                self.input.insert(*c);
+            }
+        }
+
+        for code in &key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
+
+        submit
+    }
+}
+
+impl<T> Typeable<KeyCode> for Select<'_, T> {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        use crate::prompts::select::Direction;
+        let mut submit = false;
+
+        match key {
+            // submit
+            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            // update value
+            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
+            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
+            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
+            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+impl<T> Printable for Select<'_, T> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
+impl<T> Valuable for Select<'_, T> {
+    type Output = usize;
+    fn value(&self) -> Result<usize, Error> {
+        let focused = &self.options[self.input.focused];
+
+        if !focused.disabled {
+            Ok(self.input.focused)
+        } else {
+            Err(Error::InvalidCount {
+                expected: 1,
+                actual: 0,
+            })
+        }
+    }
+}
+
+impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
+impl Typeable<KeyEvent> for crate::Text<'_> {
+    fn will_handle_key(&self, key: &KeyEvent) -> bool {
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                return true;
+            }
+        }
+
+        for code in &key.codes {
+            use KeyCode::*;
+            match code {
+                Return | Back | Delete | Left | Right => return true,
+                _ => ()
+            }
+        }
+        false
+    }
+
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        use crate::prompts::text::Direction;
+        let mut submit = false;
+
+        for c in key.chars.iter() {
+            if !c.is_control() {
+                self.input.insert(*c);
+            }
+        }
+
+        for code in &key.codes {
+            match code {
+                // submit
+                KeyCode::Return => submit = self.validate_to_submit(),
+                // type
+                // KeyCode::Char(c) => self.input.insert(c),
+                // remove delete
+                KeyCode::Back => self.input.backspace(),
+                KeyCode::Delete => self.input.delete(),
+                // move cursor
+                KeyCode::Left => self.input.move_cursor(Direction::Left),
+                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                _ => (),
+            };
+        }
+
+        submit
+    }
+}
+
+impl Printable for AskyNode<crate::Text<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor()?;
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
+    }
+}
+
+impl Typeable<KeyCode> for Toggle<'_> {
+    fn handle_key(&mut self, key: &KeyCode) -> bool {
+        let mut submit = false;
+
+        match key {
+            // update value
+            KeyCode::Left | KeyCode::H => self.active = false,
+            KeyCode::Right | KeyCode::L => self.active = true,
+            // submit current/initial value
+            KeyCode::Return | KeyCode::Back => submit = true,
+            _ => (),
+        }
+
+        submit
+    }
+}
+
+impl Printable for crate::bevy::AskyNode<Toggle<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
+impl Typeable<KeyCode> for Message<'_> {
+    fn will_handle_key(&self, _key: &KeyCode) -> bool {
+        true
+    }
+
+    fn handle_key(&mut self, _key: &KeyCode) -> bool {
+        true
+    }
+}
+
+impl Printable for crate::bevy::AskyNode<Message<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.hide_cursor()?;
+        renderer.print(out)
     }
 }

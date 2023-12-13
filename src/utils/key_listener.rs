@@ -10,14 +10,13 @@ use crossterm::{
 use super::renderer::{Printable, Renderer};
 
 /// Trait used for the prompts to handle key events
-pub trait Typeable {
-    type Key;
+pub trait Typeable<Key> {
     /// Returns `true` if it should end to listen for more key events
-    fn handle_key(&mut self, key: &Self::Key) -> bool;
+    fn handle_key(&mut self, key: &Key) -> bool;
 
     /// Returns `true` if this will handle a key. (Useful for avoiding mutable
     /// access to allow for change detection in some cases.)
-    fn will_handle_key(&self, _key: &Self::Key) -> bool {
+    fn will_handle_key(&self, _key: &Key) -> bool {
         true
     }
 }
@@ -25,7 +24,7 @@ pub trait Typeable {
 #[cfg(feature = "terminal")]
 /// Helper function to listen for key events and draw the prompt
 pub fn listen(
-    prompt: &mut (impl Printable + Typeable<Key = KeyEvent>),
+    prompt: &mut (impl Printable + Typeable<KeyEvent>),
     hide_cursor: bool,
 ) -> io::Result<()> {
     let mut renderer = crate::terminal::TermRenderer::new();

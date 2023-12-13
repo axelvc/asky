@@ -1,7 +1,6 @@
 use std::io;
 
 #[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use std::borrow::Cow;
@@ -103,42 +102,12 @@ impl Valuable for Confirm<'_> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl Typeable<BKeyCode> for Confirm<'_> {
-    fn will_handle_key(&self, key: &BKeyCode) -> bool {
-        match key {
-            BKeyCode::Left | BKeyCode::H => true,
-            BKeyCode::Right | BKeyCode::L => true,
-            BKeyCode::Y => true,
-            BKeyCode::N => true,
-            BKeyCode::Return | BKeyCode::Back => true,
-            _ => false,
-        }
-    }
-
-    fn handle_key(&mut self, key: &BKeyCode) -> bool {
-        let mut submit = false;
-
-        match key {
-            // update value
-            BKeyCode::Left | BKeyCode::H => self.active = false,
-            BKeyCode::Right | BKeyCode::L => self.active = true,
-            // update value and submit
-            BKeyCode::Y => submit = self.update_and_submit(true),
-            BKeyCode::N => submit = self.update_and_submit(false),
-            // submit current/initial value
-            BKeyCode::Return | BKeyCode::Back => submit = true,
-            _ => (),
-        }
-
-        submit
-    }
-}
-
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         (self.formatter)(self, renderer.draw_time(), &mut out);
+        // Maybe we can unify these?
+        // renderer.hide_cursor()?;
         renderer.print(out)
     }
 }

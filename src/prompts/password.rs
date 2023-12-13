@@ -5,7 +5,6 @@ use crate::bevy as cbevy;
 use crate::Error;
 use crate::Valuable;
 #[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 
@@ -158,63 +157,6 @@ impl Password<'_> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl Typeable<cbevy::KeyEvent> for Password<'_> {
-    fn will_handle_key(&self, key: &cbevy::KeyEvent) -> bool {
-        for c in key.chars.iter() {
-            if !c.is_control() {
-                return true;
-            }
-        }
-
-        for code in &key.codes {
-            if match code {
-                // submit
-                BKeyCode::Return => true,
-                // type
-                // BKeyCode::Char(c) => self.input.insert(c),
-                // remove delete
-                BKeyCode::Back => true,
-                BKeyCode::Delete => true,
-                // move cursor
-                BKeyCode::Left => true,
-                BKeyCode::Right => true,
-                _ => false,
-            } {
-                return true;
-            }
-        }
-
-        false
-    }
-    fn handle_key(&mut self, key: &cbevy::KeyEvent) -> bool {
-        let mut submit = false;
-
-        for c in key.chars.iter() {
-            if !c.is_control() {
-                self.input.insert(*c);
-            }
-        }
-
-        for code in &key.codes {
-            match code {
-                // submit
-                BKeyCode::Return => submit = self.validate_to_submit(),
-                // type
-                // BKeyCode::Char(c) => self.input.insert(c),
-                // remove delete
-                BKeyCode::Back => self.input.backspace(),
-                BKeyCode::Delete => self.input.delete(),
-                // move cursor
-                BKeyCode::Left => self.input.move_cursor(Direction::Left),
-                BKeyCode::Right => self.input.move_cursor(Direction::Right),
-                _ => (),
-            };
-        }
-
-        submit
-    }
-}
 
 #[cfg(feature = "terminal")]
 impl Printable for Password<'_> {

@@ -1,15 +1,11 @@
 use std::io;
 
-use crate::Error;
-use crate::Valuable;
 
-#[cfg(feature = "bevy")]
-use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
 use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
+    renderer::DrawTime,
     theme,
 };
 
@@ -210,7 +206,7 @@ pub struct Select<'a, T> {
     pub options: Vec<SelectOption<'a, T>>,
     /// Input state.
     pub input: SelectInput,
-    formatter: Box<Formatter<'a, T>>,
+    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> Select<'a, T> {
@@ -302,58 +298,6 @@ impl<T> Select<'_, T> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl<T> Typeable<BKeyCode> for Select<'_, T> {
-    fn handle_key(&mut self, key: &BKeyCode) -> bool {
-        let mut submit = false;
-
-        match key {
-            // submit
-            BKeyCode::Return | BKeyCode::Back => submit = self.validate_to_submit(),
-            // update value
-            BKeyCode::Up | BKeyCode::K => self.input.move_cursor(Direction::Up),
-            BKeyCode::Down | BKeyCode::J => self.input.move_cursor(Direction::Down),
-            BKeyCode::Left | BKeyCode::H => self.input.move_cursor(Direction::Left),
-            BKeyCode::Right | BKeyCode::L => self.input.move_cursor(Direction::Right),
-            _ => (),
-        }
-
-        submit
-    }
-}
-
-impl<T> Printable for Select<'_, T> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
-
-impl<T> Valuable for Select<'_, T> {
-    type Output = usize;
-    fn value(&self) -> Result<usize, Error> {
-        let focused = &self.options[self.input.focused];
-
-        if !focused.disabled {
-            Ok(self.input.focused)
-        } else {
-            Err(Error::InvalidCount {
-                expected: 1,
-                actual: 0,
-            })
-        }
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
 
 #[cfg(test)]
 mod tests {
