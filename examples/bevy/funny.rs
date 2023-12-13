@@ -1,5 +1,6 @@
 use asky::bevy::*;
-use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text};
+use std::borrow::Cow;
+use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text, Toggle};
 use bevy::{prelude::*, utils::Duration, window::PresentMode};
 use std::future::Future;
 
@@ -53,6 +54,21 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
     };
     let id = commands.spawn(node).id();
     async move {
+
+        let q =     format!("Which do you prefer?");
+        let a : [Cow<'static, str>; 3] = [format!("brainfuck{}", "ing").into(), "rust".into(), "x86 machine code".into()];
+        let lang = asky
+            .listen(
+                Select::new(
+                    q,
+                    a,
+                ),
+                id,
+            )
+            .await?;
+        let yes = asky
+            .listen(Toggle::new(format!("Want to see something cool? doo {}", 3), ["God no".into(), "Well, ok".into()]), id)
+            .await?;
         let yes = asky
             .listen(Confirm::new("Want to see something cool?"), id)
             .await?;
@@ -68,7 +84,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
         let lang = asky
             .listen(
                 Select::new(
-                    "Which do you prefer?",
+                    format!("Which do you prefer?"),
                     ["brainfuck", "rust", "x86 machine code"],
                 ),
                 id,

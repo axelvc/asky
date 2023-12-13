@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::ColoredStrings;
 use colored::{ColoredString, Colorize};
 
@@ -44,53 +45,53 @@ pub fn fmt_message2(prompt: &Message, _draw_time: DrawTime, out: &mut ColoredStr
     out.push(prompt.message.as_ref().into());
 }
 
-pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
-    if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, prompt.options[prompt.active as usize]);
-    }
+// pub fn fmt_toggle(prompt: &Toggle, draw_time: DrawTime) -> String {
+//     if draw_time == DrawTime::Last {
+//         return fmt_last_message(&prompt.message, &prompt.options[prompt.active as usize]);
+//     }
 
-    [
-        fmt_message(prompt.message),
-        fmt_toggle_options(prompt.options, prompt.active),
-    ]
-    .join("\n")
-}
+//     [
+//         fmt_message(&prompt.message),
+//         fmt_toggle_options(prompt.options, prompt.active),
+//     ]
+//     .join("\n")
+// }
 
 pub fn fmt_toggle2(prompt: &Toggle, draw_time: DrawTime, out: &mut ColoredStrings) {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(prompt.message, prompt.options[prompt.active as usize], out);
+        fmt_last_message2(&prompt.message, &prompt.options[prompt.active as usize], out);
         return;
     }
 
-    fmt_msg2(prompt.message, out);
+    fmt_msg2(&prompt.message, out);
     out.push("\n".into());
-    fmt_toggle_options2(prompt.options, prompt.active, out);
+    fmt_toggle_options2(&prompt.options, prompt.active, out);
 }
 
-pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
-    if draw_time == DrawTime::Last {
-        return fmt_last_message(prompt.message, &prompt.options[prompt.input.focused].title);
-    }
+// pub fn fmt_select<T>(prompt: &Select<T>, draw_time: DrawTime) -> String {
+//     if draw_time == DrawTime::Last {
+//         return fmt_last_message(&prompt.message, &prompt.options[prompt.input.focused].title);
+//     }
 
-    [
-        fmt_message(prompt.message),
-        fmt_select_page_options(&prompt.options, &prompt.input, false),
-        fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages()),
-    ]
-    .join("\n")
-}
+//     [
+//         fmt_message(&prompt.message),
+//         fmt_select_page_options(&prompt.options, &prompt.input, false),
+//         fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages()),
+//     ]
+//     .join("\n")
+// }
 
 pub fn fmt_select2<T>(prompt: &Select<T>, draw_time: DrawTime, out: &mut ColoredStrings) {
     if draw_time == DrawTime::Last {
         fmt_last_message2(
-            prompt.message,
+            &prompt.message,
             &prompt.options[prompt.input.focused].title,
             out,
         );
         return;
     }
 
-    fmt_msg2(prompt.message, out);
+    fmt_msg2(&prompt.message, out);
     out.push("\n".into());
     fmt_select_page_options2(&prompt.options, &prompt.input, false, out);
     out.push("\n".into());
@@ -336,12 +337,12 @@ pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings) 
 
 // region: toggle
 
-fn fmt_toggle_options(options: [&str; 2], active: bool) -> String {
-    let mut out = ColoredStrings::default();
-    fmt_toggle_options2(options, active, &mut out);
-    format!("{}", out)
-}
-fn fmt_toggle_options2(options: [&str; 2], active: bool, out: &mut ColoredStrings) {
+// fn fmt_toggle_options<'a>(options: [Cow<'a, str>; 2], active: bool) -> String {
+//     let mut out = ColoredStrings::default();
+//     fmt_toggle_options2(options, active, &mut out);
+//     format!("{}", out)
+// }
+fn fmt_toggle_options2<'a>(options: &[Cow<'a, str>; 2], active: bool, out: &mut ColoredStrings) {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {
@@ -351,9 +352,9 @@ fn fmt_toggle_options2(options: [&str; 2], active: bool, out: &mut ColoredString
     };
 
     out.extend([
-        fmt_option(options[0], !active),
+        fmt_option(options[0].as_ref(), !active),
         " ".into(),
-        fmt_option(options[1], active),
+        fmt_option(options[1].as_ref(), active),
     ]);
 }
 

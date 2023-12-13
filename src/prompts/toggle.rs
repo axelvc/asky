@@ -1,9 +1,9 @@
+use std::borrow::Cow;
 use crate::ColoredStrings;
 use std::io;
 
 use crate::Error;
 use crate::Valuable;
-#[cfg(feature = "terminal")]
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -12,7 +12,6 @@ use crate::utils::{
     theme,
 };
 
-#[cfg(feature = "bevy")]
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -40,9 +39,9 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send 
 /// ```
 pub struct Toggle<'a> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Options to display in the prompt.
-    pub options: [&'a str; 2],
+    pub options: [Cow<'a, str>; 2],
     /// Current state of the prompt.
     pub active: bool,
     pub(crate) formatter: Box<Formatter<'a>>,
@@ -57,9 +56,9 @@ impl Valuable for Toggle<'_> {
 
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
-    pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>, options: [Cow<'a, str>; 2]) -> Self {
         Toggle {
-            message,
+            message: message.into(),
             options,
             active: false,
             formatter: Box::new(theme::fmt_toggle2),
@@ -93,7 +92,7 @@ impl<'a> Toggle<'a> {
 
 impl Toggle<'_> {
     fn get_value(&self) -> &str {
-        self.options[self.active as usize]
+        self.options[self.active as usize].as_ref()
     }
 }
 

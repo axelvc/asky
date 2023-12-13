@@ -1,6 +1,5 @@
 use std::io;
-
-
+use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -201,7 +200,7 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a +
 /// [`MultiSelect`]: crate::MultiSelect
 pub struct Select<'a, T> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// List of options.
     pub options: Vec<SelectOption<'a, T>>,
     /// Input state.
@@ -211,7 +210,7 @@ pub struct Select<'a, T> {
 
 impl<'a, T: 'a> Select<'a, T> {
     /// Create a new select prompt.
-    pub fn new<I>(message: &'a str, iter: I) -> Self
+    pub fn new<I>(message: impl Into<Cow<'a, str>>, iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: ToString,
@@ -238,11 +237,11 @@ impl<'a, T: 'a> Select<'a, T> {
     /// Select::new_complex("Choose a number", options).prompt()?;
     /// # Ok(())
     /// # }
-    pub fn new_complex(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new_complex(message: impl Into<Cow<'a, str>>, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
         Select {
-            message,
+            message: message.into(),
             options,
             input: SelectInput::new(options_len),
             formatter: Box::new(theme::fmt_select2),

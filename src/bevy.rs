@@ -1,5 +1,6 @@
 use crate::utils::renderer::{Printable, Renderer};
 
+use std::borrow::Cow;
 use crate::{DrawTime, NumLike};
 use crate::Typeable;
 use bevy::{
@@ -684,10 +685,12 @@ impl Plugin for AskyPlugin {
         .add_systems(Update, asky_system::<Number<i128>>)
         .add_systems(Update, asky_system::<Number<f32>>)
         .add_systems(Update, asky_system::<Number<f64>>)
-        .add_systems(Update, asky_system::<Select<'static, &'static str>>)
+        .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
+        .add_systems(Update, asky_system::<Select<'_, &'static str>>)
         .add_systems(Update, asky_system::<Password>)
         .add_systems(Update, asky_system::<Message>)
         .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
+        .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
         .add_systems(Update, poll_tasks::<()>)
         .add_systems(Update, poll_tasks_err::<()>)
         .add_systems(Update, run_closures)

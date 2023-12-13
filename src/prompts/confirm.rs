@@ -1,8 +1,5 @@
 use std::io;
 
-#[cfg(feature = "bevy")]
-
-#[cfg(feature = "terminal")]
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
@@ -45,7 +42,6 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send
 // #[derive(Debug)]
 pub struct Confirm<'a> {
     /// Message used to display in the prompt.
-    // pub message: &'a str,
     pub message: Cow<'a, str>,
     /// Current state of the prompt.
     pub active: bool,
