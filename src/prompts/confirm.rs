@@ -4,12 +4,10 @@ use std::io;
 use bevy::input::keyboard::KeyCode as BKeyCode;
 
 #[cfg(feature = "terminal")]
-use crossterm::event::{KeyCode, KeyEvent};
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
-use crate::utils::key_listener::Typeable;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Error;
@@ -92,7 +90,7 @@ impl<'a> Confirm<'a> {
 }
 
 impl Confirm<'_> {
-    fn update_and_submit(&mut self, active: bool) -> bool {
+    pub(crate) fn update_and_submit(&mut self, active: bool) -> bool {
         self.active = active;
         true
     }
@@ -102,28 +100,6 @@ impl Valuable for Confirm<'_> {
     type Output = bool;
     fn value(&self) -> Result<bool, Error> {
         Ok(self.active)
-    }
-}
-
-#[cfg(feature = "terminal")]
-impl Typeable for Confirm<'_> {
-    type Key = KeyEvent;
-    fn handle_key(&mut self, key: &KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // update value
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
-            // update value and submit
-            KeyCode::Char('y' | 'Y') => submit = self.update_and_submit(true),
-            KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
-            // submit current/initial value
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            _ => (),
-        }
-
-        submit
     }
 }
 

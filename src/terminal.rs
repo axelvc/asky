@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text};
+use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm};
 
 use crossterm::{cursor, execute, queue, style::Print, terminal};
 use crossterm::event::{KeyCode, KeyEvent};
@@ -134,5 +134,27 @@ impl Printable for Text<'_> {
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)?;
         renderer.set_cursor(cursor)
+    }
+}
+
+// Confirm
+impl Typeable for Confirm<'_> {
+    type Key = KeyEvent;
+    fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        let mut submit = false;
+
+        match key.code {
+            // update value
+            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
+            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
+            // update value and submit
+            KeyCode::Char('y' | 'Y') => submit = self.update_and_submit(true),
+            KeyCode::Char('n' | 'N') => submit = self.update_and_submit(false),
+            // submit current/initial value
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
+            _ => (),
+        }
+
+        submit
     }
 }
