@@ -1,4 +1,4 @@
-use asky::{Confirm, Message};
+use asky::Confirm;
 
 fn main() -> std::io::Result<()> {
     if Confirm::new("Do you like coffe?").prompt()? {

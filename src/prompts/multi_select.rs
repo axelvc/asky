@@ -216,17 +216,11 @@ impl<T> Printable for MultiSelect<'_, T> {
     }
 }
 
-#[cfg(feature = "bevy")]
-impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
-
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
+    use crossterm::event::{KeyCode, KeyEvent};
+    use crate::utils::key_listener::Typeable;
     use super::*;
 
     #[test]

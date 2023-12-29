@@ -1,11 +1,13 @@
-use asky::Number;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Error> {
     let mut result;
     loop {
-        result = Number::<u8>::new("How old are you?").prompt()?;
+        result = Number::<u8>::new("How old are you?").prompt();
         if result.is_ok() {
             break;
+        } else {
+            eprintln!("Sorry. I don't understand.");
         }
     }
     if let Ok(age) = result {

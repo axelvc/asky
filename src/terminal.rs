@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle, Message};
+use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle, Message, Valuable};
 use crate::utils::num_like::NumLike;
 
 use crossterm::{cursor, execute, queue, style::Print, terminal};
@@ -105,6 +105,16 @@ impl Default for TermRenderer {
     }
 }
 
+impl<T> crate::Promptable for T
+    where T: Printable + Typeable<KeyEvent> + Valuable {
+    type Output = T::Output;
+
+    fn prompt(&mut self) -> Result<Self::Output, crate::Error> {
+        crate::utils::key_listener::listen(self, true)?;
+        self.value()
+    }
+}
+
 // Text
 impl Typeable<KeyEvent> for Text<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
@@ -181,6 +191,16 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
         submit
     }
 }
+
+impl<T: NumLike> Printable for Number<'_, T> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
+        renderer.set_cursor(cursor)
+    }
+}
+
 
 // Select
 impl<T> Typeable<KeyEvent> for Select<'_, T> {

@@ -198,9 +198,12 @@ impl Text<'_> {
 }
 
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent};
+    use crate::utils::key_listener::Typeable;
 
     #[test]
     fn set_placeholder() {

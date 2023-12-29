@@ -118,9 +118,12 @@ impl Printable for crate::bevy::AskyNode<Confirm<'_>> {
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
+    use crossterm::event::{KeyCode, KeyEvent};
     use super::*;
+    use crate::utils::key_listener::Typeable;
 
     #[test]
     fn set_initial_value() {

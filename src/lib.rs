@@ -102,9 +102,6 @@
 mod prompts;
 pub mod utils;
 
-#[cfg(feature = "bevy")]
-pub mod bevy;
-
 pub trait Valuable {
     type Output: Send;
     fn value(&self) -> Result<Self::Output, Error>;
@@ -115,6 +112,18 @@ pub enum Error {
     InvalidInput,
     InvalidCount { expected: usize, actual: usize },
     ValidationFail,
+    Io(std::io::Error)
+}
+
+impl From<std::io::Error> for Error {
+    fn from(x: std::io::Error) -> Self {
+        Error::Io(x)
+    }
+}
+
+pub trait Promptable {
+    type Output;
+    fn prompt(&mut self) -> Result<Self::Output, crate::Error>;
 }
 
 pub use prompts::confirm::Confirm;
@@ -132,5 +141,14 @@ pub use utils::colored_strings::ColoredStrings;
 pub use utils::key_listener::Typeable;
 pub use utils::num_like::NumLike;
 pub use utils::renderer::DrawTime;
+
+pub mod prelude {
+    pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
+    pub use super::{Promptable, Error, Valuable};
+}
+
 #[cfg(feature = "terminal")]
 mod terminal;
+
+#[cfg(feature = "bevy")]
+pub mod bevy;

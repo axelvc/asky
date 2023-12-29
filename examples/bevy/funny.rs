@@ -67,7 +67,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             )
             .await?;
         let yes = asky
-            .listen(Toggle::new(format!("Want to see something cool? doo {}", 3), ["God no".into(), "Well, ok".into()]), id)
+            .listen(Toggle::new(format!("Want to see something cool? doo {}", 3), "God no", "Well, ok"), id)
             .await?;
         let yes = asky
             .listen(Confirm::new("Want to see something cool?"), id)

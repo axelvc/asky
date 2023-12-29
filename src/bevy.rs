@@ -735,6 +735,8 @@ impl Typeable<KeyCode> for Confirm<'_> {
     }
 }
 
+// MultiSelect
+
 impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
         use crate::prompts::select::Direction;
@@ -755,6 +757,16 @@ impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
         submit
     }
 }
+
+impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
+    }
+}
+
+// Number
 
 impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     fn will_handle_key(&self, key: &KeyEvent) -> bool {
@@ -823,6 +835,13 @@ impl<T: NumLike> Printable for AskyNode<Number<'_, T>> {
         renderer.print(out)
     }
 }
+
+impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
 
 // Password
 

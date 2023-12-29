@@ -1,16 +1,11 @@
 use crate::Error;
-#[cfg(feature = "terminal")]
-use std::io;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
 use crate::utils::{
     num_like::NumLike,
-    renderer::{DrawTime, Printable, Renderer},
+    renderer::DrawTime,
     theme,
 };
 use crate::Valuable;
-
 use super::text::{LineInput};
 use crate::ColoredStrings;
 use std::borrow::Cow;
@@ -44,9 +39,9 @@ type Formatter<'a, T> =
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Number;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let number = Number::<u8>::new("How many pets do you have?").prompt()?;
 /// # Ok(())
 /// # }
@@ -136,12 +131,6 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<Result<T, Error>> {
-        key_listener::listen(self, false)?;
-        Ok(self.value())
-    }
 }
 
 impl<T: NumLike> Number<'_, T> {
@@ -167,27 +156,13 @@ impl<T: NumLike> Number<'_, T> {
     }
 }
 
-
 #[cfg(feature = "terminal")]
-impl<T: NumLike> Printable for Number<'_, T> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)?;
-        renderer.set_cursor(cursor)
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
-    fn default() -> Self {
-        Self::new("")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Valuable;
+    use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_placeholder() {
@@ -260,7 +235,7 @@ mod tests {
         prompt.input.set_value(&String::from("10"));
         prompt.default(20);
 
-        assert_eq!(prompt.get_value().unwrap(), 10);
+        assert_eq!(prompt.value().unwrap(), 10);
     }
 
     #[test]
@@ -269,7 +244,7 @@ mod tests {
         prompt.input.set_value("");
         prompt.default(20);
 
-        assert_eq!(prompt.get_value().unwrap(), 20);
+        assert_eq!(prompt.value().unwrap(), 20);
     }
 
     #[test]
