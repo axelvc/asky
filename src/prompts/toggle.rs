@@ -56,10 +56,10 @@ impl Valuable for Toggle<'_> {
 
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
-    pub fn new(message: impl Into<Cow<'a, str>>, options: [Cow<'a, str>; 2]) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>, a: impl Into<Cow<'a, str>>, b: impl Into<Cow<'a, str>>) -> Self {
         Toggle {
             message: message.into(),
-            options,
+            options: [a.into(), b.into()],
             active: false,
             formatter: Box::new(theme::fmt_toggle2),
         }
