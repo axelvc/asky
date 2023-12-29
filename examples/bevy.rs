@@ -14,7 +14,7 @@ fn main() {
         "float",
         "select",
         "password",
-        "multi_select",
+        "multi-select",
         "message",
     ];
     if args.len() != 2 {
@@ -72,7 +72,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
     });
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let message: Message<'static> = Message::new("My message");
-    let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
+    let toggle: Toggle<'static> = Toggle::new("Hi?", "Bye", "What?");
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
     let number: Number<'static, u8> = Number::new("Number?");
     let float: Number<'static, f32> = Number::new("Float?");
@@ -90,7 +90,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
         ..default()
     };
     match kind {
-        "multi_select" => {
+        "multi_select" | "multi-select" => {
             commands
                 .spawn(node)
                 .insert(AskyNode(multi_select, AskyState::Reading));
