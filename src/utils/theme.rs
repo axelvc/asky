@@ -101,7 +101,7 @@ pub fn fmt_select2<T>(prompt: &Select<T>, draw_time: DrawTime, out: &mut Colored
 pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> String {
     if draw_time == DrawTime::Last {
         return fmt_last_message(
-            prompt.message,
+            &prompt.message,
             &format!(
                 "[{}]",
                 prompt
@@ -116,7 +116,7 @@ pub fn fmt_multi_select<T>(prompt: &MultiSelect<T>, draw_time: DrawTime) -> Stri
     }
 
     [
-        fmt_multi_select_message(prompt.message, prompt.min, prompt.max),
+        fmt_multi_select_message(&prompt.message, prompt.min, prompt.max),
         fmt_select_page_options(&prompt.options, &prompt.input, true),
         fmt_select_pagination(prompt.input.get_page(), prompt.input.count_pages()),
     ]
@@ -130,7 +130,7 @@ pub fn fmt_multi_select2<T>(
 ) {
     if draw_time == DrawTime::Last {
         fmt_last_message2(
-            prompt.message,
+            &prompt.message,
             &format!(
                 "[{}]",
                 prompt
@@ -146,7 +146,7 @@ pub fn fmt_multi_select2<T>(
         return;
     }
 
-    fmt_multi_select_message2(prompt.message, prompt.min, prompt.max, out);
+    fmt_multi_select_message2(&prompt.message, prompt.min, prompt.max, out);
     out.push("\n".into());
     fmt_select_page_options2(&prompt.options, &prompt.input, true, out);
     out.push("\n".into());
@@ -199,7 +199,7 @@ pub fn fmt_text2(prompt: &Text, draw_time: DrawTime, out: &mut ColoredStrings) -
 
 pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
-        return (fmt_last_message(prompt.message, "…"), [0, 0]);
+        return (fmt_last_message(&prompt.message, "…"), [0, 0]);
     }
 
     let text = match prompt.hidden {
@@ -211,7 +211,7 @@ pub fn fmt_password(prompt: &Password, draw_time: DrawTime) -> (String, [usize; 
 
     (
         [
-            fmt_line_message(prompt.message, &prompt.default_value),
+            fmt_line_message(&prompt.message, &prompt.default_value),
             fmt_line_input(&text, &prompt.placeholder, &prompt.validator_result, false),
             fmt_line_validator(&prompt.validator_result),
         ]
@@ -226,7 +226,7 @@ pub fn fmt_password2(
     out: &mut ColoredStrings,
 ) -> [usize; 2] {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(prompt.message, "…", out);
+        fmt_last_message2(&prompt.message, "…", out);
         return [0, 0];
     }
 
@@ -237,7 +237,7 @@ pub fn fmt_password2(
 
     let cursor_col = if prompt.hidden { 0 } else { prompt.input.col };
 
-    fmt_line_message2(prompt.message, &prompt.default_value, out);
+    fmt_line_message2(&prompt.message, &prompt.default_value, out);
     out.push("\n".into());
     fmt_line_input2(
         &text,
@@ -254,7 +254,7 @@ pub fn fmt_password2(
 pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (
-            fmt_last_message(prompt.message, &prompt.input.value),
+            fmt_last_message(&prompt.message, &prompt.input.value),
             [0, 0],
         );
     }
@@ -262,7 +262,7 @@ pub fn fmt_number<T: NumLike>(prompt: &Number<T>, draw_time: DrawTime) -> (Strin
     (
         [
             fmt_line_message(
-                prompt.message,
+                &prompt.message,
                 &prompt.default_value.map(|x| x.to_string()).as_deref(),
             ),
             fmt_line_input(
@@ -284,11 +284,11 @@ pub fn fmt_number2<T: NumLike>(
     out: &mut ColoredStrings,
 ) -> [usize; 2] {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(prompt.message, &prompt.input.value, out);
+        fmt_last_message2(&prompt.message, &prompt.input.value, out);
         return [0, 0];
     }
     fmt_line_message2(
-        prompt.message,
+        &prompt.message,
         &prompt.default_value.map(|x| x.to_string()).as_deref(),
         out,
     );

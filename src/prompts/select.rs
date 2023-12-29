@@ -4,7 +4,7 @@ use std::borrow::Cow;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
 use crate::utils::{
-    renderer::DrawTime,
+    renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
@@ -294,6 +294,14 @@ impl<T> Select<'_, T> {
         let focused = &self.options[self.input.focused];
 
         !focused.disabled
+    }
+}
+
+impl<T> Printable for Select<'_, T> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)
     }
 }
 

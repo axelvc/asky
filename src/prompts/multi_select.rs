@@ -1,12 +1,10 @@
 use std::io;
 
+use std::borrow::Cow;
 #[cfg(feature = "bevy")]
 use crate::bevy::*;
 use crate::Error;
 use crate::Valuable;
-#[cfg(feature = "bevy")]
-
-#[cfg(feature = "terminal")]
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -50,7 +48,7 @@ type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) +
 /// [`Select`]: crate::Select
 pub struct MultiSelect<'a, T> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// List of options.
     pub options: Vec<SelectOption<'a, T>>,
     /// Minimum number of items required to be selected.
@@ -92,11 +90,11 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// MultiSelect::new_complex("How do you like to spend your free time?", options).prompt()?;
     /// # Ok(())
     /// # }
-    pub fn new_complex(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new_complex(message: impl Into<Cow<'a, str>>, options: Vec<SelectOption<'a, T>>) -> Self {
         let options_len = options.len();
 
         MultiSelect {
-            message,
+            message: message.into(),
             options,
             min: None,
             max: None,

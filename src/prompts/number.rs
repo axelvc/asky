@@ -1,7 +1,4 @@
-#[cfg(feature = "bevy")]
-use crate::bevy as cbevy;
 use crate::Error;
-#[cfg(feature = "bevy")]
 #[cfg(feature = "terminal")]
 use std::io;
 
@@ -16,6 +13,7 @@ use crate::Valuable;
 
 use super::text::{LineInput};
 use crate::ColoredStrings;
+use std::borrow::Cow;
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;
@@ -56,7 +54,7 @@ type Formatter<'a, T> =
 /// [`Text`]: crate::Text
 pub struct Number<'a, T: NumLike> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Input state for the prompt.
     pub input: LineInput,
     /// Placeholder to show when the input is empty.
@@ -66,7 +64,7 @@ pub struct Number<'a, T: NumLike> {
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a, T>>>,
-    formatter: Box<Formatter<'a, T>>,
+    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<T: NumLike + Send> Valuable for Number<'_, T> {
@@ -86,9 +84,9 @@ impl<T: NumLike + Send> Valuable for Number<'_, T> {
 
 impl<'a, T: NumLike + 'a> Number<'a, T> {
     /// Create a new number prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
         Number {
-            message,
+            message: message.into(),
             input: LineInput::new(),
             placeholder: None,
             default_value: None,
@@ -181,16 +179,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
 }
 
 #[cfg(feature = "bevy")]
-impl<T: NumLike> Printable for cbevy::AskyNode<Number<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
-
 impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
     fn default() -> Self {
         Self::new("")

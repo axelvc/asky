@@ -1,7 +1,4 @@
 use std::io;
-
-#[cfg(feature = "bevy")]
-
 use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]

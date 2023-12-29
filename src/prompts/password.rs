@@ -1,12 +1,8 @@
 use std::io;
+use std::borrow::Cow;
 
-#[cfg(feature = "bevy")]
-use crate::bevy as cbevy;
 use crate::Error;
 use crate::Valuable;
-#[cfg(feature = "bevy")]
-
-#[cfg(feature = "terminal")]
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -49,7 +45,7 @@ type Formatter<'a> =
 /// [`Text`]: crate::Text
 pub struct Password<'a> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Input state for the prompt.
     pub input: LineInput,
     /// Placeholder to show when the input is empty.
@@ -73,9 +69,9 @@ impl Valuable for Password<'_> {
 
 impl<'a> Password<'a> {
     /// Create a new password prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
         Password {
-            message,
+            message: message.into(),
             input: LineInput::new(),
             placeholder: None,
             default_value: None,
@@ -169,7 +165,7 @@ impl Printable for Password<'_> {
 }
 
 #[cfg(feature = "bevy")]
-impl Printable for cbevy::AskyNode<Password<'_>> {
+impl Printable for crate::bevy::AskyNode<Password<'_>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);

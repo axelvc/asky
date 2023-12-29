@@ -489,44 +489,6 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
 
             let mut line_num = 0;
             while lines.peek().is_some() {
-                // for lines in                 // .split('\n')
-                // .into_iter()
-                // .enumerate()
-                // .map(|(i, mut colored_line)| {
-                //     if self.state.cursor_visible && i == self.state.cursor_pos[1] {
-                //         let mut length = 0;
-                //         let mut inserted = false;
-                //         for i in 0..colored_line.len() {
-                //             if self.state.cursor_pos[0]
-                //                 < length + colored_line[i].input.chars().count()
-                //             {
-                //                 // The cursor is in this one.
-                //                 let part = colored_line.remove(i);
-                //                 for (j, new_part) in BevyRenderer::cursorify(
-                //                     part,
-                //                     self.state.cursor_pos[0] - length,
-                //                     white
-                //                 )
-                //                 .enumerate()
-                //                 {
-                //                     colored_line.insert(i + j, new_part)
-                //                 }
-                //                 inserted = true;
-                //                 break;
-                //             }
-                //             length += colored_line[i].input.chars().count();
-                //         }
-                //         if !inserted && self.state.cursor_pos[0] >= length {
-                //             // Cursor is actually one character past string.
-                //             colored_line.push(" ".on(white));
-                //         }
-                //     }
-                //     colored_line
-                //         .0
-                //         .into_iter()
-                //         .map(|cs| BevyRenderer::build_text_bundle(cs, style.clone()))
-                // })
-                // {
                 let style: TextStyleParams = self.settings.style.clone().into();
                 column
                     .spawn(NodeBundle {
@@ -852,6 +814,18 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
+impl<T: NumLike> Printable for AskyNode<Number<'_, T>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor()?;
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
+    }
+}
+
+// Password
+
 impl Typeable<KeyEvent> for Password<'_> {
     fn will_handle_key(&self, key: &KeyEvent) -> bool {
         for c in key.chars.iter() {
@@ -927,14 +901,6 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
         }
 
         submit
-    }
-}
-
-impl<T> Printable for Select<'_, T> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
     }
 }
 
