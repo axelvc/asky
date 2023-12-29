@@ -1,6 +1,6 @@
-use asky::Password;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Error> {
     let password = Password::new("What's your IG password?").prompt()?;
 
     if password.len() >= 1 {

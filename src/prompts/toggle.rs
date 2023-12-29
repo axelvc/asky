@@ -5,8 +5,6 @@ use std::io;
 use crate::Error;
 use crate::Valuable;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -28,9 +26,9 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send 
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Toggle;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let os = Toggle::new("What is your favorite OS?", "Android", "IOS").prompt()?;
 ///
 /// println!("{os} is the best!");
@@ -82,12 +80,6 @@ impl<'a> Toggle<'a> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self, true)?;
-        Ok(String::from(self.get_value()))
-    }
 }
 
 impl Toggle<'_> {

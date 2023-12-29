@@ -96,6 +96,7 @@ impl Printable for Message<'_> {
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -269,6 +269,16 @@ impl Typeable<KeyEvent> for Password<'_> {
     }
 }
 
+impl Printable for Password<'_> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::new();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.print(out)?;
+        renderer.set_cursor(cursor)
+    }
+}
+
+
 // Toggle
 impl Typeable<KeyEvent> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {

@@ -1,13 +1,10 @@
-use std::io;
 use std::borrow::Cow;
 
 use crate::Error;
 use crate::Valuable;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
 use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
+    renderer::DrawTime,
     theme,
 };
 
@@ -35,9 +32,9 @@ type Formatter<'a> =
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Password;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let password = Password::new("Your IG Password:").prompt()?;
 /// # Ok(())
 /// # }
@@ -57,7 +54,7 @@ pub struct Password<'a> {
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    formatter: Box<Formatter<'a>>,
+    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl Valuable for Password<'_> {
@@ -128,12 +125,6 @@ impl<'a> Password<'a> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self, false)?;
-        Ok(self.get_value().to_owned())
-    }
 }
 
 impl Password<'_> {
@@ -153,16 +144,6 @@ impl Password<'_> {
     }
 }
 
-
-#[cfg(feature = "terminal")]
-impl Printable for Password<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::new();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)?;
-        renderer.set_cursor(cursor)
-    }
-}
 
 #[cfg(feature = "bevy")]
 impl Printable for crate::bevy::AskyNode<Password<'_>> {

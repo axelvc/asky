@@ -1,6 +1,6 @@
-use asky::Toggle;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Error> {
     let tabs = Toggle::new("Which is better?", "Tabs", "Spaces").prompt()?;
     println!("I also prefer {tabs}.");
 

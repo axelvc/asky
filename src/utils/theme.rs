@@ -156,14 +156,14 @@ pub fn fmt_multi_select2<T>(
 pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [usize; 2]) {
     if draw_time == DrawTime::Last {
         return (
-            fmt_last_message(prompt.message, &prompt.input.value),
+            fmt_last_message(&prompt.message, &prompt.input.value),
             [0, 0],
         );
     }
 
     (
         [
-            fmt_line_message(prompt.message, &prompt.default_value),
+            fmt_line_message(&prompt.message, &prompt.default_value),
             fmt_line_input(
                 &prompt.input.value,
                 &prompt.placeholder,
@@ -179,11 +179,11 @@ pub fn fmt_text(prompt: &Text, draw_time: DrawTime) -> (String, [usize; 2]) {
 
 pub fn fmt_text2(prompt: &Text, draw_time: DrawTime, out: &mut ColoredStrings) -> [usize; 2] {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(prompt.message, &prompt.input.value, out);
+        fmt_last_message2(&prompt.message, &prompt.input.value, out);
         return [0, 0];
     }
 
-    fmt_line_message2(prompt.message, &prompt.default_value, out);
+    fmt_line_message2(&prompt.message, &prompt.default_value, out);
     out.push("\n".into());
     fmt_line_input2(
         &prompt.input.value,

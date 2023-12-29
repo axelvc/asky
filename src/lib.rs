@@ -13,9 +13,9 @@
 //! # Simple Example
 //!
 //! ```rust, no_run
-//! use asky::{Confirm, Text};
+//! use asky::prelude::*;
 //!
-//! fn main() -> std::io::Result<()> {
+//! fn main() -> Result<(), Error> {
 //!     let name = Text::new("Hi. What's your name?").prompt()?;
 //!
 //!     if Confirm::new("Do you like coffee?").prompt()? {
@@ -44,8 +44,8 @@
 //! #### Example
 //!
 //! ```rust, no_run
-//! # use asky::Confirm;
-//! # fn main() -> std::io::Result<()> {
+//! # use asky::prelude::*;
+//! # fn main() -> Result<(), Error> {
 //! Confirm::new("Do you like Rust?")
 //!     .format(|prompt, _draw_time, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
@@ -70,8 +70,8 @@
 //! #### Example
 //!
 //! ```rust, no_run
-//! # use asky::Text;
-//! # fn main() -> std::io::Result<()> {
+//! # use asky::{Text, Error, Promptable};
+//! # fn main() -> Result<(), Error> {
 //! Text::new("What is your name")
 //!     .format(|prompt, _draw_time, out| {
 //!         let cursor_col = prompt.input.col;
@@ -144,7 +144,7 @@ pub use utils::renderer::DrawTime;
 
 pub mod prelude {
     pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
-    pub use super::{Promptable, Error, Valuable};
+    pub use super::{SelectOption, Promptable, Error, Valuable};
 }
 
 #[cfg(feature = "terminal")]

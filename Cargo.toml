@@ -27,6 +27,47 @@ default = ["terminal"]
 terminal = ["dep:crossterm"] #, "colored/tty", "colored/color"]
 bevy = ["dep:bevy", "colored/no-color", "dep:text-style", "text-style/colored", "text-style/bevy"]
 
+
+[[example]]
+name = "confirm"
+path = "examples/confirm.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "message"
+path = "examples/message.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "multi_select"
+path = "examples/multi_select.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "number"
+path = "examples/number.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "password"
+path = "examples/password.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "select"
+path = "examples/select.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "text"
+path = "examples/text.rs"
+required-features = [ "terminal" ]
+
+[[example]]
+name = "toggle"
+path = "examples/toggle.rs"
+required-features = [ "terminal" ]
+
 [[example]]
 name = "bevy"
 path = "examples/bevy.rs"

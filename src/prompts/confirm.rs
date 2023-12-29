@@ -2,8 +2,6 @@ use std::io;
 
 use std::borrow::Cow;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Error;
@@ -28,9 +26,9 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Confirm;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// if Confirm::new("Do you like the pizza?").prompt()? {
 ///     println!("Great!");
 /// } else {
@@ -76,12 +74,6 @@ impl<'a> Confirm<'a> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<bool> {
-        key_listener::listen(self, true)?;
-        Ok(self.active)
-    }
 }
 
 impl Confirm<'_> {
@@ -104,16 +96,6 @@ impl Printable for Confirm<'_> {
         (self.formatter)(self, renderer.draw_time(), &mut out);
         // Maybe we can unify these?
         // renderer.hide_cursor()?;
-        renderer.print(out)
-    }
-}
-
-#[cfg(feature = "bevy")]
-impl Printable for crate::bevy::AskyNode<Confirm<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.hide_cursor()?;
         renderer.print(out)
     }
 }

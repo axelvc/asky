@@ -7,6 +7,7 @@ use crossterm::{
     terminal,
 };
 
+#[cfg(feature = "terminal")]
 use super::renderer::{Printable, Renderer};
 
 /// Trait used for the prompts to handle key events

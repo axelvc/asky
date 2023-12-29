@@ -1,14 +1,15 @@
 use std::io;
 use std::borrow::Cow;
 
-#[cfg(feature = "terminal")]
-use crate::utils::key_listener;
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use crate::ColoredStrings;
+use crate::{ColoredStrings,
+    Valuable,
+    Error,
+};
 
 pub enum Direction {
     Up,
@@ -189,9 +190,9 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a +
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Select;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let languages = ["Rust", "Go", "Python", "Javascript", "Brainfuck", "Other"];
 /// let answer = Select::new("What is your favorite language?", languages).prompt()?;
 /// # Ok(())
@@ -224,9 +225,9 @@ impl<'a, T: 'a> Select<'a, T> {
     /// Example:
     ///
     /// ```no_run
-    /// use asky::{Select, SelectOption};
+    /// use asky::prelude::*;
     ///
-    /// # fn main() -> std::io::Result<()> {
+    /// # fn main() -> Result<(), Error> {
     /// let options = vec![
     ///     SelectOption::new(1),
     ///     SelectOption::new(2),
@@ -277,15 +278,6 @@ impl<'a, T: 'a> Select<'a, T> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<T> {
-        key_listener::listen(self, true)?;
-
-        let selected = self.options.remove(self.input.focused);
-
-        Ok(selected.value)
-    }
 }
 
 impl<T> Select<'_, T> {
@@ -296,6 +288,23 @@ impl<T> Select<'_, T> {
         !focused.disabled
     }
 }
+
+impl<T> Valuable for Select<'_, T> {
+    type Output = usize;
+    fn value(&self) -> Result<usize, Error> {
+        let focused = &self.options[self.input.focused];
+
+        if !focused.disabled {
+            Ok(self.input.focused)
+        } else {
+            Err(Error::InvalidCount {
+                expected: 1,
+                actual: 0,
+            })
+        }
+    }
+}
+
 
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {

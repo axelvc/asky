@@ -1,5 +1,4 @@
-use std::io;
-// use std::borrow::Cow;
+use std::borrow::Cow;
 use crate::Error;
 
 use crate::ColoredStrings;
@@ -86,9 +85,9 @@ type Formatter<'a> = dyn Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] 
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Text;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let name = Text::new("What is your name?").prompt()?;
 ///
 /// println!("Hello, {}!", name);
@@ -98,7 +97,7 @@ type Formatter<'a> = dyn Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] 
 /// ```
 pub struct Text<'a> {
     /// Message used to display in the prompt
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Input state for the prompt
     pub input: LineInput,
     /// Placeholder to show when the input is empty
@@ -119,9 +118,9 @@ impl<'a> Valuable for Text<'a> {
 }
 impl<'a> Text<'a> {
     /// Create a new text prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
         Text {
-            message,
+            message: message.into(),
             input: LineInput::new(),
             placeholder: None,
             default_value: None,
@@ -171,13 +170,6 @@ impl<'a> Text<'a> {
         self
     }
 
-    #[cfg(feature = "terminal")]
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        use crate::utils::key_listener;
-        key_listener::listen(self, false)?;
-        Ok(self.get_value().to_owned())
-    }
 }
 
 impl Text<'_> {

@@ -704,6 +704,8 @@ mod tests {
     }
 }
 
+// Confirm
+
 impl Typeable<KeyCode> for Confirm<'_> {
     fn will_handle_key(&self, key: &KeyCode) -> bool {
         match key {
@@ -732,6 +734,15 @@ impl Typeable<KeyCode> for Confirm<'_> {
         }
 
         submit
+    }
+}
+
+impl Printable for crate::bevy::AskyNode<Confirm<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.hide_cursor()?;
+        renderer.print(out)
     }
 }
 
@@ -920,22 +931,6 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
         }
 
         submit
-    }
-}
-
-impl<T> Valuable for Select<'_, T> {
-    type Output = usize;
-    fn value(&self) -> Result<usize, Error> {
-        let focused = &self.options[self.input.focused];
-
-        if !focused.disabled {
-            Ok(self.input.focused)
-        } else {
-            Err(Error::InvalidCount {
-                expected: 1,
-                actual: 0,
-            })
-        }
     }
 }
 
