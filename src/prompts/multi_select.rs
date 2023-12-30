@@ -201,7 +201,7 @@ impl<T> MultiSelect<'_, T> {
 
 impl<T> Valuable for MultiSelect<'_, T> {
     type Output = u8;
-    fn value(&self) -> Result<u8, Error> {
+    fn value(&self) -> Result<u8, crate::Error> {
         let mut answer: u8 = 0;
         for (i, _) in self.options.iter().enumerate().filter(|(_, o)| o.active) {
             answer |= 1 << i;

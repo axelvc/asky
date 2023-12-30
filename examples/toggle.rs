@@ -1,8 +1,8 @@
 use asky::prelude::*;
 
 fn main() -> Result<(), Error> {
-    let tabs = Toggle::new("Which is better?", "Tabs", "Spaces").prompt()?;
-    println!("I also prefer {tabs}.");
+    let second = Toggle::new("Which is better?", "Tabs", "Spaces").prompt()?;
+    println!("I also prefer {}.", if second { "spaces" } else { "tabs" });
 
     // ...
 

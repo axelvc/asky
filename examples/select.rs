@@ -1,8 +1,9 @@
 use asky::prelude::*;
 
 fn main() -> Result<(), Error> {
-    let choice = Select::new("Choose number", 1..=30).prompt()?;
-    println!("{choice}, interesting choice.");
+    let options = 1..=30;
+    let choice = Select::new("Choose number", options.clone()).prompt()?;
+    println!("{}, interesting choice.", options.into_iter().nth(choice).unwrap());
 
     // ...
 
