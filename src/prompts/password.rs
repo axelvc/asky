@@ -35,6 +35,7 @@ type Formatter<'a> =
 /// use asky::prelude::*;
 ///
 /// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// let password = Password::new("Your IG Password:").prompt()?;
 /// # Ok(())
 /// # }
@@ -144,17 +145,6 @@ impl Password<'_> {
     }
 }
 
-
-#[cfg(feature = "bevy")]
-impl Printable for crate::bevy::AskyNode<Password<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
 
 #[cfg(feature = "terminal")]
 #[cfg(test)]

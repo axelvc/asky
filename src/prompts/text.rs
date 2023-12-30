@@ -88,8 +88,10 @@ type Formatter<'a> = dyn Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] 
 /// use asky::prelude::*;
 ///
 /// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// let name = Text::new("What is your name?").prompt()?;
 ///
+/// # #[cfg(feature = "terminal")]
 /// println!("Hello, {}!", name);
 ///
 /// # Ok(())

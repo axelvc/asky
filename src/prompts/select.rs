@@ -194,6 +194,7 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a +
 ///
 /// # fn main() -> Result<(), Error> {
 /// let languages = ["Rust", "Go", "Python", "Javascript", "Brainfuck", "Other"];
+/// # #[cfg(feature = "terminal")]
 /// let answer = Select::new("What is your favorite language?", languages).prompt()?;
 /// # Ok(())
 /// # }
@@ -235,6 +236,7 @@ impl<'a, T: 'a> Select<'a, T> {
     ///     SelectOption::new(4).title("Fish"),
     /// ];
     ///
+    /// # #[cfg(feature = "terminal")]
     /// Select::new_complex("Choose a number", options).prompt()?;
     /// # Ok(())
     /// # }

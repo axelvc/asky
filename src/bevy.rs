@@ -662,7 +662,6 @@ impl Plugin for AskyPlugin {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     // use super::divide_and_separate;
     // #[test]
     // fn test_divide_and_partition() {
@@ -913,6 +912,18 @@ impl Typeable<KeyEvent> for Password<'_> {
         submit
     }
 }
+
+impl Printable for crate::bevy::AskyNode<Password<'_>> {
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let mut out = ColoredStrings::default();
+        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        renderer.show_cursor()?;
+        renderer.set_cursor(cursor)?;
+        renderer.print(out)
+    }
+}
+
+// Select
 
 impl<T> Typeable<KeyCode> for Select<'_, T> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {

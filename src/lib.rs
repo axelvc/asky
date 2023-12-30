@@ -16,8 +16,10 @@
 //! use asky::prelude::*;
 //!
 //! fn main() -> Result<(), Error> {
+//! #   #[cfg(feature = "terminal")]
 //!     let name = Text::new("Hi. What's your name?").prompt()?;
 //!
+//! #   #[cfg(feature = "terminal")]
 //!     if Confirm::new("Do you like coffee?").prompt()? {
 //!         println!("Great! Me too");
 //!     } else {
@@ -46,6 +48,7 @@
 //! ```rust, no_run
 //! # use asky::prelude::*;
 //! # fn main() -> Result<(), Error> {
+//! # #[cfg(feature = "terminal")]
 //! Confirm::new("Do you like Rust?")
 //!     .format(|prompt, _draw_time, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
@@ -72,6 +75,7 @@
 //! ```rust, no_run
 //! # use asky::{Text, Error, Promptable};
 //! # fn main() -> Result<(), Error> {
+//! # #[cfg(feature = "terminal")]
 //! Text::new("What is your name")
 //!     .format(|prompt, _draw_time, out| {
 //!         let cursor_col = prompt.input.col;
@@ -98,7 +102,7 @@
 //!
 //! Where `|` is the cursor position.
 // #![deny(missing_docs)]
-
+#![cfg_attr(not(feature = "terminal"), allow(dead_code))]
 mod prompts;
 pub mod utils;
 

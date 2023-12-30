@@ -29,7 +29,10 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send 
 /// use asky::prelude::*;
 ///
 /// # fn main() -> Result<(), Error> {
-/// let os = Toggle::new("What is your favorite OS?", "Android", "IOS").prompt()?;
+/// # #[cfg(feature = "terminal")]
+/// let os = Toggle::new("What is your favorite OS?", "Android", "iOS").prompt()?;
+/// # #[cfg(not(feature = "terminal"))]
+/// # let os = "iOS";
 ///
 /// println!("{os} is the best!");
 /// # Ok(())
@@ -82,13 +85,6 @@ impl<'a> Toggle<'a> {
 
 }
 
-impl Toggle<'_> {
-    fn get_value(&self) -> &str {
-        self.options[self.active as usize].as_ref()
-    }
-}
-
-
 impl Printable for Toggle<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
@@ -103,6 +99,12 @@ mod tests {
     use super::*;
     use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+
+    impl Toggle<'_> {
+        fn get_value(&self) -> &str {
+            self.options[self.active as usize].as_ref()
+        }
+    }
 
     #[test]
     fn set_initial_value() {

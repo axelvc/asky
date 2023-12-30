@@ -42,6 +42,7 @@ type Formatter<'a, T> =
 /// use asky::prelude::*;
 ///
 /// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// let number = Number::<u8>::new("How many pets do you have?").prompt()?;
 /// # Ok(())
 /// # }

@@ -29,6 +29,7 @@ type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send
 /// use asky::Message;
 ///
 /// # fn main() -> std::io::Result<()> {
+/// # #[cfg(feature = "terminal")]
 /// Message::new("Well, that's great.").prompt()?;
 /// # Ok(())
 /// # }

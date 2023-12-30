@@ -29,6 +29,7 @@ type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send
 /// use asky::prelude::*;
 ///
 /// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// if Confirm::new("Do you like the pizza?").prompt()? {
 ///     println!("Great!");
 /// } else {

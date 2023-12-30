@@ -2,7 +2,6 @@ use std::io;
 
 use std::borrow::Cow;
 #[cfg(feature = "bevy")]
-use crate::bevy::*;
 use crate::Error;
 use crate::Valuable;
 
@@ -41,6 +40,7 @@ type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) +
 ///
 /// # fn main() -> std::io::Result<()> {
 /// let options = ["Horror", "Romance", "Action", "Comedy"];
+/// # #[cfg(feature = "terminal")]
 /// let answer = MultiSelect::new("What genre do you like?", options).prompt()?;
 /// # Ok(())
 /// # }
@@ -58,7 +58,7 @@ pub struct MultiSelect<'a, T> {
     /// Input state.
     pub input: SelectInput,
     selected_count: usize,
-    formatter: Box<Formatter<'a, T>>,
+    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> MultiSelect<'a, T> {
@@ -87,6 +87,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     ///     SelectOption::new("Sleeping"),
     /// ];
     ///
+    /// # #[cfg(feature = "terminal")]
     /// MultiSelect::new_complex("How do you like to spend your free time?", options).prompt()?;
     /// # Ok(())
     /// # }
@@ -151,15 +152,16 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
         self
     }
 
+    pub fn get_value(&mut self) -> Vec<T> {
+        let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
+        selected.into_iter().map(|x| x.value).collect()
+    }
+
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
         key_listener::listen(self, true)?;
-
-        let (selected, _): (Vec<_>, Vec<_>) = self.options.drain(..).partition(|x| x.active);
-        let selected = selected.into_iter().map(|x| x.value).collect();
-
-        Ok(selected)
+        Ok(self.get_value())
     }
 }
 
