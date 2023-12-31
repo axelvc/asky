@@ -1,11 +1,15 @@
-use std::io::{self, Write};
-use crate::{ColoredStrings, DrawTime, utils::renderer::{Renderer, Printable}, Text, Confirm, Number, Select, MultiSelect, Password, Toggle, Message, Valuable};
 use crate::utils::num_like::NumLike;
+use crate::{
+    utils::renderer::{Printable, Renderer},
+    ColoredStrings, Confirm, DrawTime, Message, MultiSelect, Number, Password, Select, Text,
+    Toggle, Valuable,
+};
+use std::io::{self, Write};
 
-use crossterm::{cursor, execute, queue, style::Print, terminal};
-use crossterm::event::{KeyCode, KeyEvent};
-use crate::utils::key_listener::{Typeable};
 use crate::prompts::text::Direction;
+use crate::utils::key_listener::Typeable;
+use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::{cursor, execute, queue, style::Print, terminal};
 
 pub struct TermRenderer {
     pub draw_time: DrawTime,
@@ -106,7 +110,9 @@ impl Default for TermRenderer {
 }
 
 impl<T> crate::Promptable for T
-    where T: Printable + Typeable<KeyEvent> + Valuable {
+where
+    T: Printable + Typeable<KeyEvent> + Valuable,
+{
     type Output = T::Output;
 
     fn prompt(&mut self) -> Result<Self::Output, crate::Error> {
@@ -201,7 +207,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
     }
 }
 
-
 // Select
 impl<T> Typeable<KeyEvent> for Select<'_, T> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
@@ -277,7 +282,6 @@ impl Printable for Password<'_> {
         renderer.set_cursor(cursor)
     }
 }
-
 
 // Toggle
 impl Typeable<KeyEvent> for Toggle<'_> {

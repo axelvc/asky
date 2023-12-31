@@ -116,7 +116,7 @@ pub enum Error {
     InvalidInput,
     InvalidCount { expected: usize, actual: usize },
     ValidationFail,
-    Io(std::io::Error)
+    Io(std::io::Error),
 }
 
 impl From<std::io::Error> for Error {
@@ -148,7 +148,7 @@ pub use utils::renderer::DrawTime;
 
 pub mod prelude {
     pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
-    pub use super::{SelectOption, Promptable, Error, Valuable};
+    pub use super::{Error, Promptable, SelectOption, Valuable};
 }
 
 #[cfg(feature = "terminal")]

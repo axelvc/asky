@@ -74,7 +74,6 @@ impl<'a> Confirm<'a> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl Confirm<'_> {
@@ -104,9 +103,9 @@ impl Printable for Confirm<'_> {
 #[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
-    use crossterm::event::{KeyCode, KeyEvent};
     use super::*;
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_initial_value() {

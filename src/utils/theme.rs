@@ -1,6 +1,6 @@
-use std::borrow::Cow;
 use crate::ColoredStrings;
 use colored::{ColoredString, Colorize};
+use std::borrow::Cow;
 
 use crate::prompts::{
     confirm::Confirm,
@@ -59,7 +59,11 @@ pub fn fmt_message2(prompt: &Message, _draw_time: DrawTime, out: &mut ColoredStr
 
 pub fn fmt_toggle2(prompt: &Toggle, draw_time: DrawTime, out: &mut ColoredStrings) {
     if draw_time == DrawTime::Last {
-        fmt_last_message2(&prompt.message, &prompt.options[prompt.active as usize], out);
+        fmt_last_message2(
+            &prompt.message,
+            &prompt.options[prompt.active as usize],
+            out,
+        );
         return;
     }
 

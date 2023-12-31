@@ -20,8 +20,7 @@ fn main() {
     if args.len() != 2 {
         eprintln!("Usage: bevy <{}>", options.join("|"));
         std::process::exit(1);
-    } else if !options.contains(&args[1].as_str())
-        && &args[1] != "multi_select" {
+    } else if !options.contains(&args[1].as_str()) && &args[1] != "multi_select" {
         eprintln!("Invalid argument: {}", args[1]);
         eprintln!("Usage: bevy <{}>", options.join("|"));
         std::process::exit(1);

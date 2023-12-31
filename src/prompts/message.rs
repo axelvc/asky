@@ -1,5 +1,5 @@
-use std::io;
 use std::borrow::Cow;
+use std::io;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
@@ -88,7 +88,6 @@ impl<'a> Message<'a> {
     }
 }
 
-
 impl Printable for Message<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
@@ -101,8 +100,8 @@ impl Printable for Message<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_custom_formatter() {

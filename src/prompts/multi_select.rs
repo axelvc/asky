@@ -1,7 +1,7 @@
 use std::io;
 
-use std::borrow::Cow;
 use crate::Valuable;
+use std::borrow::Cow;
 
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
@@ -89,7 +89,10 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// MultiSelect::new_complex("How do you like to spend your free time?", options).prompt()?;
     /// # Ok(())
     /// # }
-    pub fn new_complex(message: impl Into<Cow<'a, str>>, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new_complex(
+        message: impl Into<Cow<'a, str>>,
+        options: Vec<SelectOption<'a, T>>,
+    ) -> Self {
         let options_len = options.len();
 
         MultiSelect {
@@ -219,9 +222,9 @@ impl<T> Printable for MultiSelect<'_, T> {
 #[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
-    use crossterm::event::{KeyCode, KeyEvent};
-    use crate::utils::key_listener::Typeable;
     use super::*;
+    use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_selected_values() {

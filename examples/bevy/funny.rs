@@ -1,7 +1,7 @@
 use asky::bevy::*;
-use std::borrow::Cow;
 use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text, Toggle};
 use bevy::{prelude::*, utils::Duration, window::PresentMode};
+use std::borrow::Cow;
 use std::future::Future;
 
 #[derive(Component)]

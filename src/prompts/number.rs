@@ -1,13 +1,9 @@
 use crate::Error;
 
-use crate::utils::{
-    num_like::NumLike,
-    renderer::DrawTime,
-    theme,
-};
-use crate::Valuable;
-use super::text::{LineInput};
+use super::text::LineInput;
+use crate::utils::{num_like::NumLike, renderer::DrawTime, theme};
 use crate::ColoredStrings;
+use crate::Valuable;
 use std::borrow::Cow;
 
 type InputValidator<'a, T> =
@@ -131,11 +127,9 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl<T: NumLike> Number<'_, T> {
-
     pub(crate) fn insert(&mut self, ch: char) {
         let is_valid = match ch {
             '-' | '+' => T::is_signed() && self.input.col == 0,
@@ -161,8 +155,8 @@ impl<T: NumLike> Number<'_, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Valuable;
     use crate::utils::key_listener::Typeable;
+    use crate::Valuable;
     use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]

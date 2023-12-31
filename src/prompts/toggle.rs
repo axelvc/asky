@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::ColoredStrings;
+use std::borrow::Cow;
 use std::io;
 
 use crate::Error;
@@ -9,7 +9,6 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
-
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -57,7 +56,11 @@ impl Valuable for Toggle<'_> {
 
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
-    pub fn new(message: impl Into<Cow<'a, str>>, a: impl Into<Cow<'a, str>>, b: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(
+        message: impl Into<Cow<'a, str>>,
+        a: impl Into<Cow<'a, str>>,
+        b: impl Into<Cow<'a, str>>,
+    ) -> Self {
         Toggle {
             message: message.into(),
             options: [a.into(), b.into()],
@@ -82,7 +85,6 @@ impl<'a> Toggle<'a> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl Printable for Toggle<'_> {
@@ -97,8 +99,8 @@ impl Printable for Toggle<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     impl Toggle<'_> {
         fn get_value(&self) -> &str {

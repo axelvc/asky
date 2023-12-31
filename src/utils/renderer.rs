@@ -26,4 +26,3 @@ pub trait Renderer {
     fn hide_cursor(&mut self) -> io::Result<()>;
     fn show_cursor(&mut self) -> io::Result<()>;
 }
-

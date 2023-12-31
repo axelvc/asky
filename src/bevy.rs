@@ -1,21 +1,21 @@
 use crate::utils::renderer::{Printable, Renderer};
 
-use std::borrow::Cow;
-use crate::{DrawTime, NumLike};
 use crate::Typeable;
+use crate::{DrawTime, NumLike};
 use bevy::{
     ecs::{
         component::Tick,
         system::{SystemMeta, SystemParam},
         world::unsafe_world_cell::UnsafeWorldCell,
     },
-    input::keyboard::{KeyboardInput, KeyCode},
+    input::keyboard::{KeyCode, KeyboardInput},
     utils::Duration,
 };
 use promise_out::{
     pair::{Consumer, Producer},
     Promise,
 };
+use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
@@ -27,7 +27,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     ColoredStrings, Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
-    Valuable
+    Valuable,
 };
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use divide_and_separate::DivideAndSeparate;
@@ -852,7 +852,6 @@ impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
     }
 }
 
-
 // Password
 
 impl Typeable<KeyEvent> for Password<'_> {
@@ -965,7 +964,7 @@ impl Typeable<KeyEvent> for crate::Text<'_> {
             use KeyCode::*;
             match code {
                 Return | Back | Delete | Left | Right => return true,
-                _ => ()
+                _ => (),
             }
         }
         false

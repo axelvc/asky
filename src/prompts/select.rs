@@ -1,15 +1,12 @@
-use std::io;
 use std::borrow::Cow;
+use std::io;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
 
-use crate::{ColoredStrings,
-    Valuable,
-    Error,
-};
+use crate::{ColoredStrings, Error, Valuable};
 
 pub enum Direction {
     Up,
@@ -240,7 +237,10 @@ impl<'a, T: 'a> Select<'a, T> {
     /// Select::new_complex("Choose a number", options).prompt()?;
     /// # Ok(())
     /// # }
-    pub fn new_complex(message: impl Into<Cow<'a, str>>, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new_complex(
+        message: impl Into<Cow<'a, str>>,
+        options: Vec<SelectOption<'a, T>>,
+    ) -> Self {
         let options_len = options.len();
 
         Select {
@@ -279,7 +279,6 @@ impl<'a, T: 'a> Select<'a, T> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl<T> Select<'_, T> {
@@ -307,7 +306,6 @@ impl<T> Valuable for Select<'_, T> {
     }
 }
 
-
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
@@ -316,13 +314,12 @@ impl<T> Printable for Select<'_, T> {
     }
 }
 
-
 #[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_initial_value() {

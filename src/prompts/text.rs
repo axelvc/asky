@@ -1,12 +1,9 @@
-use std::borrow::Cow;
 use crate::Error;
+use std::borrow::Cow;
 
 use crate::ColoredStrings;
 
-use crate::utils::{
-    renderer::DrawTime,
-    theme,
-};
+use crate::utils::{renderer::DrawTime, theme};
 use crate::Valuable;
 
 pub enum Direction {
@@ -109,7 +106,7 @@ pub struct Text<'a> {
     /// State of the validation of the user input
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    pub (crate) formatter: Box<Formatter<'a>>,
+    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Valuable for Text<'a> {
@@ -171,7 +168,6 @@ impl<'a> Text<'a> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl Text<'_> {
@@ -191,13 +187,12 @@ impl Text<'_> {
     }
 }
 
-
 #[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_placeholder() {

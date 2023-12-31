@@ -3,10 +3,7 @@ use std::borrow::Cow;
 use crate::Error;
 use crate::Valuable;
 
-use crate::utils::{
-    renderer::DrawTime,
-    theme,
-};
+use crate::utils::{renderer::DrawTime, theme};
 
 use super::text::{InputValidator, LineInput};
 use crate::ColoredStrings;
@@ -125,7 +122,6 @@ impl<'a> Password<'a> {
         self.formatter = Box::new(formatter);
         self
     }
-
 }
 
 impl Password<'_> {
@@ -145,13 +141,12 @@ impl Password<'_> {
     }
 }
 
-
 #[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
     use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_placeholder() {
