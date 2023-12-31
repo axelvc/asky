@@ -1,8 +1,6 @@
 use std::io;
 
 use std::borrow::Cow;
-#[cfg(feature = "bevy")]
-use crate::Error;
 use crate::Valuable;
 
 #[cfg(feature = "terminal")]

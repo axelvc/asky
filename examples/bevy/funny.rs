@@ -54,26 +54,11 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
     };
     let id = commands.spawn(node).id();
     async move {
-
-        let q =     format!("Which do you prefer?");
-        let a : [Cow<'static, str>; 3] = [format!("brainfuck{}", "ing").into(), "rust".into(), "x86 machine code".into()];
-        let lang = asky
-            .listen(
-                Select::new(
-                    q,
-                    a,
-                ),
-                id,
-            )
-            .await?;
         let yes = asky
-            .listen(Toggle::new(format!("Want to see something cool? doo {}", 3), "God no", "Well, ok"), id)
-            .await?;
-        let yes = asky
-            .listen(Confirm::new("Want to see something cool?"), id)
+            .prompt(Confirm::new("Want to see something cool?"), id)
             .await?;
         let _ = asky
-            .listen(
+            .prompt(
                 Message::new(if yes { "Oh, good!" } else { "Oh, nevermind." }),
                 id,
             )
@@ -82,7 +67,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             return Ok(());
         }
         let lang = asky
-            .listen(
+            .prompt(
                 Select::new(
                     format!("Which do you prefer?"),
                     ["brainfuck", "rust", "x86 machine code"],
@@ -91,7 +76,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             )
             .await?;
         let _ = asky
-            .listen(
+            .prompt(
                 Message::new(if lang == 1 {
                     "Me too!"
                 } else {
@@ -101,7 +86,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             )
             .await?;
         let bitfield = asky
-            .listen(
+            .prompt(
                 MultiSelect::new(
                     "What engines do you use?",
                     ["Unity", "Unreal", "Godot", "bevy"],
@@ -110,7 +95,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             )
             .await?;
         let _ = asky
-            .listen(
+            .prompt(
                 Message::new(if bitfield & 0b1000 != 0 {
                     "Well, have I got news for you!"
                 } else {
@@ -120,32 +105,32 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             )
             .await?;
         let _ = asky
-            .listen(Message::new("The asky lib works for bevy now!"), id)
+            .prompt(Message::new("The asky lib works for bevy now!"), id)
             .await?;
-        let _ = asky.listen(Message::new("So..."), id).await?;
+        let _ = asky.prompt(Message::new("So..."), id).await?;
         let _ = asky
-            .listen(Confirm::new("Let's sign you up on our email list."), id)
+            .prompt(Confirm::new("Let's sign you up on our email list."), id)
             .await?;
-        let email = asky.listen(Text::new("What's your email?"), id).await?;
+        let email = asky.prompt(Text::new("What's your email?"), id).await?;
         let password = match asky
-            .listen(Password::new("I'm gonna need your password too."), id)
+            .prompt(Password::new("I'm gonna need your password too."), id)
             .await
         {
             Ok(p) => {
-                let _ = asky.listen(Message::new("Heh heh."), id).await?;
+                let _ = asky.prompt(Message::new("Heh heh."), id).await?;
                 p
             }
             Err(_) => {
-                asky.listen(Password::new("Please, I need it for real."), id)
+                asky.prompt(Password::new("Please, I need it for real."), id)
                     .await?
             }
         };
-        let _ = asky.listen(Message::new("Just kidding."), id).await?;
+        let _ = asky.prompt(Message::new("Just kidding."), id).await?;
         let _ = asky
-            .listen(Message::new("I don't NEED your password."), id)
+            .prompt(Message::new("I don't NEED your password."), id)
             .await?;
         let _ = asky
-            .listen(Message::new("I just wanted it for REASONS."), id)
+            .prompt(Message::new("I just wanted it for REASONS."), id)
             .await?;
         Ok::<(), Error>(())
     }

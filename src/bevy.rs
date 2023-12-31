@@ -87,7 +87,7 @@ impl Asky {
         Self { config }
     }
 
-    pub fn listen<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(
+    pub fn prompt<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static>(
         &mut self,
         prompt: T,
         dest: Entity,
@@ -257,7 +257,7 @@ pub fn poll_tasks_err<T: Send + Sync + 'static>(
             if let Err(_error) = result {
                 eprintln!("Got here.");
                 // FIXME: I need the right entity to make this work.
-                // let _ = asky.listen(Message::new(format!("{:?}", error)), entity);
+                // let _ = asky.prompt(Message::new(format!("{:?}", error)), entity);
                 commands.entity(entity).despawn();
             } else {
                 commands.entity(entity).despawn();
