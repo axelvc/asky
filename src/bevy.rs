@@ -394,7 +394,7 @@ fn cursorify(
     i: usize,
     cursor_color: text_style::Color,
 ) -> impl Iterator<Item = StyledString> {
-    let to_colored_string = |s: String| -> StyledString { StyledString { s: s, ..cs.clone() } };
+    let to_colored_string = |s: String| -> StyledString { StyledString { s, ..cs.clone() } };
     let mut input = cs.s.to_string();
     let mut right = None;
     if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
@@ -425,7 +425,7 @@ fn cursorify_iter(
         let mut a = None;
         let mut b = None;
         if has_index {
-            a = Some(cursorify(ss, i - count, cursor_color.clone()));
+            a = Some(cursorify(ss, i - count, cursor_color));
         } else {
             b = Some(ss);
         }
@@ -468,7 +468,7 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                     let mut a = vec![];
                     let mut b = None;
                     if s.s.contains('\n') {
-                        let str = std::mem::replace(&mut s.s, String::new());
+                        let str = std::mem::take(&mut s.s);
                         a.extend(str.split_inclusive('\n').map(move |line| StyledString {
                             s: line.to_string(),
                             ..s.clone()
@@ -502,11 +502,11 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                         if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
                             text_style::bevy::render_iter(
                                 parent,
-                                &style.into(),
+                                &style,
                                 cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white),
                             );
                         } else {
-                            text_style::bevy::render_iter(parent, &style.into(), lines.by_ref());
+                            text_style::bevy::render_iter(parent, &style, lines.by_ref());
                         }
                         // text_style::bevy::render_iter(parent, &style.into(), lines.by_ref().map(StyledStr::from));
                         // text_style::bevy::render(parent, &style, &lines);
@@ -561,7 +561,7 @@ pub fn asky_system<T>(
             }
             AskyState::Hidden => {
                 if let Some(children) = children {
-                    commands.entity(entity).remove_children(&children);
+                    commands.entity(entity).remove_children(children);
                     for child in children {
                         commands.entity(*child).despawn_recursive();
                     }
@@ -593,7 +593,7 @@ pub fn asky_system<T>(
                     render_state.draw_time = DrawTime::Last;
                 }
                 if let Some(children) = children {
-                    commands.entity(entity).remove_children(&children);
+                    commands.entity(entity).remove_children(children);
                     for child in children {
                         commands.entity(*child).despawn_recursive();
                     }
@@ -947,7 +947,7 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
 impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
-        let _cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        (self.formatter)(self, renderer.draw_time(), &mut out);
         renderer.print(out)
     }
 }

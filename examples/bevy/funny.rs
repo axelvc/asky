@@ -1,7 +1,7 @@
 use asky::bevy::*;
-use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text, Toggle};
-use bevy::{prelude::*, utils::Duration, window::PresentMode};
-use std::borrow::Cow;
+use asky::{Confirm, Error, Message, MultiSelect, Password, Select, Text};
+use bevy::{prelude::*, window::PresentMode};
+
 use std::future::Future;
 
 #[derive(Component)]
@@ -57,7 +57,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
         let yes = asky
             .prompt(Confirm::new("Want to see something cool?"), id)
             .await?;
-        let _ = asky
+        asky
             .prompt(
                 Message::new(if yes { "Oh, good!" } else { "Oh, nevermind." }),
                 id,
@@ -69,13 +69,13 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
         let lang = asky
             .prompt(
                 Select::new(
-                    format!("Which do you prefer?"),
+                    "Which do you prefer?".to_string(),
                     ["brainfuck", "rust", "x86 machine code"],
                 ),
                 id,
             )
             .await?;
-        let _ = asky
+        asky
             .prompt(
                 Message::new(if lang == 1 {
                     "Me too!"
@@ -94,7 +94,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
                 id,
             )
             .await?;
-        let _ = asky
+        asky
             .prompt(
                 Message::new(if bitfield & 0b1000 != 0 {
                     "Well, have I got news for you!"
@@ -104,20 +104,20 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
                 id,
             )
             .await?;
-        let _ = asky
+        asky
             .prompt(Message::new("The asky lib works for bevy now!"), id)
             .await?;
-        let _ = asky.prompt(Message::new("So..."), id).await?;
+        asky.prompt(Message::new("So..."), id).await?;
         let _ = asky
             .prompt(Confirm::new("Let's sign you up on our email list."), id)
             .await?;
-        let email = asky.prompt(Text::new("What's your email?"), id).await?;
-        let password = match asky
+        let _email = asky.prompt(Text::new("What's your email?"), id).await?;
+        let _password = match asky
             .prompt(Password::new("I'm gonna need your password too."), id)
             .await
         {
             Ok(p) => {
-                let _ = asky.prompt(Message::new("Heh heh."), id).await?;
+                asky.prompt(Message::new("Heh heh."), id).await?;
                 p
             }
             Err(_) => {
@@ -125,11 +125,11 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
                     .await?
             }
         };
-        let _ = asky.prompt(Message::new("Just kidding."), id).await?;
-        let _ = asky
+        asky.prompt(Message::new("Just kidding."), id).await?;
+        asky
             .prompt(Message::new("I don't NEED your password."), id)
             .await?;
-        let _ = asky
+        asky
             .prompt(Message::new("I just wanted it for REASONS."), id)
             .await?;
         Ok::<(), Error>(())

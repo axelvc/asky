@@ -54,10 +54,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
     if let Ok(id) = query.get_single() {
         Some(async move {
-            if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
-                if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
+            if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
+                if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
                     let _ = asky
-                        .listen(
+                        .prompt(
                             Message::new(format!("Hello, {first_name} {last_name}!")),
                             id,
                         )
@@ -78,14 +78,14 @@ fn ask_name_clear(
 ) -> Option<impl Future<Output = ()>> {
     if let Ok(id) = query.get_single() {
         Some(async move {
-            if let Ok(first_name) = asky.listen(Text::new("What's your first name? "), id).await {
+            if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
                 let _ = asky.delay(Duration::from_secs(1)).await;
                 let _ = asky.clear(id).await;
-                if let Ok(last_name) = asky.listen(Text::new("What's your last name? "), id).await {
+                if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
                     let _ = asky.delay(Duration::from_secs(1)).await;
                     let _ = asky.clear(id).await;
                     let _ = asky
-                        .listen(
+                        .prompt(
                             Message::new(format!("Hello, {first_name} {last_name}!")),
                             id,
                         )
@@ -107,7 +107,7 @@ fn ask_question(
     if let Ok(id) = query.get_single() {
         Some(async move {
             let confirm = Confirm::new("Do you like coffee?");
-            let promise = asky.listen(confirm, id);
+            let promise = asky.prompt(confirm, id);
             let msg = match promise.await {
                 Ok(yes) => {
                     if yes {
@@ -118,7 +118,7 @@ fn ask_question(
                 }
                 Err(_) => "Uh oh, had a problem.",
             };
-            let _ = asky.listen(Message::new(msg), id);
+            let _ = asky.prompt(Message::new(msg), id);
         })
     } else {
         None
@@ -132,7 +132,7 @@ fn ask_question2(
     if let Ok(id) = query.get_single() {
         Some(async move {
             let confirm = Confirm::new("Do you like coffee?");
-            let promise = asky.listen(confirm, id);
+            let promise = asky.prompt(confirm, id);
             let msg = match promise.await {
                 Ok(yes) => {
                     if yes {

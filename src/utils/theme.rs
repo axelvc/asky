@@ -346,7 +346,7 @@ pub fn fmt_last_message2(message: &str, answer: &str, out: &mut ColoredStrings) 
 //     fmt_toggle_options2(options, active, &mut out);
 //     format!("{}", out)
 // }
-fn fmt_toggle_options2<'a>(options: &[Cow<'a, str>; 2], active: bool, out: &mut ColoredStrings) {
+fn fmt_toggle_options2(options: &[Cow<'_, str>; 2], active: bool, out: &mut ColoredStrings) {
     let fmt_option = |opt, active| {
         let opt = format!(" {} ", opt);
         match active {

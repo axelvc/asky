@@ -84,7 +84,7 @@ fn handle_tasks<T: Send + 'static>(
     mut transform_tasks: Query<(Entity, &mut OnComplete<T>)>,
 ) {
     for (entity, mut task) in &mut transform_tasks {
-        if let Some(_) = block_on(future::poll_once(&mut task.0)) {
+        if block_on(future::poll_once(&mut task.0)).is_some() {
             // Task is complete, so remove task component from entity
             commands.entity(entity).remove::<OnComplete<T>>();
         }
