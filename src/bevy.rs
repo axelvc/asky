@@ -403,7 +403,10 @@ fn cursorify(
         input = l.to_owned();
     }
     let cursor = Some(
-        to_colored_string(input.pop().expect("Could not get cursor").to_string()).on(cursor_color),
+        to_colored_string(input.pop()
+                          // Newline is not printed. So use a space if necessary.
+                          .map(|c| if c == '\n' { ' ' } else { c })
+                          .expect("Could not get cursor").to_string()).on(cursor_color),
     );
     let left = Some(to_colored_string(input));
     left.into_iter()
@@ -412,33 +415,33 @@ fn cursorify(
 
 fn cursorify_iter(
     iter: impl Iterator<Item = StyledString>,
-    i: usize,
+    cursor_pos: usize,
     cursor_color: text_style::Color,
 ) -> impl Iterator<Item = StyledString> {
     let mut count = 0;
     let a = iter.flat_map(move |ss| {
         let l = ss.s.chars().count();
-        let has_index = i < count + l && i >= count;
-        // let a = has_index.then_some(cursorify(ss, i - count, cursor_color.clone()));
-        // let b = (! has_index).then_some(ss);
+        let has_index = cursor_pos < count + l && cursor_pos >= count;
 
         let mut a = None;
         let mut b = None;
         if has_index {
-            a = Some(cursorify(ss, i - count, cursor_color));
+            a = Some(cursorify(ss, cursor_pos - count, cursor_color));
         } else {
             b = Some(ss);
         }
-        // has_index.then_some
-        // let b = (! has_index).then_some(ss);
 
         count += l;
         a.into_iter().flatten().chain(b.into_iter())
     });
 
     // This cursor may go beyond the string, often only by 1.
-    let b = (i > count).then_some(StyledString::plain(" ".into()).on(cursor_color));
-    a.chain(b.into_iter())
+    // let b = (i > count).then_some({
+    //     dbg!(i);
+    //     dbg!(count);
+    //     StyledString::plain(" ".into()).on(cursor_color)
+    // });
+    a//.chain(b.into_iter())
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
