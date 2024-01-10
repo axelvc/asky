@@ -30,7 +30,7 @@ use crate::{
     Valuable,
 };
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
-use divide_and_separate::DivideAndSeparate;
+use itertools::Itertools;
 use futures_lite::future;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
 
@@ -460,7 +460,9 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
         };
 
         self.commands.entity(self.column).with_children(|column| {
-            let mut lines = strings
+            let mut next_line_count: Option<usize> = None;
+            let mut line_count: usize = 0;
+            let lines = strings
                 .0
                 .into_iter()
                 .map(StyledString::from)
@@ -478,17 +480,18 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                     }
                     a.into_iter().chain(b.into_iter())
                 })
-                .divide_and_separate(|x| {
-                    if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
-                        Err((Some(x), None))
-                    } else {
-                        Ok(x)
+                .group_by(|x| {
+                    if let Some(x) = next_line_count.take() {
+                        line_count = x;
                     }
-                })
-                .peekable();
+                    if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
+                        next_line_count = Some(line_count + 1);
+                    }
+                    line_count
+                });
 
             let mut line_num = 0;
-            while lines.peek().is_some() {
+            for (_key, line) in &lines {
                 let style: TextStyleParams = self.settings.style.clone().into();
                 column
                     .spawn(NodeBundle {
@@ -503,16 +506,11 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
                             text_style::bevy::render_iter(
                                 parent,
                                 &style,
-                                cursorify_iter(lines.by_ref(), self.state.cursor_pos[0], white),
+                                cursorify_iter(line, self.state.cursor_pos[0], white),
                             );
                         } else {
-                            text_style::bevy::render_iter(parent, &style, lines.by_ref());
+                            text_style::bevy::render_iter(parent, &style, line);
                         }
-                        // text_style::bevy::render_iter(parent, &style.into(), lines.by_ref().map(StyledStr::from));
-                        // text_style::bevy::render(parent, &style, &lines);
-                        // for line in lines {
-                        //     parent.spawn(line);
-                        // }
                     });
                 line_num += 1;
             }
