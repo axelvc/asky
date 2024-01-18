@@ -90,30 +90,3 @@ fn handle_tasks<T: Send + 'static>(
         }
     }
 }
-
-// fn response(mut commands: Commands, mut query: Query<(Entity, &Asky<Confirm<'static>>), Without<Handled>>) {
-//     for (entity, prompt) in query.iter_mut() {
-//         match prompt.1 {
-//             AskyState::Complete => {
-//                 let response = match prompt.0.value() {
-//                     Ok(yes) => {
-//                         if yes {
-//                             "Great, me too."
-//                         } else {
-//                             "Oh, ok."
-//                         }
-//                     }
-//                     Err(_) => "Uh oh, had a problem.",
-//                 };
-
-//                 let child = commands
-//                     .spawn(NodeBundle::default())
-//                     .insert(Asky(Message::new(response), AskyState::Reading))
-//                     .id();
-//                 commands.entity(entity).push_children(&[child]).insert(Handled);
-
-//             }
-//             _ => {}
-//         }
-//     }
-// }

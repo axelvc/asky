@@ -52,8 +52,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
-    if let Ok(id) = query.get_single() {
-        Some(async move {
+    query.get_single().ok().map(|id| {
+        async move {
             if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
                 if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
                     let _ = asky
@@ -66,10 +66,8 @@ fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Fu
             } else {
                 eprintln!("Got err in ask name.");
             }
-        })
-    } else {
-        None
-    }
+        }
+    })
 }
 
 fn ask_name_clear(
