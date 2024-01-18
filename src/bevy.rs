@@ -19,7 +19,6 @@ use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
-// use colored::{Color as Colored, ColoredString, Colorize};
 use std::future::Future;
 use std::io;
 
@@ -59,10 +58,7 @@ fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>
     }
 }
 
-// #[derive(SystemParam)]
-// pub struct Asky<'w, 's> {
 pub struct Asky {
-    // commands: Commands<'w, 's>,
     config: AskyParamConfig,
 }
 
@@ -71,17 +67,16 @@ pub struct AskyParamConfig {
     pub(crate) state: Arc<Mutex<AskyParamState>>,
 }
 
-// type ClosureCommand = dyn FnOnce(&mut Commands) -> Result<(), Error> + 'static + Send + Sync;
 type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>) -> Result<(), Error>
     + 'static
     + Send
     + Sync;
+
 // #[derive(Debug)]
 pub struct AskyParamState {
     pub(crate) closures: Vec<(Box<Closure>, Option<Entity>)>,
 }
 
-// impl<'w, 's> Asky<'w, 's> {
 impl Asky {
     fn new(config: AskyParamConfig) -> Self {
         Self { config }
@@ -663,22 +658,6 @@ impl Plugin for AskyPlugin {
 
 #[cfg(test)]
 mod tests {
-    // use super::divide_and_separate;
-    // #[test]
-    // fn test_divide_and_partition() {
-    //     let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-    //     let result: Vec<Vec<i32>> = divide_and_separate(data.into_iter(), |x| {
-    //         if x % 2 == 0 {
-    //             Ok(())
-    //         } else {
-    //             Err(())
-    //         }
-    //     })
-    //     .collect();
-
-    //     println!("{:?}", result);
-    // }
 
     #[test]
     fn test_scan() {
@@ -791,8 +770,6 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
             if match code {
                 // submit
                 KeyCode::Return => true,
-                // type
-                // KeyCode::Char(c) => self.input.insert(c),
                 // remove delete
                 KeyCode::Back => true,
                 KeyCode::Delete => true,
@@ -821,8 +798,6 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
             match code {
                 // submit
                 KeyCode::Return => submit = self.validate_to_submit(),
-                // type
-                // KeyCode::Char(c) => self.input.insert(c),
                 // remove delete
                 KeyCode::Back => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),
@@ -897,8 +872,6 @@ impl Typeable<KeyEvent> for Password<'_> {
             match code {
                 // submit
                 KeyCode::Return => submit = self.validate_to_submit(),
-                // type
-                // KeyCode::Char(c) => self.input.insert(c),
                 // remove delete
                 KeyCode::Back => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),
@@ -985,8 +958,6 @@ impl Typeable<KeyEvent> for crate::Text<'_> {
             match code {
                 // submit
                 KeyCode::Return => submit = self.validate_to_submit(),
-                // type
-                // KeyCode::Char(c) => self.input.insert(c),
                 // remove delete
                 KeyCode::Back => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),

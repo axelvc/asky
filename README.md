@@ -6,7 +6,7 @@ Good looking prompts for the terminal.
 
 ## Usage
 
-First of all, this is a library, so you need to add this to your project
+First of all, this is a library, so you need to add this to your project:
 
 ```bash
 cargo add asky
