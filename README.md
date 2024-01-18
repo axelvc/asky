@@ -191,7 +191,7 @@ There is experimental support for [bevy](https://bevyengine.org), a rust game en
 ```sh
 cargo run --features bevy --example bevy-funny
 ```
-
+![Movie of bevy-funny example](https://github.com/shanecelis/asky/assets/54390/8b51c3ac-b69f-436b-baa8-b9361baa2bfc)
 ## Mentions
 
 Inspired by:
