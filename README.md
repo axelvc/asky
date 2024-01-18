@@ -188,21 +188,130 @@ fn main() -> std::io::Result<()> {
 
 There is experimental support for [bevy](https://bevyengine.org), a rust game engine.
 
-### Examples
+### Bevy Examples
 
-One can use Asky with bevy in two ways: directly and using async.
+One can use Asky with bevy in two ways: without async or with async, i.e., the
+hard way and the easy way.
 
-#### Confirm Async
+### The Hard Way: Without Async
+
+If asky is used directly without async, one mediates the interaction through
+bevy's usual mechanisms: systems and components. See the
+[bevy/confirm.rs](examples/bevy/confirm.rs) example.
+
+The difficulty with this approach is like any naturally asynchronous problem, it
+is tricky to handle waiting to receive input in synchronous code. In the
+following example code, we setup asky `Confirm` then await a change of its state
+from `AskyState::Reading` to `AskyState::Complete`. We then mark it `Handled`
+with our own marker component so that we don't process completed AskyNodes more
+than once.
+
+Here is an excerpt of from the `bevy-confirm` example
+[code](examples/bevy/confirm.rs).
+
+``` rust
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // ...
+    let confirm: Confirm<'static> = Confirm::new("Do you like coffee?");
+    let node = NodeBundle {
+        style: Style {
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        ..default()
+    };
+    commands.spawn(node.clone()).with_children(|parent| {
+        parent
+            .spawn(node)
+            .insert(AskyNode(confirm, AskyState::Reading));
+    });
+}
+
+fn response(
+    mut commands: Commands,
+    mut query: Query<(Entity, &AskyNode<Confirm<'static>>), Without<Handled>>,
+) {
+    for (entity, prompt) in query.iter_mut() {
+        match prompt.1 {
+            AskyState::Complete => {
+                let response = match prompt.0.value() {
+                    Ok(yes) => {
+                        if yes {
+                            "Great, me too."
+                        } else {
+                            "Oh, ok."
+                        }
+                    }
+                    Err(_) => "Uh oh, had a problem.",
+                };
+
+                // Add our message.
+                let child = commands
+                    .spawn(NodeBundle { ..default() })
+                    .insert(AskyNode(Message::new(response), AskyState::Reading))
+                    .id();
+                // Mark this entity as handled.
+                commands
+                    .entity(entity)
+                    .push_children(&[child])
+                    .insert(Handled);
+            }
+            _ => {}
+        }
+    }
+}
+```
+
+#### The Easy Way: With Async
 
 ```sh
 cargo run --features bevy --example bevy-confirm-async
 ```
+
 ![Movie of bevy-confirm-async example](https://github.com/shanecelis/asky/assets/54390/8b51c3ac-b69f-436b-baa8-b9361baa2bfc)
+
+With async an `Asky` `SystemParam` is available in bevy after loading
+`AskyPlugin`. This will allow you to prompt the user with whatever Asky query
+you like and await its response asynchronously. As the excerpt from
+[bevy/confirm-async.rs](examples/bevy/confirm-async.rs) shows below, it is much
+more compact.
+
+```rust
+fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
+    query.get_single().ok().map(|id| async move {
+        if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
+            if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
+                let _ = asky
+                    .prompt(
+                        Message::new(format!("Hello, {first_name} {last_name}!")),
+                        id,
+                    )
+                    .await;
+            }
+        } else {
+            eprintln!("Got err in ask name.");
+        }
+    })
+}
+
+```
+
+There are limitations to what can go inside the `Future`. Because it is `async
+move` you can't take references to much of anything you normally have access to
+in a system. No `Commands`, no components. Why not? Because this future
+may be around for a while. And if we have shared or exclusive access to a
+component, we'd prevent other systems from accessing it.
+
+#### For fun
+
+Since it is easy to write these asky queries using async, here's an example just
+for fun. Note: It does not actually do anything with emails or passwords.
 
 ```sh
 cargo run --features bevy --example bevy-funny
 ```
 ![Movie of bevy-funny example](https://github.com/shanecelis/asky/assets/54390/8b51c3ac-b69f-436b-baa8-b9361baa2bfc)
+
 ## Mentions
 
 Inspired by:
