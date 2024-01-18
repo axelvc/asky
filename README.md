@@ -2,7 +2,7 @@
 
 > Ansi + ask + yes = Asky
 
-Good looking prompts for the terminal.
+Good looking prompts for the terminal (and maybe beyond).
 
 ## Usage
 
@@ -183,6 +183,14 @@ fn main() -> std::io::Result<()> {
 ```
 
 </details>
+
+## Bevy Support
+
+There is experimental support for [bevy](https://bevyengine.org), a rust game engine.
+
+```sh
+cargo run --features bevy --example bevy-funny
+```
 
 ## Mentions
 
