@@ -310,7 +310,7 @@ for fun. Note: It does not actually do anything with emails or passwords.
 ```sh
 cargo run --features bevy --example bevy-funny
 ```
-![Movie of bevy-funny example](https://github.com/shanecelis/asky/assets/54390/8b51c3ac-b69f-436b-baa8-b9361baa2bfc)
+![Movie of bevy-funny example](https://github.com/shanecelis/asky/assets/54390/2e0c7853-84c8-43c5-9cec-3f1d1a8feb2a)
 
 ## Mentions
 
