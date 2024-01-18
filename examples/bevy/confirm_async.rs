@@ -52,20 +52,18 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn ask_name(mut asky: Asky, query: Query<Entity, Added<Page>>) -> Option<impl Future<Output = ()>> {
-    query.get_single().ok().map(|id| {
-        async move {
-            if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
-                if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
-                    let _ = asky
-                        .prompt(
-                            Message::new(format!("Hello, {first_name} {last_name}!")),
-                            id,
-                        )
-                        .await;
-                }
-            } else {
-                eprintln!("Got err in ask name.");
+    query.get_single().ok().map(|id| async move {
+        if let Ok(first_name) = asky.prompt(Text::new("What's your first name? "), id).await {
+            if let Ok(last_name) = asky.prompt(Text::new("What's your last name? "), id).await {
+                let _ = asky
+                    .prompt(
+                        Message::new(format!("Hello, {first_name} {last_name}!")),
+                        id,
+                    )
+                    .await;
             }
+        } else {
+            eprintln!("Got err in ask name.");
         }
     })
 }

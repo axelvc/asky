@@ -188,6 +188,17 @@ fn main() -> std::io::Result<()> {
 
 There is experimental support for [bevy](https://bevyengine.org), a rust game engine.
 
+### Examples
+
+One can use Asky with bevy in two ways: directly and using async.
+
+#### Confirm Async
+
+```sh
+cargo run --features bevy --example bevy-confirm-async
+```
+![Movie of bevy-confirm-async example](https://github.com/shanecelis/asky/assets/54390/8b51c3ac-b69f-436b-baa8-b9361baa2bfc)
+
 ```sh
 cargo run --features bevy --example bevy-funny
 ```

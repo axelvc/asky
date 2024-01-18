@@ -29,8 +29,8 @@ use crate::{
     Valuable,
 };
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
-use itertools::Itertools;
 use futures_lite::future;
+use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
 
 #[derive(Component, Debug)]
@@ -398,10 +398,15 @@ fn cursorify(
         input = l.to_owned();
     }
     let cursor = Some(
-        to_colored_string(input.pop()
-                          // Newline is not printed. So use a space if necessary.
-                          .map(|c| if c == '\n' { ' ' } else { c })
-                          .expect("Could not get cursor").to_string()).on(cursor_color),
+        to_colored_string(
+            input
+                .pop()
+                // Newline is not printed. So use a space if necessary.
+                .map(|c| if c == '\n' { ' ' } else { c })
+                .expect("Could not get cursor")
+                .to_string(),
+        )
+        .on(cursor_color),
     );
     let left = Some(to_colored_string(input));
     left.into_iter()
@@ -414,7 +419,7 @@ fn cursorify_iter(
     cursor_color: text_style::Color,
 ) -> impl Iterator<Item = StyledString> {
     let mut count = 0;
-    let a = iter.flat_map(move |ss| {
+    iter.flat_map(move |ss| {
         let l = ss.s.chars().count();
         let has_index = cursor_pos < count + l && cursor_pos >= count;
 
@@ -428,15 +433,7 @@ fn cursorify_iter(
 
         count += l;
         a.into_iter().flatten().chain(b.into_iter())
-    });
-
-    // This cursor may go beyond the string, often only by 1.
-    // let b = (i > count).then_some({
-    //     dbg!(i);
-    //     dbg!(count);
-    //     StyledString::plain(" ".into()).on(cursor_color)
-    // });
-    a//.chain(b.into_iter())
+    })
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
