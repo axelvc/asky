@@ -103,9 +103,9 @@ impl Printable for Toggle<'_> {
                        Print(&self.message),
                        style.end(Query(true)),
 
-                       style.begin(Answer),
+                       style.begin(Answer(true)),
                        Print(&self.options[self.active as usize]),
-                       style.end(Answer),
+                       style.end(Answer(true)),
                 )?;
                 // style.begin(writer, Section::Answered)?;
                 // queue!(writer, Print(self.message.to_string()))?;

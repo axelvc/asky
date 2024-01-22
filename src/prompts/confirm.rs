@@ -116,9 +116,9 @@ impl Printable for Confirm<'_> {
                        Print(self.message.to_string()),
                        style.end(Query(true)),
 
-                       style.begin(Answer),
+                       style.begin(Answer(true)),
                        Print(options[self.active as usize]),
-                       style.end(Answer),
+                       style.end(Answer(true)),
                 )?;
                 // style.begin(writer, Section::Answered)?;
                 // queue!(writer, Print(self.message.to_string()))?;

@@ -14,6 +14,8 @@ pub enum Direction {
     Left,
     Right,
 }
+use crate::style::{DefaultStyle, Style, Section, Region};
+use crossterm::{queue, style::{Print}};
 
 // region: SelectOption
 
@@ -308,10 +310,54 @@ impl<T> Valuable for Select<'_, T> {
 
 impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
+        use Section::*;
+        let draw_time = renderer.draw_time();
+        let style = DefaultStyle { ascii: true };
+
+        renderer.print2(|writer| {
+            if draw_time == DrawTime::Last {
+
+                queue!(writer,
+                       style.begin(Query(true)),
+                       Print(self.message.to_string()),
+                       style.end(Query(true)),
+
+                       style.begin(Answer(true)),
+                       Print(&self.options[self.input.focused].title),
+                       style.end(Answer(true)),
+                )?;
+                Ok(1)
+            } else {
+                queue!(writer,
+                       style.begin(Query(false)),
+                       Print(self.message.to_string()),
+                       style.end(Query(false)),
+                       )?;
+
+
+                let items_per_page = self.input.items_per_page;
+                let total = self.input.total_items;
+
+                let page_len = items_per_page.min(total);
+                let page_start = self.input.get_page() * items_per_page;
+                let page_end = (page_start + page_len).min(total);
+                let page_focused = self.input.focused % items_per_page;
+
+                for option in self.options[page_start..page_end]
+                    .iter()
+                    .enumerate() {
+                            queue!(writer,
+                                style.begin(Option(true)),
+                                Print(&option.1.title),
+                                style.end(Option(true)),
+                                )?;
+
+                }
+                Ok((1 + page_end - page_start) as u16)
+            }
+        })
     }
+
 }
 
 #[cfg(feature = "terminal")]

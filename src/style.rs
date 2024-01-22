@@ -46,7 +46,12 @@ impl Style for DefaultStyle {
                         Print(" ").write_ansi(f)?;
                     }
                 },
-                Answer => SetForegroundColor(Color::Magenta).write_ansi(f)?, // was purple
+                Answer(show) => {
+                    SetForegroundColor(Color::Magenta).write_ansi(f)?;
+                    if ! show {
+                        Print(if self.ascii { "..." } else { "…" }).write_ansi(f)?;
+                    }
+                }, // was purple
                 Option(selected) =>
                     if selected {
                         SetForegroundColor(Color::Black).write_ansi(f)?;
@@ -80,7 +85,7 @@ impl Style for DefaultStyle {
                 } else {
                     Print("\n").write_ansi(f)?;
                 },
-                Answer => {
+                Answer(_) => {
                     ResetColor.write_ansi(f)?;
                     Print("\n").write_ansi(f)?;
                 },
@@ -110,7 +115,7 @@ pub struct StyledRegion<T>(T, Region);
 pub enum Section {
     Query(bool), // if answered -> Query(true)
     // Answered,
-    Answer,
+    Answer(bool), // if show -> Answer(true)
     DefaultAnswer,
     Message,
     Option(bool), // if selected -> Option(true)

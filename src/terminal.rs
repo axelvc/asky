@@ -207,9 +207,9 @@ impl Printable for Text<'_> {
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
-                    style.begin(Answer),
+                    style.begin(Answer(true)),
                     Print(&self.input.value),
-                    style.end(Answer),
+                    style.end(Answer(true)),
                 )?;
                 Ok(1)
             } else {
@@ -319,9 +319,9 @@ impl<T: NumLike> Printable for Number<'_, T> {
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
-                    style.begin(Answer),
+                    style.begin(Answer(true)),
                     Print(&self.input.value),
-                    style.end(Answer),
+                    style.end(Answer(true)),
                 )?;
                 Ok(1)
             } else {
@@ -446,10 +446,8 @@ impl Printable for Password<'_> {
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
-                    style.begin(Answer),
-                    // Print(if self.ascii { "..." } else { "…" }),
-                    Print("…"),
-                    style.end(Answer),
+                    style.begin(Answer(false)),
+                    style.end(Answer(false)),
                 )?;
                 Ok(1)
             } else {
