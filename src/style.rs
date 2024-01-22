@@ -60,15 +60,16 @@ impl Style for DefaultStyle {
                 Message => {},
                 Validator(valid) => {
                     SetForegroundColor(if valid { Color::Blue } else { Color::Red }).write_ansi(f)?;
-                    Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
-                    SetForegroundColor(Color::Reset).write_ansi(f)?;
-                    Print(" ").write_ansi(f)?;
                 },
                 Placeholder => {
                     SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                     Print("Default: ").write_ansi(f)?;
                 },
                 Input => {
+                    SetForegroundColor(Color::Blue).write_ansi(f)?;
+                    Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
+                    SetForegroundColor(Color::Reset).write_ansi(f)?;
+                    Print(" ").write_ansi(f)?;
                     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                 },
                 x => todo!("{:?} not impl", x),

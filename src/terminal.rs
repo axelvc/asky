@@ -192,10 +192,65 @@ impl Printable for Text<'_> {
         false
     }
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)?;
-        renderer.set_cursor(cursor)
+        // let mut out = ColoredStrings::default();
+        // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        // renderer.print(out)?;
+        // renderer.set_cursor(cursor)
+        use crate::style::Section::*;
+        let style = DefaultStyle { ascii: true };
+        let draw_time = renderer.draw_time();
+
+        renderer.print2(|writer| {
+            if draw_time == DrawTime::Last {
+
+                queue!(writer,
+                    style.begin(Query(true)),
+                    Print(self.message.to_string()),
+                    style.end(Query(true)),
+                    style.begin(Answer),
+                    Print(self.input.value.to_string()),
+                    style.end(Answer),
+                )?;
+                Ok(1)
+            } else {
+                queue!(writer,
+                    style.begin(Query(false)),
+                    Print(self.message.to_string()),
+                    style.end(Query(false)),
+                )?;
+                if let Some(x) = self.default_value {
+                    queue!(writer,
+                        style.begin(DefaultAnswer),
+                        Print(self.message.to_string()),
+                        style.end(DefaultAnswer),
+                    )?;
+                }
+                queue!(writer,
+                       style.begin(Input),
+                       Print(self.input.value.to_string()))?;
+                if self.input.value.is_empty() {
+                    if let Some(placeholder) = self.placeholder {
+                        queue!(writer,
+                                style.begin(Placeholder),
+                                Print(placeholder),
+                                style.end(Placeholder),
+                            )?;
+                    }
+                }
+                queue!(writer,
+                       style.end(Input),
+                       )?;
+                if let Err(error) = self.validator_result {
+                    queue!(writer,
+                        style.begin(Validator(false)),
+                        Print(error),
+                        style.end(Validator(false)),
+                        )?;
+                }
+                Ok(2)
+            }
+        })?;
+        renderer.set_cursor([2 + self.input.col, 1])
     }
 }
 
@@ -282,11 +337,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
                         style.end(DefaultAnswer),
                     )?;
                 }
-                let is_valid = self.validator_result.is_ok();
-                queue!(writer,
-                       style.begin(Validator(is_valid)),
-                       style.end(Validator(is_valid)),
-                       )?;
                 if self.input.value.is_empty() {
                     if let Some(placeholder) = self.placeholder {
                         queue!(writer,
@@ -295,13 +345,15 @@ impl<T: NumLike> Printable for Number<'_, T> {
                                 style.end(Placeholder),
                             )?;
                     }
-                } else {
-                    queue!(writer,
-                            style.begin(Input),
-                            Print(self.input.value.to_string()),
-                            style.end(Input),
-                           )?;
                 }
+                let is_valid = self.validator_result.is_ok();
+                queue!(writer,
+                        style.begin(Validator(is_valid)),
+                        style.begin(Input),
+                        Print(self.input.value.to_string()),
+                        style.end(Input),
+                       style.end(Validator(is_valid)),
+                        )?;
                 Ok(2)
             }
         })?;
