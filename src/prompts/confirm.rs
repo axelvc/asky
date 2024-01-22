@@ -6,7 +6,7 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
-use crate::style::{DefaultStyle, Style, Section, Group, MyStyle, Style2};
+use crate::style::{DefaultStyle, Style, Section, Region, MyStyle, Style2};
 // use colored::ColoredStrings;
 use crate::ColoredStrings;
 use crossterm::{queue, style::{Print}};
@@ -104,7 +104,7 @@ impl Valuable for Confirm<'_> {
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         // let style = self.style.unwrap_or(DefaultStyle::default());
-        use Group::*;
+        use Region::*;
         use Section::*;
         let mut style = DefaultStyle::default();
         let draw_time = renderer.draw_time();
@@ -113,28 +113,35 @@ impl Printable for Confirm<'_> {
         let options = ["No", "Yes"];
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-                style.begin(writer, Section::Answered)?;
-                queue!(writer, Print(self.message.to_string()))?;
-                style.end(writer)?;
-                style.begin(writer, Section::Answer)?;
-                queue!(writer, Print(options[self.active as usize]))?;
-                style.end(writer)?;
-                Ok(1)
-            } else {
-                // style.begin(writer, Section::Query)?;
+
                 queue!(writer,
-                       style2.begin(Query),
+                       style2.begin(Query(true)),
                        Print(self.message.to_string()),
-                       style2.end(Query),
+                       style2.end(Query(true)),
+
+                       style2.begin(Answer),
+                       Print(options[self.active as usize]),
+                       style2.end(Answer),
                 )?;
+                // style.begin(writer, Section::Answered)?;
                 // queue!(writer, Print(self.message.to_string()))?;
                 // style.end(writer)?;
-                style.begin(writer, Section::Option(!self.active))?;
-                queue!(writer, Print(options[0]))?;
-                style.end(writer)?;
-                style.begin(writer, Section::Option(self.active))?;
-                queue!(writer, Print(options[1]))?;
-                style.end(writer)?;
+                // style.begin(writer, Section::Answer)?;
+                // queue!(writer, Print(options[self.active as usize]))?;
+                // style.end(writer)?;
+                Ok(1)
+            } else {
+                queue!(writer,
+                       style2.begin(Query(false)),
+                       Print(self.message.to_string()),
+                       style2.end(Query(false)),
+                       style2.begin(Option(!self.active)),
+                       Print(options[0]),
+                       style2.end(Option(!self.active)),
+                       style2.begin(Option(self.active)),
+                       Print(options[1]),
+                       style2.end(Option(self.active)),
+                )?;
                 Ok(2)
             }
         })
