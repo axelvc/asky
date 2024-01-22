@@ -10,6 +10,7 @@ use crate::prompts::text::Direction;
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::{cursor, execute, queue, style::Print, terminal};
+use crate::style::{DefaultStyle, Style, Section, Region};
 
 pub struct TermRenderer {
     pub draw_time: DrawTime,
@@ -241,10 +242,63 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 
 impl<T: NumLike> Printable for Number<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)?;
-        renderer.set_cursor(cursor)
+        // let mut out = ColoredStrings::default();
+        // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+        // renderer.print(out)?;
+        // renderer.set_cursor(cursor)
+        //
+        use crate::style::Section::*;
+        let style = DefaultStyle { ascii: true };
+        let draw_time = renderer.draw_time();
+
+        renderer.print2(|writer| {
+            if draw_time == DrawTime::Last {
+
+                queue!(writer,
+                    style.begin(Query(true)),
+                    Print(self.message.to_string()),
+                    style.end(Query(true)),
+                    style.begin(Answer),
+                    Print(self.input.value.to_string()),
+                    style.end(Answer),
+                )?;
+                Ok(1)
+            } else {
+                queue!(writer,
+                    style.begin(Query(false)),
+                    Print(self.message.to_string()),
+                    style.end(Query(false)),
+                )?;
+                if let Some(x) = self.default_value {
+                    queue!(writer,
+                        style.begin(DefaultAnswer),
+                        Print(self.message.to_string()),
+                        style.end(DefaultAnswer),
+                    )?;
+                }
+                let is_valid = self.validator_result.is_ok();
+                queue!(writer,
+                       style.begin(Validator(is_valid)),
+                       style.end(Validator(is_valid)),
+                       )?;
+                if self.input.value.is_empty() {
+                    if let Some(placeholder) = self.placeholder {
+                        queue!(writer,
+                                style.begin(Placeholder),
+                                Print(placeholder),
+                                style.end(Placeholder),
+                            )?;
+                    }
+                } else {
+                    queue!(writer,
+                            style.begin(Input),
+                            Print(self.input.value.to_string()),
+                            style.end(Input),
+                           )?;
+                }
+                Ok(1)
+            }
+        })
     }
 }
 

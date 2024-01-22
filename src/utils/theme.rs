@@ -307,6 +307,7 @@ pub fn fmt_number2<T: NumLike>(
     out.push("\n".into());
     fmt_line_validator2(&prompt.validator_result, out);
     get_cursor_position(prompt.input.col)
+
 }
 
 // region: general
@@ -436,6 +437,7 @@ fn fmt_line_input(
 
     format!("{} {}", prefix, input)
 }
+
 
 fn fmt_line_input2(
     input: &str,

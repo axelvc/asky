@@ -8,6 +8,8 @@ use crate::utils::theme;
 use crate::ColoredStrings;
 use crate::Error;
 use crate::Valuable;
+use crossterm::{queue, style::Print};
+use crate::style::{Style, DefaultStyle};
 
 type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -90,9 +92,17 @@ impl<'a> Message<'a> {
 
 impl Printable for Message<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
+        use crate::style::Section::*;
+        let style = DefaultStyle { ascii: true };
+        renderer.print2(|writer| {
+
+            queue!(writer,
+                style.begin(Message),
+                Print(self.message.to_string()),
+                style.end(Message),
+                   )?;
+            Ok(1)
+        })
     }
 }
 

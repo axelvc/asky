@@ -3,12 +3,11 @@ use crossterm::{queue, execute, Command, {style::{Color, SetForegroundColor, Set
 use std::io::{Error,Write};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug)]
-pub struct MyStyle {
-    pub ascii: bool,
-}
+// pub struct Style {
+//     pub ascii: bool,
+// }
 
-pub trait Style2 {
+pub trait Style {
     fn begin(&self, section: Section) -> StyledRegion<Self> where Self: Sized + Clone{
         StyledRegion(self.clone(), Region::Begin(section))
     }
@@ -28,7 +27,7 @@ pub trait Style2 {
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result;
 }
 
-impl Style2 for MyStyle {
+impl Style for DefaultStyle {
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result {
         use Region::*;
         use Section::*;
@@ -58,7 +57,21 @@ impl Style2 for MyStyle {
                         SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
                         Print(" ").write_ansi(f)?;
                     },
-                _ => todo!(),
+                Message => {},
+                Validator(valid) => {
+                    SetForegroundColor(if valid { Color::Blue } else { Color::Red }).write_ansi(f)?;
+                    Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
+                    SetForegroundColor(Color::Reset).write_ansi(f)?;
+                    Print(" ").write_ansi(f)?;
+                },
+                Placeholder => {
+                    SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                    Print("Default: ").write_ansi(f)?;
+                },
+                Input => {
+                    // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                },
+                x => todo!("{:?} not impl", x),
                 },
             End(section) => match section {
                 Query(answered) => if answered {
@@ -75,6 +88,7 @@ impl Style2 for MyStyle {
                     ResetColor.write_ansi(f)?;
                     Print("  ").write_ansi(f)?;
                 },
+                Message => Print("\n").write_ansi(f)?,
                 _ => ResetColor.write_ansi(f)?,
             },
         }
@@ -96,14 +110,19 @@ pub enum Section {
     Query(bool), // if answered -> Query(true)
     // Answered,
     Answer,
+    DefaultAnswer,
+    Message,
     Option(bool), // if selected -> Option(true)
     OptionExclusive(bool),
     List,
     ListItem,
     Cursor,
+    Placeholder,
+    Validator(bool), // if valid -> Validator(true)
+    Input,
 }
 
-impl<T: Style2> Command for StyledRegion<T> {
+impl<T: Style> Command for StyledRegion<T> {
     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
         self.0.write_ansi(self.1, f)
     }
@@ -133,24 +152,23 @@ impl<T: Style2> Command for StyledRegion<T> {
 //     }
 // }
 
+#[derive(Clone, Copy, Debug)]
 pub struct DefaultStyle {
-    ascii: bool,
-    stack: Vec<Section>
+    pub ascii: bool,
 }
 
 impl Default for DefaultStyle {
     fn default() -> Self {
         Self {
             ascii: false,
-            stack: Vec::new()
         }
     }
 }
 
-pub trait Style<T,E> {
-    fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), E>;
-    fn end(&mut self, writer: &mut T) -> Result<(), E>;
-}
+// pub trait Style<T,E> {
+//     fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), E>;
+//     fn end(&mut self, writer: &mut T) -> Result<(), E>;
+// }
 
 // impl<T: WriteColor> Style<T, Error> for DefaultStyle {
 //     fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), Error> {

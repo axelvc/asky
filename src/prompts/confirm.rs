@@ -6,9 +6,9 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
-use crate::style::{DefaultStyle, Style, Section, Region, MyStyle, Style2};
 // use colored::ColoredStrings;
 use crate::ColoredStrings;
+use crate::style::{DefaultStyle, Style, Section, Region};
 use crossterm::{queue, style::{Print}};
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
@@ -106,22 +106,21 @@ impl Printable for Confirm<'_> {
         // let style = self.style.unwrap_or(DefaultStyle::default());
         use Region::*;
         use Section::*;
-        let mut style = DefaultStyle::default();
         let draw_time = renderer.draw_time();
-        let mut style2 = MyStyle { ascii: true };
+        let style = DefaultStyle { ascii: true };
 
         let options = ["No", "Yes"];
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
 
                 queue!(writer,
-                       style2.begin(Query(true)),
+                       style.begin(Query(true)),
                        Print(self.message.to_string()),
-                       style2.end(Query(true)),
+                       style.end(Query(true)),
 
-                       style2.begin(Answer),
+                       style.begin(Answer),
                        Print(options[self.active as usize]),
-                       style2.end(Answer),
+                       style.end(Answer),
                 )?;
                 // style.begin(writer, Section::Answered)?;
                 // queue!(writer, Print(self.message.to_string()))?;
@@ -132,15 +131,15 @@ impl Printable for Confirm<'_> {
                 Ok(1)
             } else {
                 queue!(writer,
-                       style2.begin(Query(false)),
+                       style.begin(Query(false)),
                        Print(self.message.to_string()),
-                       style2.end(Query(false)),
-                       style2.begin(Option(!self.active)),
+                       style.end(Query(false)),
+                       style.begin(Option(!self.active)),
                        Print(options[0]),
-                       style2.end(Option(!self.active)),
-                       style2.begin(Option(self.active)),
+                       style.end(Option(!self.active)),
+                       style.begin(Option(self.active)),
                        Print(options[1]),
-                       style2.end(Option(self.active)),
+                       style.end(Option(self.active)),
                 )?;
                 Ok(2)
             }
