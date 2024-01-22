@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 use std::borrow::Cow;
 
@@ -6,8 +6,10 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
+use crate::style::{DefaultStyle, Style, Section, Group, MyStyle, Style2};
 // use colored::ColoredStrings;
 use crate::ColoredStrings;
+use crossterm::{queue, style::{Print}};
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -90,13 +92,57 @@ impl Valuable for Confirm<'_> {
     }
 }
 
+// impl Write for Terminal {}
+
+// impl Write for Bevy {}
+
+// trait Formatter {
+//     fn message(&mut self, fmt: &mut Formatter) -> Result<(), Error>;
+// }
+// struct Run(F) where F : FnOnce(;
+
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        // Maybe we can unify these?
-        // renderer.hide_cursor()?;
-        renderer.print(out)
+        // let style = self.style.unwrap_or(DefaultStyle::default());
+        use Group::*;
+        use Section::*;
+        let mut style = DefaultStyle::default();
+        let draw_time = renderer.draw_time();
+        let mut style2 = MyStyle { ascii: true };
+
+        let options = ["No", "Yes"];
+        renderer.print2(|writer| {
+            if draw_time == DrawTime::Last {
+                style.begin(writer, Section::Answered)?;
+                queue!(writer, Print(self.message.to_string()))?;
+                style.end(writer)?;
+                style.begin(writer, Section::Answer)?;
+                queue!(writer, Print(options[self.active as usize]))?;
+                style.end(writer)?;
+                Ok(1)
+            } else {
+                // style.begin(writer, Section::Query)?;
+                queue!(writer,
+                       style2.begin(Query),
+                       Print(self.message.to_string()),
+                       style2.end(Query),
+                )?;
+                // queue!(writer, Print(self.message.to_string()))?;
+                // style.end(writer)?;
+                style.begin(writer, Section::Option(!self.active))?;
+                queue!(writer, Print(options[0]))?;
+                style.end(writer)?;
+                style.begin(writer, Section::Option(self.active))?;
+                queue!(writer, Print(options[1]))?;
+                style.end(writer)?;
+                Ok(2)
+            }
+        })
+        // let mut out = ColoredStrings::default();
+        // (self.formatter)(self, renderer.draw_time(), &mut out);
+        // // Maybe we can unify these?
+        // // renderer.hide_cursor()?;
+        // renderer.print(out)
     }
 }
 

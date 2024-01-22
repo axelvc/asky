@@ -156,3 +156,5 @@ mod terminal;
 
 #[cfg(feature = "bevy")]
 pub mod bevy;
+
+mod style;

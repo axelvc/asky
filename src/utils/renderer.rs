@@ -1,5 +1,5 @@
 // #[cfg(feature="terminal")]
-use std::io;
+use std::io::{self, Write, Stdout};
 
 use crate::ColoredStrings;
 pub trait Printable {
@@ -19,8 +19,12 @@ pub enum DrawTime {
 }
 
 pub trait Renderer {
+    type Writer: Write;
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
+
+    fn print2<F>(&mut self, draw_text: F) -> io::Result<()> where F : FnOnce(&mut Self::Writer) -> io::Result<u16>;
+    // fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
