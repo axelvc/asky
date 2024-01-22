@@ -158,7 +158,7 @@ where
     type Output = T::Output;
 
     fn prompt(&mut self) -> Result<Self::Output, crate::Error> {
-        crate::utils::key_listener::listen(self, true)?;
+        crate::utils::key_listener::listen(self, self.hide_cursor())?;
         self.value()
     }
 }
@@ -188,6 +188,9 @@ impl Typeable<KeyEvent> for Text<'_> {
 }
 
 impl Printable for Text<'_> {
+    fn hide_cursor(&self) -> bool {
+        false
+    }
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let mut out = ColoredStrings::default();
         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -241,6 +244,9 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
 }
 
 impl<T: NumLike> Printable for Number<'_, T> {
+    fn hide_cursor(&self) -> bool {
+        false
+    }
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         // let mut out = ColoredStrings::default();
         // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
@@ -296,9 +302,10 @@ impl<T: NumLike> Printable for Number<'_, T> {
                             style.end(Input),
                            )?;
                 }
-                Ok(1)
+                Ok(2)
             }
-        })
+        })?;
+        renderer.set_cursor([2 + self.input.col, 1])
     }
 }
 

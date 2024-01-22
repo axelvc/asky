@@ -3,6 +3,9 @@ use std::io::{self, Write, Stdout};
 
 use crate::ColoredStrings;
 pub trait Printable {
+    fn hide_cursor(&self) -> bool {
+        true
+    }
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()>;
 }
 
