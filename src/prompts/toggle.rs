@@ -9,6 +9,8 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
+use crate::style::{DefaultStyle, Style, Section, Region};
+use crossterm::{queue, style::{Print}};
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -89,9 +91,44 @@ impl<'a> Toggle<'a> {
 
 impl Printable for Toggle<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
+        use Section::*;
+        let draw_time = renderer.draw_time();
+        let style = DefaultStyle { ascii: true };
+
+        renderer.print2(|writer| {
+            if draw_time == DrawTime::Last {
+
+                queue!(writer,
+                       style.begin(Query(true)),
+                       Print(&self.message),
+                       style.end(Query(true)),
+
+                       style.begin(Answer),
+                       Print(&self.options[self.active as usize]),
+                       style.end(Answer),
+                )?;
+                // style.begin(writer, Section::Answered)?;
+                // queue!(writer, Print(self.message.to_string()))?;
+                // style.end(writer)?;
+                // style.begin(writer, Section::Answer)?;
+                // queue!(writer, Print(options[self.active as usize]))?;
+                // style.end(writer)?;
+                Ok(1)
+            } else {
+                queue!(writer,
+                       style.begin(Query(false)),
+                       Print(&self.message),
+                       style.end(Query(false)),
+                       style.begin(Option(!self.active)),
+                       Print(&self.options[0]),
+                       style.end(Option(!self.active)),
+                       style.begin(Option(self.active)),
+                       Print(&self.options[1]),
+                       style.end(Option(self.active)),
+                )?;
+                Ok(2)
+            }
+        })
     }
 }
 

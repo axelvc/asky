@@ -103,8 +103,6 @@ impl Valuable for Confirm<'_> {
 
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        // let style = self.style.unwrap_or(DefaultStyle::default());
-        use Region::*;
         use Section::*;
         let draw_time = renderer.draw_time();
         let style = DefaultStyle { ascii: true };
