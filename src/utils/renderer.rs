@@ -1,4 +1,3 @@
-// #[cfg(feature="terminal")]
 use std::io::{self, Stdout, Write};
 
 pub trait Printable {

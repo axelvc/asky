@@ -1,4 +1,6 @@
-// use termcolor::{Color, ColorSpec, WriteColor};
+use std::fmt;
+use std::io::{Error, Write};
+use bitflags::bitflags;
 use crossterm::{
     execute, queue,
     style::{
@@ -6,12 +8,43 @@ use crossterm::{
     },
     Command,
 };
-use std::fmt;
-use std::io::{Error, Write};
 
-// pub struct Style {
-//     pub ascii: bool,
-// }
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct Flags: u8 {
+        const Focused  = 0b00000001;
+        const Selected = 0b00000010;
+        const Disabled = 0b00000100;
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Section {
+    Query(bool), // if answered -> Query(true)
+    // Answered,
+    Answer(bool), // if show -> Answer(true)
+    DefaultAnswer,
+    Message,
+    Toggle(bool),  // if selected -> Toggle(true)
+    Option(Flags), // if selected -> Toggle(true)
+    OptionExclusive(Flags),
+    List,
+    ListItem(bool), // if first -> ListItem(true)
+    Cursor,
+    Placeholder,
+    Validator(bool), // if valid -> Validator(true)
+    Input,
+    Page(u8, u8), // Page 0 of 8 -> Page(0, 8)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Region {
+    Begin(Section),
+    End(Section),
+    // Wrap(Section, Box<dyn Command>),
+}
+
+pub struct StyledRegion<T>(T, Region);
 
 pub trait Style {
     fn begin(&self, section: Section) -> StyledRegion<Self>
@@ -37,6 +70,17 @@ pub trait Style {
     // }
 
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DefaultStyle {
+    pub ascii: bool,
+}
+
+impl Default for DefaultStyle {
+    fn default() -> Self {
+        Self { ascii: false }
+    }
 }
 
 impl Style for DefaultStyle {
@@ -237,44 +281,6 @@ impl Style for DefaultStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Region {
-    Begin(Section),
-    End(Section),
-    // Wrap(Section, Box<dyn Command>),
-}
-use bitflags::bitflags;
-
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct Flags: u8 {
-        const Focused  = 0b00000001;
-        const Selected = 0b00000010;
-        const Disabled = 0b00000100;
-    }
-}
-
-pub struct StyledRegion<T>(T, Region);
-
-#[derive(Clone, Copy, Debug)]
-pub enum Section {
-    Query(bool), // if answered -> Query(true)
-    // Answered,
-    Answer(bool), // if show -> Answer(true)
-    DefaultAnswer,
-    Message,
-    Toggle(bool),  // if selected -> Toggle(true)
-    Option(Flags), // if selected -> Toggle(true)
-    OptionExclusive(Flags),
-    List,
-    ListItem(bool), // if first -> ListItem(true)
-    Cursor,
-    Placeholder,
-    Validator(bool), // if valid -> Validator(true)
-    Input,
-    Page(u8, u8), // Page 0 of 8 -> Page(0, 8)
-}
-
 impl<T: Style> Command for StyledRegion<T> {
     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
         self.0.write_ansi(self.1, f)
@@ -302,113 +308,5 @@ impl<T: Style> Command for StyledRegion<T> {
 //             },
 //         }
 //         Ok(())
-//     }
-// }
-
-#[derive(Clone, Copy, Debug)]
-pub struct DefaultStyle {
-    pub ascii: bool,
-}
-
-impl Default for DefaultStyle {
-    fn default() -> Self {
-        Self { ascii: false }
-    }
-}
-
-// pub trait Style<T,E> {
-//     fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), E>;
-//     fn end(&mut self, writer: &mut T) -> Result<(), E>;
-// }
-
-// impl<T: WriteColor> Style<T, Error> for DefaultStyle {
-//     fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), Error> {
-//         match &section {
-//             Section::Query => {
-//                 writer.set_color(ColorSpec::new().set_fg(Some(Color::Blue)))?;
-//                 if self.ascii {
-//                     write!(writer, "[x]")?;
-//                 } else {
-//                     write!(writer, "▣")?;
-//                 }
-//                 writer.reset()?;
-//             },
-//             _ => todo!(),
-//         }
-//         self.stack.push(section);
-//         Ok(())
-//     }
-
-//     fn end(&mut self, writer: &mut T) -> Result<(),Error> {
-//         match self.stack.pop().expect("No matching begin") {
-//             Section::Query => write!(writer, "\n")?,
-//             _ => todo!(),
-//         }
-//         Ok(())
-//     }
-// }
-
-// impl<T: Write> Style<T, Error> for DefaultStyle {
-//     fn begin(&mut self, writer: &mut T, section: Section) -> Result<(), Error> {
-//         match &section {
-//             Section::Query => {
-//                 queue!(writer,
-//                        SetForegroundColor(Color::Blue),
-//                        Print(if self.ascii { "[ ]" } else { "▣" }),
-//                        SetForegroundColor(Color::Reset),
-//                        Print(" "))?;
-//             },
-//             Section::Answered => {
-//                 queue!(writer, SetForegroundColor(Color::Green))?;
-//                 if self.ascii {
-//                     write!(writer, "[x] ")?;
-//                 } else {
-//                     write!(writer, "■ ")?;
-//                 }
-//                 queue!(writer, SetForegroundColor(Color::Reset))?;
-//             },
-//             Section::Answer => queue!(writer, SetForegroundColor(Color::Magenta))?, // was purple
-//             Section::Toggle(selected) =>
-//                 if *selected {
-//                     queue!(writer,
-//                              SetForegroundColor(Color::Black),
-//                              SetBackgroundColor(Color::Blue),
-//                              Print(" "))?;
-//                 } else {
-//                     queue!(writer,
-//                              SetForegroundColor(Color::White),
-//                              SetBackgroundColor(Color::DarkGrey), // bright black
-//                              Print(" "))?;
-//                 },
-//             _ => todo!(),
-//         }
-//         self.stack.push(section);
-//         Ok(())
-//     }
-
-//     fn end(&mut self, writer: &mut T) -> Result<(),Error> {
-//         // match self.stack.pop().expect("No matching begin") {
-//         match self.stack.pop().unwrap_or(Section::OptionExclusive(false)) {
-//             Section::Query(answered) => queue!(writer, Print(if answered { " " } else { "\n" }))?,
-//             Section::Answer => queue!(writer, ResetColor, Print("\n"))?,
-//             // Section::Answered => queue!(writer, Print(" "))?,
-//             Section::Toggle(_) => queue!(writer, Print(" "), ResetColor, Print("  "))?,
-//             // Section::Answer => queue!(writer, ResetColor)?,
-//             // _ => todo!(),
-//             _ => queue!(writer, ResetColor)?,
-//         }
-//         Ok(())
-//     }
-// }
-
-// impl Styler for ColoredStrings {
-
-//     fn message(&mut self, writer: &mut WriteColor) -> Result<()> {
-//         writer.set_color(ColorSpec::new().set_fg(&Some(Color::Blue)));
-//         write!(writer, "▣");
-//         writer.reset();
-//         write!(writer, " {}", );
-//         self.extend(
-//         out.extend(["▣".blue(), " ".into(), message.into()]);
 //     }
 // }
