@@ -5,7 +5,7 @@ use std::io;
 use crate::Error;
 use crate::Valuable;
 
-use crate::style::{DefaultStyle, Region, Section, Style};
+use crate::style::{DefaultStyle, Section, Style};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,

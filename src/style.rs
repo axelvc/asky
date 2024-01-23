@@ -1,8 +1,7 @@
 use std::fmt;
-use std::io::{Error, Write};
+use std::io::{Write};
 use bitflags::bitflags;
 use crossterm::{
-    execute, queue,
     style::{
         Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
     },
@@ -73,15 +72,12 @@ pub trait Style {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[derive(Default)]
 pub struct DefaultStyle {
     pub ascii: bool,
 }
 
-impl Default for DefaultStyle {
-    fn default() -> Self {
-        Self { ascii: false }
-    }
-}
+
 
 impl Style for DefaultStyle {
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result {
@@ -228,7 +224,7 @@ impl Style for DefaultStyle {
                 }
                 List => Print("[").write_ansi(f)?,
                 ListItem(first) => {
-                    if (!first) {
+                    if !first {
                         Print(", ").write_ansi(f)?;
                     }
                 }
@@ -267,7 +263,7 @@ impl Style for DefaultStyle {
                     ResetColor.write_ansi(f)?;
                     Print("  ").write_ansi(f)?;
                 }
-                OptionExclusive(flags) | Option(flags) => {
+                OptionExclusive(_flags) | Option(_flags) => {
                     Print("\n").write_ansi(f)?;
                     ResetColor.write_ansi(f)?;
                 }

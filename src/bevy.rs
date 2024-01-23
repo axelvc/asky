@@ -249,8 +249,8 @@ pub fn poll_tasks_err<T: Send + Sync + 'static>(
     for (entity, mut task) in &mut tasks {
         if let Some(result) = block_on(future::poll_once(&mut task.0)) {
             // Once
-            if let Err(_error) = result {
-                eprintln!("Got here.");
+            if let Err(error) = result {
+                eprintln!("Got here {:?}.", error);
                 // FIXME: I need the right entity to make this work.
                 // let _ = asky.prompt(Message::new(format!("{:?}", error)), entity);
                 commands.entity(entity).despawn();

@@ -14,7 +14,7 @@ pub enum Direction {
     Left,
     Right,
 }
-use crate::style::{DefaultStyle, Flags, Region, Section, Style};
+use crate::style::{DefaultStyle, Flags, Section, Style};
 use crossterm::{queue, style::Print};
 
 // region: SelectOption
@@ -344,10 +344,10 @@ impl<T> Printable for Select<'_, T> {
 
                 for (n, option) in self.options[page_start..page_end].iter().enumerate() {
                     let mut flags = Flags::empty();
-                    if (n == page_focused) {
+                    if n == page_focused {
                         flags |= Flags::Focused;
                     }
-                    if (option.disabled) {
+                    if option.disabled {
                         flags |= Flags::Disabled;
                     }
                     queue!(

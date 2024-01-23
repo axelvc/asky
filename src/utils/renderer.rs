@@ -1,4 +1,4 @@
-use std::io::{self, Stdout, Write};
+use std::io::{self, Write};
 
 pub trait Printable {
     fn hide_cursor(&self) -> bool {

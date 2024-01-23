@@ -1,13 +1,12 @@
 use crate::utils::num_like::NumLike;
 use crate::{
-    utils::renderer::{Printable, Renderer},
-    ColoredStrings, Confirm, DrawTime, Message, MultiSelect, Number, Password, Select, Text,
+    utils::renderer::{Printable, Renderer}, Confirm, DrawTime, Message, MultiSelect, Number, Password, Select, Text,
     Toggle, Valuable,
 };
 use std::io::{self, Write};
 
 use crate::prompts::text::Direction;
-use crate::style::{DefaultStyle, Region, Section, Style};
+use crate::style::{DefaultStyle, Style};
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::{cursor, execute, queue, style::Print, terminal};
@@ -185,7 +184,7 @@ impl Printable for Text<'_> {
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
-                if let Some(x) = self.default_value {
+                if let Some(_x) = self.default_value {
                     queue!(
                         writer,
                         style.begin(DefaultAnswer),
@@ -297,7 +296,7 @@ impl<T: NumLike> Printable for Number<'_, T> {
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
-                if let Some(x) = self.default_value {
+                if let Some(_x) = self.default_value {
                     queue!(
                         writer,
                         style.begin(DefaultAnswer),
@@ -427,7 +426,7 @@ impl Printable for Password<'_> {
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
-                if let Some(x) = self.default_value {
+                if let Some(_x) = self.default_value {
                     queue!(
                         writer,
                         style.begin(DefaultAnswer),

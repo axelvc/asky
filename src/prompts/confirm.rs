@@ -7,7 +7,7 @@ use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
 // use colored::ColoredStrings;
-use crate::style::{DefaultStyle, Region, Section, Style};
+use crate::style::{DefaultStyle, Section, Style};
 use crate::ColoredStrings;
 use crossterm::{queue, style::Print};
 
