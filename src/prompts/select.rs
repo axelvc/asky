@@ -312,7 +312,7 @@ impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         use Section::*;
         let draw_time = renderer.draw_time();
-        let style = DefaultStyle { ascii: false };
+        let style = DefaultStyle { ascii: true };
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
@@ -363,11 +363,12 @@ impl<T> Printable for Select<'_, T> {
 
                 let page_i = self.input.get_page() as u8;
                 let page_count = self.input.count_pages() as u8;
+                let page_footer = if page_count != 1 { 2 } else { 0 };
                 queue!(writer,
                     style.begin(Page(page_i, page_count)),
                     style.end(Page(page_i, page_count)),
                        )?;
-                Ok((4 + page_end - page_start) as u16)
+                Ok((2 + page_end - page_start + page_footer) as u16)
             }
         })
     }

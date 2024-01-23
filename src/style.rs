@@ -52,7 +52,7 @@ impl Style for DefaultStyle {
                         Print(if self.ascii { "..." } else { "…" }).write_ansi(f)?;
                     }
                 }, // was purple
-                Option(selected) =>
+                Toggle(selected) =>
                     if selected {
                         SetForegroundColor(Color::Black).write_ansi(f)?;
                         SetBackgroundColor(Color::Blue).write_ansi(f)?;
@@ -62,7 +62,6 @@ impl Style for DefaultStyle {
                         SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
                         Print(" ").write_ansi(f)?;
                     },
-
                 OptionExclusive(flags) => {
                     match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
                         (false, _) => {
@@ -94,6 +93,34 @@ impl Style for DefaultStyle {
                         }
                     }
                 },
+                Option(flags) => {
+                    let prefix = match (flags.contains(Flags::Selected), flags.contains(Flags::Focused)) {
+                        (true, true) => if self.ascii { "(o)" } else { "◉" },
+                        (true, false) => if self.ascii { "(x)" } else { "●" },
+                        _ => if self.ascii { "( )" } else { "○" },
+                    };
+
+                    match (flags.contains(Flags::Focused), flags.contains(Flags::Selected), flags.contains(Flags::Disabled)) {
+                        (true, _, true) => SetForegroundColor(Color::Red).write_ansi(f)?,
+                        (true, _, false) => SetForegroundColor(Color::Blue).write_ansi(f)?,
+                        (false, true, _) => SetForegroundColor(Color::Reset).write_ansi(f)?,
+                        (false, false, _) => SetForegroundColor(Color::DarkGrey).write_ansi(f)?,
+                    };
+                    Print(prefix).write_ansi(f)?;
+                    SetForegroundColor(Color::Reset).write_ansi(f)?;
+                    Print(" ").write_ansi(f)?;
+                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                        (_, true) => {
+                            SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                            SetAttribute(Attribute::OverLined).write_ansi(f)?;
+                        }
+                        (true, false) => {
+                            SetForegroundColor(Color::Blue).write_ansi(f)?;
+                        },
+                        (false, false) => {
+                        }
+                    }
+                },
                 Message => {},
                 Validator(valid) => {
                     SetForegroundColor(if valid { Color::Blue } else { Color::Red }).write_ansi(f)?;
@@ -109,19 +136,27 @@ impl Style for DefaultStyle {
                     Print(" ").write_ansi(f)?;
                     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                 },
+                List => Print("[").write_ansi(f)?,
+                ListItem(first) => {
+                    if (! first) {
+                        Print(", ").write_ansi(f)?;
+                    }
+                },
                 Page(i, count) => {
-                    let icon = if self.ascii { "*" } else { "•" };
+                    if count != 1 {
+                        let icon = if self.ascii { "*" } else { "•" };
 
-                    Print("\n").write_ansi(f)?;
-                    Print(" ".repeat(if self.ascii { 4 } else { 2 })).write_ansi(f)?;
-                    SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-                    Print(icon.repeat(i as usize)).write_ansi(f)?;
-                    SetForegroundColor(Color::Reset).write_ansi(f)?;
-                    Print(icon).write_ansi(f)?;
-                    SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-                    Print(icon.repeat(count.saturating_sub(i + 1) as usize)).write_ansi(f)?;
-                    SetForegroundColor(Color::Reset).write_ansi(f)?;
-                    Print("\n").write_ansi(f)?;
+                        Print("\n").write_ansi(f)?;
+                        Print(" ".repeat(if self.ascii { 4 } else { 2 })).write_ansi(f)?;
+                        SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                        Print(icon.repeat(i as usize)).write_ansi(f)?;
+                        SetForegroundColor(Color::Reset).write_ansi(f)?;
+                        Print(icon).write_ansi(f)?;
+                        SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                        Print(icon.repeat(count.saturating_sub(i + 1) as usize)).write_ansi(f)?;
+                        SetForegroundColor(Color::Reset).write_ansi(f)?;
+                        Print("\n").write_ansi(f)?;
+                    }
                 },
                 x => todo!("{:?} not impl", x),
                 },
@@ -135,15 +170,17 @@ impl Style for DefaultStyle {
                     ResetColor.write_ansi(f)?;
                     Print("\n").write_ansi(f)?;
                 },
-                Option(_) => {
+                Toggle(_) => {
                     Print(" ").write_ansi(f)?;
                     ResetColor.write_ansi(f)?;
                     Print("  ").write_ansi(f)?;
                 },
-                OptionExclusive(flags) => {
+                OptionExclusive(flags) | Option(flags) => {
                     Print("\n").write_ansi(f)?;
                     ResetColor.write_ansi(f)?;
                 },
+                List => Print("]").write_ansi(f)?,
+                ListItem(_) => {},
                 Message => Print("\n").write_ansi(f)?,
                 _ => ResetColor.write_ansi(f)?,
             },
@@ -178,10 +215,11 @@ pub enum Section {
     Answer(bool), // if show -> Answer(true)
     DefaultAnswer,
     Message,
-    Option(bool), // if selected -> Option(true)
+    Toggle(bool), // if selected -> Toggle(true)
+    Option(Flags), // if selected -> Toggle(true)
     OptionExclusive(Flags),
     List,
-    ListItem,
+    ListItem(bool), // if first -> ListItem(true)
     Cursor,
     Placeholder,
     Validator(bool), // if valid -> Validator(true)
@@ -284,7 +322,7 @@ impl Default for DefaultStyle {
 //                 queue!(writer, SetForegroundColor(Color::Reset))?;
 //             },
 //             Section::Answer => queue!(writer, SetForegroundColor(Color::Magenta))?, // was purple
-//             Section::Option(selected) =>
+//             Section::Toggle(selected) =>
 //                 if *selected {
 //                     queue!(writer,
 //                              SetForegroundColor(Color::Black),
@@ -308,7 +346,7 @@ impl Default for DefaultStyle {
 //             Section::Query(answered) => queue!(writer, Print(if answered { " " } else { "\n" }))?,
 //             Section::Answer => queue!(writer, ResetColor, Print("\n"))?,
 //             // Section::Answered => queue!(writer, Print(" "))?,
-//             Section::Option(_) => queue!(writer, Print(" "), ResetColor, Print("  "))?,
+//             Section::Toggle(_) => queue!(writer, Print(" "), ResetColor, Print("  "))?,
 //             // Section::Answer => queue!(writer, ResetColor)?,
 //             // _ => todo!(),
 //             _ => queue!(writer, ResetColor)?,

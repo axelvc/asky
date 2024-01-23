@@ -132,12 +132,12 @@ impl Printable for Confirm<'_> {
                        style.begin(Query(false)),
                        Print(self.message.to_string()),
                        style.end(Query(false)),
-                       style.begin(Option(!self.active)),
+                       style.begin(Toggle(!self.active)),
                        Print(options[0]),
-                       style.end(Option(!self.active)),
-                       style.begin(Option(self.active)),
+                       style.end(Toggle(!self.active)),
+                       style.begin(Toggle(self.active)),
                        Print(options[1]),
-                       style.end(Option(self.active)),
+                       style.end(Toggle(self.active)),
                 )?;
                 Ok(2)
             }

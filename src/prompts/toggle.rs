@@ -119,12 +119,12 @@ impl Printable for Toggle<'_> {
                        style.begin(Query(false)),
                        Print(&self.message),
                        style.end(Query(false)),
-                       style.begin(Option(!self.active)),
+                       style.begin(Toggle(!self.active)),
                        Print(&self.options[0]),
-                       style.end(Option(!self.active)),
-                       style.begin(Option(self.active)),
+                       style.end(Toggle(!self.active)),
+                       style.begin(Toggle(self.active)),
                        Print(&self.options[1]),
-                       style.end(Option(self.active)),
+                       style.end(Toggle(self.active)),
                 )?;
                 Ok(2)
             }
