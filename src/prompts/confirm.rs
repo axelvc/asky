@@ -7,9 +7,9 @@ use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
 // use colored::ColoredStrings;
+use crate::style::{DefaultStyle, Region, Section, Style};
 use crate::ColoredStrings;
-use crate::style::{DefaultStyle, Style, Section, Region};
-use crossterm::{queue, style::{Print}};
+use crossterm::{queue, style::Print};
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -110,43 +110,32 @@ impl Printable for Confirm<'_> {
         let options = ["No", "Yes"];
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
-                       style.begin(Query(true)),
-                       Print(self.message.to_string()),
-                       style.end(Query(true)),
-
-                       style.begin(Answer(true)),
-                       Print(options[self.active as usize]),
-                       style.end(Answer(true)),
+                queue!(
+                    writer,
+                    style.begin(Query(true)),
+                    Print(self.message.to_string()),
+                    style.end(Query(true)),
+                    style.begin(Answer(true)),
+                    Print(options[self.active as usize]),
+                    style.end(Answer(true)),
                 )?;
-                // style.begin(writer, Section::Answered)?;
-                // queue!(writer, Print(self.message.to_string()))?;
-                // style.end(writer)?;
-                // style.begin(writer, Section::Answer)?;
-                // queue!(writer, Print(options[self.active as usize]))?;
-                // style.end(writer)?;
                 Ok(1)
             } else {
-                queue!(writer,
-                       style.begin(Query(false)),
-                       Print(self.message.to_string()),
-                       style.end(Query(false)),
-                       style.begin(Toggle(!self.active)),
-                       Print(options[0]),
-                       style.end(Toggle(!self.active)),
-                       style.begin(Toggle(self.active)),
-                       Print(options[1]),
-                       style.end(Toggle(self.active)),
+                queue!(
+                    writer,
+                    style.begin(Query(false)),
+                    Print(self.message.to_string()),
+                    style.end(Query(false)),
+                    style.begin(Toggle(!self.active)),
+                    Print(options[0]),
+                    style.end(Toggle(!self.active)),
+                    style.begin(Toggle(self.active)),
+                    Print(options[1]),
+                    style.end(Toggle(self.active)),
                 )?;
                 Ok(2)
             }
         })
-        // let mut out = ColoredStrings::default();
-        // (self.formatter)(self, renderer.draw_time(), &mut out);
-        // // Maybe we can unify these?
-        // // renderer.hide_cursor()?;
-        // renderer.print(out)
     }
 }
 

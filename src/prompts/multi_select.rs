@@ -12,8 +12,8 @@ use crate::utils::{
 };
 
 use super::select::{SelectInput, SelectOption};
-use crate::style::{DefaultStyle, Style, Section, Region, Flags};
-use crossterm::{queue, style::{Print}};
+use crate::style::{DefaultStyle, Flags, Region, Section, Style};
+use crossterm::{queue, style::Print};
 
 use crate::ColoredStrings;
 
@@ -221,40 +221,34 @@ impl<T> Printable for MultiSelect<'_, T> {
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
-                       style.begin(Query(true)),
-                       Print(self.message.to_string()),
-                       style.end(Query(true)),
-
-                       style.begin(Answer(true)),
-                       style.begin(List),
-                       )?;
+                queue!(
+                    writer,
+                    style.begin(Query(true)),
+                    Print(self.message.to_string()),
+                    style.end(Query(true)),
+                    style.begin(Answer(true)),
+                    style.begin(List),
+                )?;
 
                 let mut first = true;
-                for option in self
-                    .options
-                    .iter()
-                    .filter(|opt| opt.active) {
-                    queue!(writer,
+                for option in self.options.iter().filter(|opt| opt.active) {
+                    queue!(
+                        writer,
                         style.begin(ListItem(first)),
                         Print(&option.title),
                         style.end(ListItem(first)),
-                        )?;
+                    )?;
                     first = false;
                 }
-                queue!(writer,
-                       style.end(List),
-                       style.end(Answer(true)),
-                )?;
+                queue!(writer, style.end(List), style.end(Answer(true)),)?;
                 Ok(1)
             } else {
-                queue!(writer,
-                       style.begin(Query(false)),
-                       Print(self.message.to_string()),
-                       style.end(Query(false)),
-                       )?;
-
+                queue!(
+                    writer,
+                    style.begin(Query(false)),
+                    Print(self.message.to_string()),
+                    style.end(Query(false)),
+                )?;
 
                 let items_per_page = self.input.items_per_page;
                 let total = self.input.total_items;
@@ -264,35 +258,34 @@ impl<T> Printable for MultiSelect<'_, T> {
                 let page_end = (page_start + page_len).min(total);
                 let page_focused = self.input.focused % items_per_page;
 
-                for (n, option) in self.options[page_start..page_end]
-                    .iter()
-                    .enumerate() {
-                        let mut flags = Flags::empty();
-                        if (n == page_focused) {
-                            flags |= Flags::Focused;
-                        }
-                        if (option.disabled) {
-                            flags |= Flags::Disabled;
-                        }
+                for (n, option) in self.options[page_start..page_end].iter().enumerate() {
+                    let mut flags = Flags::empty();
+                    if (n == page_focused) {
+                        flags |= Flags::Focused;
+                    }
+                    if (option.disabled) {
+                        flags |= Flags::Disabled;
+                    }
 
-                        if (option.active) {
-                            flags |= Flags::Selected;
-                        }
-                        queue!(writer,
-                            style.begin(Option(flags)),
-                            Print(&option.title),
-                            style.end(Option(flags)),
-                            )?;
-
+                    if (option.active) {
+                        flags |= Flags::Selected;
+                    }
+                    queue!(
+                        writer,
+                        style.begin(Option(flags)),
+                        Print(&option.title),
+                        style.end(Option(flags)),
+                    )?;
                 }
 
                 let page_i = self.input.get_page() as u8;
                 let page_count = self.input.count_pages() as u8;
                 let page_footer = if page_count != 1 { 2 } else { 0 };
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Page(page_i, page_count)),
                     style.end(Page(page_i, page_count)),
-                       )?;
+                )?;
                 Ok((2 + page_end - page_start + page_footer) as u16)
             }
         })

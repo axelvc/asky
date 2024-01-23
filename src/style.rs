@@ -1,18 +1,30 @@
 // use termcolor::{Color, ColorSpec, WriteColor};
-use crossterm::{queue, execute, Command, {style::{Color, SetAttribute, Attribute, SetForegroundColor, SetBackgroundColor, Print, ResetColor}}};
-use std::io::{Error,Write};
+use crossterm::{
+    execute, queue,
+    style::{
+        Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    },
+    Command,
+};
 use std::fmt;
+use std::io::{Error, Write};
 
 // pub struct Style {
 //     pub ascii: bool,
 // }
 
 pub trait Style {
-    fn begin(&self, section: Section) -> StyledRegion<Self> where Self: Sized + Clone{
+    fn begin(&self, section: Section) -> StyledRegion<Self>
+    where
+        Self: Sized + Clone,
+    {
         StyledRegion(self.clone(), Region::Begin(section))
     }
 
-    fn end(&self, section: Section) -> StyledRegion<Self> where Self: Sized + Clone{
+    fn end(&self, section: Section) -> StyledRegion<Self>
+    where
+        Self: Sized + Clone,
+    {
         StyledRegion(self.clone(), Region::End(section))
     }
 
@@ -45,14 +57,14 @@ impl Style for DefaultStyle {
                         SetForegroundColor(Color::Reset).write_ansi(f)?;
                         Print(" ").write_ansi(f)?;
                     }
-                },
+                }
                 Answer(show) => {
                     SetForegroundColor(Color::Magenta).write_ansi(f)?;
-                    if ! show {
+                    if !show {
                         Print(if self.ascii { "..." } else { "…" }).write_ansi(f)?;
                     }
-                }, // was purple
-                Toggle(selected) =>
+                } // was purple
+                Toggle(selected) => {
                     if selected {
                         SetForegroundColor(Color::Black).write_ansi(f)?;
                         SetBackgroundColor(Color::Blue).write_ansi(f)?;
@@ -61,14 +73,18 @@ impl Style for DefaultStyle {
                         SetForegroundColor(Color::White).write_ansi(f)?;
                         SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
                         Print(" ").write_ansi(f)?;
-                    },
+                    }
+                }
                 OptionExclusive(flags) => {
-                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                    match (
+                        flags.contains(Flags::Focused),
+                        flags.contains(Flags::Disabled),
+                    ) {
                         (false, _) => {
                             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                             Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
                             SetForegroundColor(Color::Reset).write_ansi(f)?;
-                        },
+                        }
                         (true, true) => {
                             SetForegroundColor(Color::Red).write_ansi(f)?;
                             Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
@@ -81,26 +97,53 @@ impl Style for DefaultStyle {
                         }
                     }
                     Print(" ").write_ansi(f)?;
-                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                    match (
+                        flags.contains(Flags::Focused),
+                        flags.contains(Flags::Disabled),
+                    ) {
                         (_, true) => {
                             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                             SetAttribute(Attribute::OverLined).write_ansi(f)?;
                         }
                         (true, false) => {
                             SetForegroundColor(Color::Blue).write_ansi(f)?;
-                        },
-                        (false, false) => {
                         }
+                        (false, false) => {}
                     }
-                },
+                }
                 Option(flags) => {
-                    let prefix = match (flags.contains(Flags::Selected), flags.contains(Flags::Focused)) {
-                        (true, true) => if self.ascii { "(o)" } else { "◉" },
-                        (true, false) => if self.ascii { "(x)" } else { "●" },
-                        _ => if self.ascii { "( )" } else { "○" },
+                    let prefix = match (
+                        flags.contains(Flags::Selected),
+                        flags.contains(Flags::Focused),
+                    ) {
+                        (true, true) => {
+                            if self.ascii {
+                                "(o)"
+                            } else {
+                                "◉"
+                            }
+                        }
+                        (true, false) => {
+                            if self.ascii {
+                                "(x)"
+                            } else {
+                                "●"
+                            }
+                        }
+                        _ => {
+                            if self.ascii {
+                                "( )"
+                            } else {
+                                "○"
+                            }
+                        }
                     };
 
-                    match (flags.contains(Flags::Focused), flags.contains(Flags::Selected), flags.contains(Flags::Disabled)) {
+                    match (
+                        flags.contains(Flags::Focused),
+                        flags.contains(Flags::Selected),
+                        flags.contains(Flags::Disabled),
+                    ) {
                         (true, _, true) => SetForegroundColor(Color::Red).write_ansi(f)?,
                         (true, _, false) => SetForegroundColor(Color::Blue).write_ansi(f)?,
                         (false, true, _) => SetForegroundColor(Color::Reset).write_ansi(f)?,
@@ -109,39 +152,42 @@ impl Style for DefaultStyle {
                     Print(prefix).write_ansi(f)?;
                     SetForegroundColor(Color::Reset).write_ansi(f)?;
                     Print(" ").write_ansi(f)?;
-                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                    match (
+                        flags.contains(Flags::Focused),
+                        flags.contains(Flags::Disabled),
+                    ) {
                         (_, true) => {
                             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                             SetAttribute(Attribute::OverLined).write_ansi(f)?;
                         }
                         (true, false) => {
                             SetForegroundColor(Color::Blue).write_ansi(f)?;
-                        },
-                        (false, false) => {
                         }
+                        (false, false) => {}
                     }
-                },
-                Message => {},
+                }
+                Message => {}
                 Validator(valid) => {
-                    SetForegroundColor(if valid { Color::Blue } else { Color::Red }).write_ansi(f)?;
-                },
+                    SetForegroundColor(if valid { Color::Blue } else { Color::Red })
+                        .write_ansi(f)?;
+                }
                 Placeholder => {
                     SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
                     Print("Default: ").write_ansi(f)?;
-                },
+                }
                 Input => {
                     SetForegroundColor(Color::Blue).write_ansi(f)?;
                     Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
                     SetForegroundColor(Color::Reset).write_ansi(f)?;
                     Print(" ").write_ansi(f)?;
                     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-                },
+                }
                 List => Print("[").write_ansi(f)?,
                 ListItem(first) => {
-                    if (! first) {
+                    if (!first) {
                         Print(", ").write_ansi(f)?;
                     }
-                },
+                }
                 Page(i, count) => {
                     if count != 1 {
                         let icon = if self.ascii { "*" } else { "•" };
@@ -157,30 +203,32 @@ impl Style for DefaultStyle {
                         SetForegroundColor(Color::Reset).write_ansi(f)?;
                         Print("\n").write_ansi(f)?;
                     }
-                },
+                }
                 x => todo!("{:?} not impl", x),
-                },
+            },
             End(section) => match section {
-                Query(answered) => if answered {
-                    Print(" ").write_ansi(f)?;
-                } else {
-                    Print("\n").write_ansi(f)?;
-                },
+                Query(answered) => {
+                    if answered {
+                        Print(" ").write_ansi(f)?;
+                    } else {
+                        Print("\n").write_ansi(f)?;
+                    }
+                }
                 Answer(_) => {
                     ResetColor.write_ansi(f)?;
                     Print("\n").write_ansi(f)?;
-                },
+                }
                 Toggle(_) => {
                     Print(" ").write_ansi(f)?;
                     ResetColor.write_ansi(f)?;
                     Print("  ").write_ansi(f)?;
-                },
+                }
                 OptionExclusive(flags) | Option(flags) => {
                     Print("\n").write_ansi(f)?;
                     ResetColor.write_ansi(f)?;
-                },
+                }
                 List => Print("]").write_ansi(f)?,
-                ListItem(_) => {},
+                ListItem(_) => {}
                 Message => Print("\n").write_ansi(f)?,
                 _ => ResetColor.write_ansi(f)?,
             },
@@ -215,7 +263,7 @@ pub enum Section {
     Answer(bool), // if show -> Answer(true)
     DefaultAnswer,
     Message,
-    Toggle(bool), // if selected -> Toggle(true)
+    Toggle(bool),  // if selected -> Toggle(true)
     Option(Flags), // if selected -> Toggle(true)
     OptionExclusive(Flags),
     List,
@@ -264,9 +312,7 @@ pub struct DefaultStyle {
 
 impl Default for DefaultStyle {
     fn default() -> Self {
-        Self {
-            ascii: false,
-        }
+        Self { ascii: false }
     }
 }
 

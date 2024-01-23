@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::io;
 
+use crate::style::{DefaultStyle, Style};
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
@@ -9,7 +10,6 @@ use crate::ColoredStrings;
 use crate::Error;
 use crate::Valuable;
 use crossterm::{queue, style::Print};
-use crate::style::{Style, DefaultStyle};
 
 type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -95,12 +95,12 @@ impl Printable for Message<'_> {
         use crate::style::Section::*;
         let style = DefaultStyle { ascii: true };
         renderer.print2(|writer| {
-
-            queue!(writer,
+            queue!(
+                writer,
                 style.begin(Message),
                 Print(self.message.to_string()),
                 style.end(Message),
-                   )?;
+            )?;
             Ok(1)
         })
     }

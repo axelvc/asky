@@ -5,12 +5,12 @@ use std::io;
 use crate::Error;
 use crate::Valuable;
 
+use crate::style::{DefaultStyle, Region, Section, Style};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
-use crate::style::{DefaultStyle, Style, Section, Region};
-use crossterm::{queue, style::{Print}};
+use crossterm::{queue, style::Print};
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
@@ -97,15 +97,14 @@ impl Printable for Toggle<'_> {
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
-                       style.begin(Query(true)),
-                       Print(&self.message),
-                       style.end(Query(true)),
-
-                       style.begin(Answer(true)),
-                       Print(&self.options[self.active as usize]),
-                       style.end(Answer(true)),
+                queue!(
+                    writer,
+                    style.begin(Query(true)),
+                    Print(&self.message),
+                    style.end(Query(true)),
+                    style.begin(Answer(true)),
+                    Print(&self.options[self.active as usize]),
+                    style.end(Answer(true)),
                 )?;
                 // style.begin(writer, Section::Answered)?;
                 // queue!(writer, Print(self.message.to_string()))?;
@@ -115,16 +114,17 @@ impl Printable for Toggle<'_> {
                 // style.end(writer)?;
                 Ok(1)
             } else {
-                queue!(writer,
-                       style.begin(Query(false)),
-                       Print(&self.message),
-                       style.end(Query(false)),
-                       style.begin(Toggle(!self.active)),
-                       Print(&self.options[0]),
-                       style.end(Toggle(!self.active)),
-                       style.begin(Toggle(self.active)),
-                       Print(&self.options[1]),
-                       style.end(Toggle(self.active)),
+                queue!(
+                    writer,
+                    style.begin(Query(false)),
+                    Print(&self.message),
+                    style.end(Query(false)),
+                    style.begin(Toggle(!self.active)),
+                    Print(&self.options[0]),
+                    style.end(Toggle(!self.active)),
+                    style.begin(Toggle(self.active)),
+                    Print(&self.options[1]),
+                    style.end(Toggle(self.active)),
                 )?;
                 Ok(2)
             }

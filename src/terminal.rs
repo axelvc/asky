@@ -7,10 +7,10 @@ use crate::{
 use std::io::{self, Write};
 
 use crate::prompts::text::Direction;
+use crate::style::{DefaultStyle, Region, Section, Style};
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::{cursor, execute, queue, style::Print, terminal};
-use crate::style::{DefaultStyle, Style, Section, Region};
 
 pub struct TermRenderer {
     pub draw_time: DrawTime,
@@ -39,7 +39,10 @@ impl Renderer for TermRenderer {
         }
     }
 
-    fn print2<F>(&mut self, draw_text: F) -> io::Result<()> where F : FnOnce(&mut Self::Writer) -> io::Result<u16> {
+    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    where
+        F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
+    {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -67,43 +70,6 @@ impl Renderer for TermRenderer {
         if self.draw_time != DrawTime::Last {
             let (col, row) = cursor::position()?;
             // let text_lines = text.lines().count() as u16;
-
-            queue!(
-                self.out,
-                cursor::MoveToPreviousLine(text_lines),
-                cursor::SavePosition,
-                cursor::MoveTo(col, row)
-            )?;
-        }
-
-        self.out.flush()
-    }
-
-    fn print(&mut self, text: ColoredStrings) -> io::Result<()> {
-        if self.draw_time != DrawTime::First {
-            queue!(
-                self.out,
-                cursor::RestorePosition,
-                terminal::Clear(terminal::ClearType::FromCursorDown),
-            )?;
-        }
-        let mut text = format!("{}", text);
-
-        if !text.ends_with('\n') {
-            text.push('\n')
-        }
-
-        queue!(self.out, Print(&text))?;
-
-        // Saved position is updated each draw because the text lines could be different
-        // between draws. The last draw is ignored to always set the cursor at the end
-        //
-        // The position is saved this way to ensure the correct position when the cursor is at
-        // the bottom of the terminal. Otherwise, the saved position will be the last row
-        // and when trying to restore, the next draw will be below the last row.
-        if self.draw_time != DrawTime::Last {
-            let (col, row) = cursor::position()?;
-            let text_lines = text.lines().count() as u16;
 
             queue!(
                 self.out,
@@ -202,8 +168,8 @@ impl Printable for Text<'_> {
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
@@ -213,39 +179,39 @@ impl Printable for Text<'_> {
                 )?;
                 Ok(1)
             } else {
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(false)),
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
                 if let Some(x) = self.default_value {
-                    queue!(writer,
+                    queue!(
+                        writer,
                         style.begin(DefaultAnswer),
                         Print(&self.message),
                         style.end(DefaultAnswer),
                     )?;
                 }
-                queue!(writer,
-                       style.begin(Input),
-                       Print(&self.input.value))?;
+                queue!(writer, style.begin(Input), Print(&self.input.value))?;
                 if self.input.value.is_empty() {
                     if let Some(placeholder) = self.placeholder {
-                        queue!(writer,
-                                style.begin(Placeholder),
-                                Print(placeholder),
-                                style.end(Placeholder),
-                            )?;
+                        queue!(
+                            writer,
+                            style.begin(Placeholder),
+                            Print(placeholder),
+                            style.end(Placeholder),
+                        )?;
                     }
                 }
-                queue!(writer,
-                       style.end(Input),
-                       )?;
+                queue!(writer, style.end(Input),)?;
                 if let Err(error) = self.validator_result {
-                    queue!(writer,
+                    queue!(
+                        writer,
                         style.begin(Validator(false)),
                         Print(error),
                         style.end(Validator(false)),
-                        )?;
+                    )?;
                 }
                 Ok(2)
             }
@@ -314,8 +280,8 @@ impl<T: NumLike> Printable for Number<'_, T> {
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
@@ -325,13 +291,15 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 )?;
                 Ok(1)
             } else {
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(false)),
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
                 if let Some(x) = self.default_value {
-                    queue!(writer,
+                    queue!(
+                        writer,
                         style.begin(DefaultAnswer),
                         Print(&self.message),
                         style.end(DefaultAnswer),
@@ -339,21 +307,23 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 }
                 if self.input.value.is_empty() {
                     if let Some(placeholder) = self.placeholder {
-                        queue!(writer,
-                                style.begin(Placeholder),
-                                Print(placeholder),
-                                style.end(Placeholder),
-                            )?;
+                        queue!(
+                            writer,
+                            style.begin(Placeholder),
+                            Print(placeholder),
+                            style.end(Placeholder),
+                        )?;
                     }
                 }
                 let is_valid = self.validator_result.is_ok();
-                queue!(writer,
-                        style.begin(Validator(is_valid)),
-                        style.begin(Input),
-                        Print(&self.input.value),
-                        style.end(Input),
-                       style.end(Validator(is_valid)),
-                        )?;
+                queue!(
+                    writer,
+                    style.begin(Validator(is_valid)),
+                    style.begin(Input),
+                    Print(&self.input.value),
+                    style.end(Input),
+                    style.end(Validator(is_valid)),
+                )?;
                 Ok(2)
             }
         })?;
@@ -441,8 +411,8 @@ impl Printable for Password<'_> {
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
-
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(true)),
                     Print(&self.message),
                     style.end(Query(true)),
@@ -451,13 +421,15 @@ impl Printable for Password<'_> {
                 )?;
                 Ok(1)
             } else {
-                queue!(writer,
+                queue!(
+                    writer,
                     style.begin(Query(false)),
                     Print(&self.message),
                     style.end(Query(false)),
                 )?;
                 if let Some(x) = self.default_value {
-                    queue!(writer,
+                    queue!(
+                        writer,
                         style.begin(DefaultAnswer),
                         Print(&self.message),
                         style.end(DefaultAnswer),
@@ -467,27 +439,25 @@ impl Printable for Password<'_> {
                     true => String::new(),
                     false => "*".repeat(self.input.value.len()),
                 };
-                queue!(writer,
-                       style.begin(Input),
-                       Print(text))?;
+                queue!(writer, style.begin(Input), Print(text))?;
                 if self.input.value.is_empty() {
                     if let Some(placeholder) = self.placeholder {
-                        queue!(writer,
-                                style.begin(Placeholder),
-                                Print(placeholder),
-                                style.end(Placeholder),
-                            )?;
+                        queue!(
+                            writer,
+                            style.begin(Placeholder),
+                            Print(placeholder),
+                            style.end(Placeholder),
+                        )?;
                     }
                 }
-                queue!(writer,
-                       style.end(Input),
-                       )?;
+                queue!(writer, style.end(Input),)?;
                 if let Err(error) = self.validator_result {
-                    queue!(writer,
+                    queue!(
+                        writer,
                         style.begin(Validator(false)),
                         Print(error),
                         style.end(Validator(false)),
-                        )?;
+                    )?;
                 }
                 Ok(2)
             }
