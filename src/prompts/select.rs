@@ -14,7 +14,7 @@ pub enum Direction {
     Left,
     Right,
 }
-use crate::style::{DefaultStyle, Style, Section, Region};
+use crate::style::{DefaultStyle, Style, Section, Region, Flags};
 use crossterm::{queue, style::{Print}};
 
 // region: SelectOption
@@ -312,7 +312,7 @@ impl<T> Printable for Select<'_, T> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         use Section::*;
         let draw_time = renderer.draw_time();
-        let style = DefaultStyle { ascii: true };
+        let style = DefaultStyle { ascii: false };
 
         renderer.print2(|writer| {
             if draw_time == DrawTime::Last {
@@ -343,17 +343,31 @@ impl<T> Printable for Select<'_, T> {
                 let page_end = (page_start + page_len).min(total);
                 let page_focused = self.input.focused % items_per_page;
 
-                for option in self.options[page_start..page_end]
+                for (n, option) in self.options[page_start..page_end]
                     .iter()
                     .enumerate() {
-                            queue!(writer,
-                                style.begin(Option(true)),
-                                Print(&option.1.title),
-                                style.end(Option(true)),
-                                )?;
+                        let mut flags = Flags::empty();
+                        if (n == page_focused) {
+                            flags |= Flags::Focused;
+                        }
+                        if (option.disabled) {
+                            flags |= Flags::Disabled;
+                        }
+                        queue!(writer,
+                            style.begin(OptionExclusive(flags)),
+                            Print(&option.title),
+                            style.end(OptionExclusive(flags)),
+                            )?;
 
                 }
-                Ok((1 + page_end - page_start) as u16)
+
+                let page_i = self.input.get_page() as u8;
+                let page_count = self.input.count_pages() as u8;
+                queue!(writer,
+                    style.begin(Page(page_i, page_count)),
+                    style.end(Page(page_i, page_count)),
+                       )?;
+                Ok((4 + page_end - page_start) as u16)
             }
         })
     }

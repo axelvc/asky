@@ -1,5 +1,5 @@
 // use termcolor::{Color, ColorSpec, WriteColor};
-use crossterm::{queue, execute, Command, {style::{Color, SetForegroundColor, SetBackgroundColor, Print, ResetColor}}};
+use crossterm::{queue, execute, Command, {style::{Color, SetAttribute, Attribute, SetForegroundColor, SetBackgroundColor, Print, ResetColor}}};
 use std::io::{Error,Write};
 use std::fmt;
 
@@ -62,6 +62,38 @@ impl Style for DefaultStyle {
                         SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
                         Print(" ").write_ansi(f)?;
                     },
+
+                OptionExclusive(flags) => {
+                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                        (false, _) => {
+                            SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                            Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
+                            SetForegroundColor(Color::Reset).write_ansi(f)?;
+                        },
+                        (true, true) => {
+                            SetForegroundColor(Color::Red).write_ansi(f)?;
+                            Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
+                            SetForegroundColor(Color::Reset).write_ansi(f)?;
+                        }
+                        (true, false) => {
+                            SetForegroundColor(Color::Blue).write_ansi(f)?;
+                            Print(if self.ascii { "(x)" } else { "●" }).write_ansi(f)?;
+                            SetForegroundColor(Color::Reset).write_ansi(f)?;
+                        }
+                    }
+                    Print(" ").write_ansi(f)?;
+                    match (flags.contains(Flags::Focused), flags.contains(Flags::Disabled)) {
+                        (_, true) => {
+                            SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                            SetAttribute(Attribute::OverLined).write_ansi(f)?;
+                        }
+                        (true, false) => {
+                            SetForegroundColor(Color::Blue).write_ansi(f)?;
+                        },
+                        (false, false) => {
+                        }
+                    }
+                },
                 Message => {},
                 Validator(valid) => {
                     SetForegroundColor(if valid { Color::Blue } else { Color::Red }).write_ansi(f)?;
@@ -76,6 +108,20 @@ impl Style for DefaultStyle {
                     SetForegroundColor(Color::Reset).write_ansi(f)?;
                     Print(" ").write_ansi(f)?;
                     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                },
+                Page(i, count) => {
+                    let icon = if self.ascii { "*" } else { "•" };
+
+                    Print("\n").write_ansi(f)?;
+                    Print(" ".repeat(if self.ascii { 4 } else { 2 })).write_ansi(f)?;
+                    SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                    Print(icon.repeat(i as usize)).write_ansi(f)?;
+                    SetForegroundColor(Color::Reset).write_ansi(f)?;
+                    Print(icon).write_ansi(f)?;
+                    SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+                    Print(icon.repeat(count.saturating_sub(i + 1) as usize)).write_ansi(f)?;
+                    SetForegroundColor(Color::Reset).write_ansi(f)?;
+                    Print("\n").write_ansi(f)?;
                 },
                 x => todo!("{:?} not impl", x),
                 },
@@ -94,6 +140,10 @@ impl Style for DefaultStyle {
                     ResetColor.write_ansi(f)?;
                     Print("  ").write_ansi(f)?;
                 },
+                OptionExclusive(flags) => {
+                    Print("\n").write_ansi(f)?;
+                    ResetColor.write_ansi(f)?;
+                },
                 Message => Print("\n").write_ansi(f)?,
                 _ => ResetColor.write_ansi(f)?,
             },
@@ -108,6 +158,16 @@ pub enum Region {
     End(Section),
     // Wrap(Section, Box<dyn Command>),
 }
+use bitflags::bitflags;
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct Flags: u8 {
+        const Focused  = 0b00000001;
+        const Selected = 0b00000010;
+        const Disabled = 0b00000100;
+    }
+}
 
 pub struct StyledRegion<T>(T, Region);
 
@@ -119,13 +179,14 @@ pub enum Section {
     DefaultAnswer,
     Message,
     Option(bool), // if selected -> Option(true)
-    OptionExclusive(bool),
+    OptionExclusive(Flags),
     List,
     ListItem,
     Cursor,
     Placeholder,
     Validator(bool), // if valid -> Validator(true)
     Input,
+    Page(u8, u8), // Page 0 of 8 -> Page(0, 8)
 }
 
 impl<T: Style> Command for StyledRegion<T> {
