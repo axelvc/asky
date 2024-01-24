@@ -156,5 +156,7 @@ mod terminal;
 
 #[cfg(feature = "bevy")]
 pub mod bevy;
+#[cfg(feature = "bevy")]
+mod text_style_adapter;
 
 mod style;

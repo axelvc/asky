@@ -1,7 +1,9 @@
 use std::fmt;
-use std::io::{Write};
 use bitflags::bitflags;
 use crossterm::{
+    // queue,
+    execute,
+    QueueableCommand,
     style::{
         Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
     },
@@ -25,11 +27,11 @@ pub enum Section {
     DefaultAnswer,
     Message,
     Toggle(bool),  // if selected -> Toggle(true)
-    Option(Flags), // if selected -> Toggle(true)
+    Option(Flags),
     OptionExclusive(Flags),
     List,
     ListItem(bool), // if first -> ListItem(true)
-    Cursor,
+    // Cursor,
     Placeholder,
     Validator(bool), // if valid -> Validator(true)
     Input,
@@ -42,8 +44,6 @@ pub enum Region {
     End(Section),
     // Wrap(Section, Box<dyn Command>),
 }
-
-pub struct StyledRegion<T>(T, Region);
 
 pub trait Style {
     fn begin(&self, section: Section) -> StyledRegion<Self>
@@ -60,10 +60,6 @@ pub trait Style {
         StyledRegion(self.clone(), Region::End(section))
     }
 
-    // fn wrap(&self, command: dyn Command, section: Section) -> StyledRegion<Self> where Self: Sized + Clone{
-    //     StyledRegion(self.clone(), Region::Wrap(section, Box::new(command)))
-    // }
-
     // fn wrap(&self, section: Section, command: Box<dyn Command>) -> StyledRegion<Self> where Self: Sized + Clone{
     //     StyledRegion(self.clone(), Region::End(section))
     // }
@@ -71,13 +67,43 @@ pub trait Style {
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result;
 }
 
-#[derive(Clone, Copy, Debug)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct DefaultStyle {
     pub ascii: bool,
 }
 
+pub struct StyledRegion<T>(T, Region);
 
+impl<T: Style> Command for StyledRegion<T> {
+    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        self.0.write_ansi(self.1, f)
+    }
+}
+
+
+// pub struct Help;
+
+// impl Help {
+//     fn write_ansi(&mut self, group: Region, f: &mut (impl QueueableCommand + std::io::Write)) -> std::io::Result<&mut Self> {
+//         use Region::*;
+//         use Section::*;
+//         match group {
+//             Begin(section) => match section {
+//                 Query(answered) => {
+//                     if answered {
+//                         queue!(f,
+//                             SetForegroundColor(Color::Green))?;
+
+//                         // f.queue(
+//                     }
+//                 }
+//                 _ => todo!(),
+//             }
+//             _ => todo!(),
+//         }
+//         Ok(self)
+//     }
+// }
 
 impl Style for DefaultStyle {
     fn write_ansi(&self, group: Region, f: &mut impl fmt::Write) -> fmt::Result {
@@ -277,32 +303,3 @@ impl Style for DefaultStyle {
     }
 }
 
-impl<T: Style> Command for StyledRegion<T> {
-    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
-        self.0.write_ansi(self.1, f)
-    }
-}
-
-// impl Command for Region {
-//     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
-//         match self {
-//             Region::Begin(section) => match section {
-//                 Section::Query => {
-//                     SetForegroundColor(Color::Blue).write_ansi(f)?;
-//                     // Print(if self.ascii { "[ ]" } else { "▣" }).write_ansi(f)?;
-//                     Print("▣").write_ansi(f)?;
-//                     SetForegroundColor(Color::Reset).write_ansi(f)?;
-//                     Print(" ").write_ansi(f)?;
-//                 },
-//                 _ => todo!(),
-//             },
-//             Region::End(section) => match section {
-//                 Section::Query => {
-//                     Print("\n").write_ansi(f)?;
-//                 },
-//                 _ => todo!(),
-//             },
-//         }
-//         Ok(())
-//     }
-// }

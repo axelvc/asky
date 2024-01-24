@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io;
 
 pub trait Printable {
     fn hide_cursor(&self) -> bool {
@@ -20,7 +20,7 @@ pub enum DrawTime {
 }
 
 pub trait Renderer {
-    type Writer: Write;
+    type Writer: std::io::Write;
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
     fn print2<F>(&mut self, draw_text: F) -> io::Result<()>

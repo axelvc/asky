@@ -15,7 +15,6 @@ use promise_out::{
     pair::{Consumer, Producer},
     Promise,
 };
-use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
@@ -25,13 +24,14 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    ColoredStrings, Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
+    Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
     Valuable,
 };
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use futures_lite::future;
 use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
+use crate::text_style_adapter::{StyledStringWriter};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -437,6 +437,7 @@ fn cursorify_iter(
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
+    type Writer = StyledStringWriter;
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
     }
@@ -448,70 +449,76 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
         }
     }
 
-    fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-        let white = text_style::Color::Ansi {
-            color: AnsiColor::White,
-            mode: AnsiMode::Dark,
-        };
-
-        self.commands.entity(self.column).with_children(|column| {
-            let mut next_line_count: Option<usize> = None;
-            let mut line_count: usize = 0;
-            let lines = strings
-                .0
-                .into_iter()
-                .map(StyledString::from)
-                .flat_map(|mut s| {
-                    let mut a = vec![];
-                    let mut b = None;
-                    if s.s.contains('\n') {
-                        let str = std::mem::take(&mut s.s);
-                        a.extend(str.split_inclusive('\n').map(move |line| StyledString {
-                            s: line.to_string(),
-                            ..s.clone()
-                        }));
-                    } else {
-                        b = Some(s);
-                    }
-                    a.into_iter().chain(b.into_iter())
-                })
-                .group_by(|x| {
-                    if let Some(x) = next_line_count.take() {
-                        line_count = x;
-                    }
-                    if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
-                        next_line_count = Some(line_count + 1);
-                    }
-                    line_count
-                });
-
-            let mut line_num = 0;
-            for (_key, line) in &lines {
-                let style: TextStyleParams = self.settings.style.clone().into();
-                column
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Row,
-                            ..default()
-                        },
-                        ..default()
-                    })
-                    .with_children(|parent| {
-                        if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
-                            text_style::bevy::render_iter(
-                                parent,
-                                &style,
-                                cursorify_iter(line, self.state.cursor_pos[0], white),
-                            );
-                        } else {
-                            text_style::bevy::render_iter(parent, &style, line);
-                        }
-                    });
-                line_num += 1;
-            }
-        });
-        Ok(())
+    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    where
+        F: FnOnce(&mut Self::Writer) -> io::Result<u16> {
+        todo!();
     }
+
+    // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
+    //     let white = text_style::Color::Ansi {
+    //         color: AnsiColor::White,
+    //         mode: AnsiMode::Dark,
+    //     };
+
+    //     self.commands.entity(self.column).with_children(|column| {
+    //         let mut next_line_count: Option<usize> = None;
+    //         let mut line_count: usize = 0;
+    //         let lines = strings
+    //             .0
+    //             .into_iter()
+    //             .map(StyledString::from)
+    //             .flat_map(|mut s| {
+    //                 let mut a = vec![];
+    //                 let mut b = None;
+    //                 if s.s.contains('\n') {
+    //                     let str = std::mem::take(&mut s.s);
+    //                     a.extend(str.split_inclusive('\n').map(move |line| StyledString {
+    //                         s: line.to_string(),
+    //                         ..s.clone()
+    //                     }));
+    //                 } else {
+    //                     b = Some(s);
+    //                 }
+    //                 a.into_iter().chain(b.into_iter())
+    //             })
+    //             .group_by(|x| {
+    //                 if let Some(x) = next_line_count.take() {
+    //                     line_count = x;
+    //                 }
+    //                 if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
+    //                     next_line_count = Some(line_count + 1);
+    //                 }
+    //                 line_count
+    //             });
+
+    //         let mut line_num = 0;
+    //         for (_key, line) in &lines {
+    //             let style: TextStyleParams = self.settings.style.clone().into();
+    //             column
+    //                 .spawn(NodeBundle {
+    //                     style: Style {
+    //                         flex_direction: FlexDirection::Row,
+    //                         ..default()
+    //                     },
+    //                     ..default()
+    //                 })
+    //                 .with_children(|parent| {
+    //                     if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
+    //                         text_style::bevy::render_iter(
+    //                             parent,
+    //                             &style,
+    //                             cursorify_iter(line, self.state.cursor_pos[0], white),
+    //                         );
+    //                     } else {
+    //                         text_style::bevy::render_iter(parent, &style, line);
+    //                     }
+    //                 });
+    //             line_num += 1;
+    //         }
+    //     });
+    //     Ok(())
+    // }
 
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.
@@ -625,27 +632,27 @@ impl Plugin for AskyPlugin {
                 closures: Vec::new(),
             })),
         })
-        .add_systems(Update, asky_system::<Confirm>)
-        .add_systems(Update, asky_system::<Toggle>)
-        .add_systems(Update, asky_system::<crate::Text>)
-        .add_systems(Update, asky_system::<Number<u8>>)
-        .add_systems(Update, asky_system::<Number<u16>>)
-        .add_systems(Update, asky_system::<Number<u32>>)
-        .add_systems(Update, asky_system::<Number<u64>>)
-        .add_systems(Update, asky_system::<Number<u128>>)
-        .add_systems(Update, asky_system::<Number<i8>>)
-        .add_systems(Update, asky_system::<Number<i16>>)
-        .add_systems(Update, asky_system::<Number<i32>>)
-        .add_systems(Update, asky_system::<Number<i64>>)
-        .add_systems(Update, asky_system::<Number<i128>>)
-        .add_systems(Update, asky_system::<Number<f32>>)
-        .add_systems(Update, asky_system::<Number<f64>>)
-        .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
-        .add_systems(Update, asky_system::<Select<'_, &'static str>>)
-        .add_systems(Update, asky_system::<Password>)
-        .add_systems(Update, asky_system::<Message>)
-        .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
-        .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
+        // .add_systems(Update, asky_system::<Confirm>)
+        // .add_systems(Update, asky_system::<Toggle>)
+        // .add_systems(Update, asky_system::<crate::Text>)
+        // .add_systems(Update, asky_system::<Number<u8>>)
+        // .add_systems(Update, asky_system::<Number<u16>>)
+        // .add_systems(Update, asky_system::<Number<u32>>)
+        // .add_systems(Update, asky_system::<Number<u64>>)
+        // .add_systems(Update, asky_system::<Number<u128>>)
+        // .add_systems(Update, asky_system::<Number<i8>>)
+        // .add_systems(Update, asky_system::<Number<i16>>)
+        // .add_systems(Update, asky_system::<Number<i32>>)
+        // .add_systems(Update, asky_system::<Number<i64>>)
+        // .add_systems(Update, asky_system::<Number<i128>>)
+        // .add_systems(Update, asky_system::<Number<f32>>)
+        // .add_systems(Update, asky_system::<Number<f64>>)
+        // .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
+        // .add_systems(Update, asky_system::<Select<'_, &'static str>>)
+        // .add_systems(Update, asky_system::<Password>)
+        // .add_systems(Update, asky_system::<Message>)
+        // .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
+        // .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
         .add_systems(Update, poll_tasks::<()>)
         .add_systems(Update, poll_tasks_err::<()>)
         .add_systems(Update, run_closures)
@@ -713,14 +720,14 @@ impl Typeable<KeyCode> for Confirm<'_> {
     }
 }
 
-impl Printable for crate::bevy::AskyNode<Confirm<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.hide_cursor()?;
-        renderer.print(out)
-    }
-}
+// impl Printable for AskyNode<Confirm<'_>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.hide_cursor()?;
+//         renderer.print(out)
+//     }
+// }
 
 // MultiSelect
 
@@ -745,13 +752,13 @@ impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
     }
 }
 
-impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
+// impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.print(out)
+//     }
+// }
 
 // Number
 
@@ -809,15 +816,15 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
-impl<T: NumLike> Printable for AskyNode<Number<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
+// impl<T: NumLike> Printable for AskyNode<Number<'_, T>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.show_cursor()?;
+//         renderer.set_cursor(cursor)?;
+//         renderer.print(out)
+//     }
+// }
 
 impl<'a, T: NumLike + 'a> Default for Number<'a, T> {
     fn default() -> Self {
@@ -883,15 +890,15 @@ impl Typeable<KeyEvent> for Password<'_> {
     }
 }
 
-impl Printable for crate::bevy::AskyNode<Password<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
+// impl Printable for crate::bevy::AskyNode<Password<'_>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.show_cursor()?;
+//         renderer.set_cursor(cursor)?;
+//         renderer.print(out)
+//     }
+// }
 
 // Select
 
@@ -915,13 +922,13 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
     }
 }
 
-impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
+// impl<T: Send> Printable for crate::bevy::AskyNode<Select<'_, T>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.print(out)
+//     }
+// }
 
 impl Typeable<KeyEvent> for crate::Text<'_> {
     fn will_handle_key(&self, key: &KeyEvent) -> bool {
@@ -969,15 +976,15 @@ impl Typeable<KeyEvent> for crate::Text<'_> {
     }
 }
 
-impl Printable for AskyNode<crate::Text<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.show_cursor()?;
-        renderer.set_cursor(cursor)?;
-        renderer.print(out)
-    }
-}
+// impl Printable for AskyNode<crate::Text<'_>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.show_cursor()?;
+//         renderer.set_cursor(cursor)?;
+//         renderer.print(out)
+//     }
+// }
 
 impl Typeable<KeyCode> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyCode) -> bool {
@@ -996,13 +1003,13 @@ impl Typeable<KeyCode> for Toggle<'_> {
     }
 }
 
-impl Printable for crate::bevy::AskyNode<Toggle<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.print(out)
-    }
-}
+// impl Printable for AskyNode<Toggle<'_>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.print(out)
+//     }
+// }
 
 impl Typeable<KeyCode> for Message<'_> {
     fn will_handle_key(&self, _key: &KeyCode) -> bool {
@@ -1014,11 +1021,11 @@ impl Typeable<KeyCode> for Message<'_> {
     }
 }
 
-impl Printable for crate::bevy::AskyNode<Message<'_>> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        let mut out = ColoredStrings::default();
-        (self.formatter)(self, renderer.draw_time(), &mut out);
-        renderer.hide_cursor()?;
-        renderer.print(out)
-    }
-}
+// impl Printable for AskyNode<Message<'_>> {
+//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+//         let mut out = ColoredStrings::default();
+//         (self.formatter)(self, renderer.draw_time(), &mut out);
+//         renderer.hide_cursor()?;
+//         renderer.print(out)
+//     }
+// }
