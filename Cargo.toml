@@ -22,12 +22,12 @@ itertools = "0.12.0"
 promise_out = "1.0.0"
 # text-style = "0.3.0"
 # text-style = { path = "../text-style-rs", default-features = false, optional = true }
-text-style = { git = "https://github.com/shanecelis/text_style.git", branch="feature/colored", default-features = false, optional = true }
+text-style = { git = "https://github.com/shanecelis/text_style.git", branch="feature/colored", default-features = false }
 
 [features]
 default = ["terminal"]
 terminal = ["dep:crossterm"] #, "colored/tty", "colored/color"]
-bevy = ["dep:bevy", "colored/no-color", "dep:text-style", "text-style/colored", "text-style/bevy"]
+bevy = ["dep:bevy", "colored/no-color", "text-style/colored", "text-style/bevy"]
 
 
 [[example]]

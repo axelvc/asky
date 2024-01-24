@@ -1,4 +1,5 @@
 use std::io;
+use text_style::Color;
 
 pub trait Printable {
     fn hide_cursor(&self) -> bool {
@@ -19,13 +20,16 @@ pub enum DrawTime {
     Last,
 }
 
-pub trait Renderer {
-    type Writer: std::io::Write;
+pub trait Renderer : io::Write{
+    // type Writer: std::io::Write;
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
-    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self::Writer) -> io::Result<u16>;
+    fn set_foreground(&mut self, color: Color) -> io::Result<()>;
+    fn set_background(&mut self, color: Color) -> io::Result<()>;
+    fn reset_color(&mut self) -> io::Result<()>;
+    // fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self::Writer) -> io::Result<u16>;
     // fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;

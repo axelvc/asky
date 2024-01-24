@@ -9,8 +9,8 @@ use crate::prompts::text::Direction;
 use crate::style::{DefaultStyle, Style};
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
-use crossterm::{cursor, execute, queue, style::Print, terminal};
-
+use crossterm::{cursor, execute, queue, style::{Print, SetForegroundColor, SetBackgroundColor, ResetColor}, terminal};
+use text_style::Color;
 pub struct TermRenderer {
     pub draw_time: DrawTime,
     out: io::Stdout,
@@ -26,7 +26,7 @@ impl TermRenderer {
 }
 
 impl Renderer for TermRenderer {
-    type Writer = io::Stdout;
+    // type Writer = io::Stdout;
     fn draw_time(&self) -> DrawTime {
         self.draw_time
     }
@@ -38,48 +38,67 @@ impl Renderer for TermRenderer {
         }
     }
 
-    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
-    {
-        if self.draw_time != DrawTime::First {
-            queue!(
-                self.out,
-                cursor::RestorePosition,
-                terminal::Clear(terminal::ClearType::FromCursorDown),
-            )?;
-        }
-        // XXX: try not to flush twice later.
-        // self.out.flush()?;
-        let text_lines = draw_text(&mut self.out)? - 1;
-        // let mut text = format!("{}", text);
-
-        // if !text.ends_with('\n') {
-        //     text.push('\n')
-        // }
-
-        // queue!(self.out, Print(&text))?;
-
-        // Saved position is updated each draw because the text lines could be different
-        // between draws. The last draw is ignored to always set the cursor at the end
-        //
-        // The position is saved this way to ensure the correct position when the cursor is at
-        // the bottom of the terminal. Otherwise, the saved position will be the last row
-        // and when trying to restore, the next draw will be below the last row.
-        if self.draw_time != DrawTime::Last {
-            let (col, row) = cursor::position()?;
-            // let text_lines = text.lines().count() as u16;
-
-            queue!(
-                self.out,
-                cursor::MoveToPreviousLine(text_lines),
-                cursor::SavePosition,
-                cursor::MoveTo(col, row)
-            )?;
-        }
-
-        self.out.flush()
+    fn set_foreground(&mut self, color: Color) -> io::Result<()> {
+        queue!(
+            self.out,
+            SetForegroundColor(color.into())
+        )?;
     }
+    fn set_background(&mut self, color: Color) -> io::Result<()> {
+        queue!(
+            self.out,
+            SetBackgroundColor(color.into())
+        )?;
+    }
+    fn reset_color(&mut self) -> io::Result<()> {
+        queue!(
+            self.out,
+            ResetColor
+        )?;
+    }
+
+    // fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
+    // {
+    //     if self.draw_time != DrawTime::First {
+    //         queue!(
+    //             self.out,
+    //             cursor::RestorePosition,
+    //             terminal::Clear(terminal::ClearType::FromCursorDown),
+    //         )?;
+    //     }
+    //     // XXX: try not to flush twice later.
+    //     // self.out.flush()?;
+    //     let text_lines = draw_text(&mut self.out)? - 1;
+    //     // let mut text = format!("{}", text);
+
+    //     // if !text.ends_with('\n') {
+    //     //     text.push('\n')
+    //     // }
+
+    //     // queue!(self.out, Print(&text))?;
+
+    //     // Saved position is updated each draw because the text lines could be different
+    //     // between draws. The last draw is ignored to always set the cursor at the end
+    //     //
+    //     // The position is saved this way to ensure the correct position when the cursor is at
+    //     // the bottom of the terminal. Otherwise, the saved position will be the last row
+    //     // and when trying to restore, the next draw will be below the last row.
+    //     if self.draw_time != DrawTime::Last {
+    //         let (col, row) = cursor::position()?;
+    //         // let text_lines = text.lines().count() as u16;
+
+    //         queue!(
+    //             self.out,
+    //             cursor::MoveToPreviousLine(text_lines),
+    //             cursor::SavePosition,
+    //             cursor::MoveTo(col, row)
+    //         )?;
+    //     }
+
+    //     self.out.flush()
+    // }
 
     /// Utility function for line input
     /// Set initial position based on the position after drawing

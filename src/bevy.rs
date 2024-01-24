@@ -437,7 +437,7 @@ fn cursorify_iter(
 }
 
 impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
-    type Writer = StyledStringWriter;
+    // type Writer = StyledStringWriter;
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
     }
@@ -449,76 +449,75 @@ impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
         }
     }
 
+    // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
     fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
     where
         F: FnOnce(&mut Self::Writer) -> io::Result<u16> {
-        todo!();
+        let white = text_style::Color::Ansi {
+            color: AnsiColor::White,
+            mode: AnsiMode::Dark,
+        };
+        let mut out = StyledStringWriter::default();
+        let text_lines = draw_text(&mut out)? - 1;
+
+        self.commands.entity(self.column).with_children(|column| {
+            let mut next_line_count: Option<usize> = None;
+            let mut line_count: usize = 0;
+            let lines = out.strings.into_iter()
+                // .0
+                // .into_iter()
+                // .map(StyledString::from)
+                .flat_map(|mut s| {
+                    let mut a = vec![];
+                    let mut b = None;
+                    if s.s.contains('\n') {
+                        let str = std::mem::take(&mut s.s);
+                        a.extend(str.split_inclusive('\n').map(move |line| StyledString {
+                            s: line.to_string(),
+                            ..s.clone()
+                        }));
+                    } else {
+                        b = Some(s);
+                    }
+                    a.into_iter().chain(b.into_iter())
+                })
+                .group_by(|x| {
+                    if let Some(x) = next_line_count.take() {
+                        line_count = x;
+                    }
+                    if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
+                        next_line_count = Some(line_count + 1);
+                    }
+                    line_count
+                });
+
+            let mut line_num = 0;
+            for (_key, line) in &lines {
+                let style: TextStyleParams = self.settings.style.clone().into();
+                column
+                    .spawn(NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Row,
+                            ..default()
+                        },
+                        ..default()
+                    })
+                    .with_children(|parent| {
+                        if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
+                            text_style::bevy::render_iter(
+                                parent,
+                                &style,
+                                cursorify_iter(line, self.state.cursor_pos[0], white),
+                            );
+                        } else {
+                            text_style::bevy::render_iter(parent, &style, line);
+                        }
+                    });
+                line_num += 1;
+            }
+        });
+        Ok(())
     }
-
-    // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-    //     let white = text_style::Color::Ansi {
-    //         color: AnsiColor::White,
-    //         mode: AnsiMode::Dark,
-    //     };
-
-    //     self.commands.entity(self.column).with_children(|column| {
-    //         let mut next_line_count: Option<usize> = None;
-    //         let mut line_count: usize = 0;
-    //         let lines = strings
-    //             .0
-    //             .into_iter()
-    //             .map(StyledString::from)
-    //             .flat_map(|mut s| {
-    //                 let mut a = vec![];
-    //                 let mut b = None;
-    //                 if s.s.contains('\n') {
-    //                     let str = std::mem::take(&mut s.s);
-    //                     a.extend(str.split_inclusive('\n').map(move |line| StyledString {
-    //                         s: line.to_string(),
-    //                         ..s.clone()
-    //                     }));
-    //                 } else {
-    //                     b = Some(s);
-    //                 }
-    //                 a.into_iter().chain(b.into_iter())
-    //             })
-    //             .group_by(|x| {
-    //                 if let Some(x) = next_line_count.take() {
-    //                     line_count = x;
-    //                 }
-    //                 if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
-    //                     next_line_count = Some(line_count + 1);
-    //                 }
-    //                 line_count
-    //             });
-
-    //         let mut line_num = 0;
-    //         for (_key, line) in &lines {
-    //             let style: TextStyleParams = self.settings.style.clone().into();
-    //             column
-    //                 .spawn(NodeBundle {
-    //                     style: Style {
-    //                         flex_direction: FlexDirection::Row,
-    //                         ..default()
-    //                     },
-    //                     ..default()
-    //                 })
-    //                 .with_children(|parent| {
-    //                     if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
-    //                         text_style::bevy::render_iter(
-    //                             parent,
-    //                             &style,
-    //                             cursorify_iter(line, self.state.cursor_pos[0], white),
-    //                         );
-    //                     } else {
-    //                         text_style::bevy::render_iter(parent, &style, line);
-    //                     }
-    //                 });
-    //             line_num += 1;
-    //         }
-    //     });
-    //     Ok(())
-    // }
 
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.
