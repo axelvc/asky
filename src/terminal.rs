@@ -9,8 +9,10 @@ use crate::prompts::text::Direction;
 use crate::style::{DefaultStyle, Style};
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
-use crossterm::{cursor, execute, queue, style::{Print, SetForegroundColor, SetBackgroundColor, ResetColor}, terminal};
-use text_style::Color;
+use crossterm::{cursor, execute, queue, style::{self, Print, SetForegroundColor, SetBackgroundColor, ResetColor}, terminal};
+// use text_style::{Color, crossterm as ts_crossterm};
+use text_style::{Color, AnsiColor, AnsiMode, crossterm::render};
+use std::convert::{From, Into};
 pub struct TermRenderer {
     pub draw_time: DrawTime,
     out: io::Stdout,
@@ -25,8 +27,24 @@ impl TermRenderer {
     }
 }
 
+impl io::Write for TermRenderer {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s = std::str::from_utf8(buf).expect("Not a utf8 string");
+
+        queue!(
+            self.out,
+            Print(s)
+        )?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.out.flush()
+    }
+}
+
 impl Renderer for TermRenderer {
-    // type Writer = io::Stdout;
+    type Writer = io::Stdout;
     fn draw_time(&self) -> DrawTime {
         self.draw_time
     }
@@ -39,28 +57,37 @@ impl Renderer for TermRenderer {
     }
 
     fn set_foreground(&mut self, color: Color) -> io::Result<()> {
+
+        // let c: crossterm::style::Color = Color::Ansi { color: AnsiColor::Black, mode: AnsiMode::Dark }.into();
+        // let c: crossterm::style::Color = crossterm::style::Color::from(Color::Ansi { color: AnsiColor::Black, mode: AnsiMode::Dark });
+        // let c: style::Color = color.into();
+        // let c: style::Color = color.into();
+        // let c: Color = style::Color::Black.into();
+        // let c: style::Color = ts_crossterm::style::Color::from(color);
         queue!(
             self.out,
             SetForegroundColor(color.into())
-        )?;
+        )
     }
     fn set_background(&mut self, color: Color) -> io::Result<()> {
         queue!(
             self.out,
             SetBackgroundColor(color.into())
-        )?;
+        )
     }
     fn reset_color(&mut self) -> io::Result<()> {
         queue!(
             self.out,
             ResetColor
-        )?;
+        )
     }
 
-    // fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
-    // where
-    //     F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
-    // {
+    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    where
+        F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
+    {
+        Ok(())
+    }
     //     if self.draw_time != DrawTime::First {
     //         queue!(
     //             self.out,

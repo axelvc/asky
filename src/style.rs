@@ -9,6 +9,8 @@ use crossterm::{
     },
     Command,
 };
+use crate::utils::renderer::Renderer;
+use std::io;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,6 +45,11 @@ pub enum Region {
     Begin(Section),
     End(Section),
     // Wrap(Section, Box<dyn Command>),
+}
+
+pub trait Style2 {
+    fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
+    fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
 }
 
 pub trait Style {
