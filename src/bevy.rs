@@ -699,7 +699,7 @@ impl Plugin for AskyPlugin {
             })),
         })
         .add_systems(Update, asky_system::<Confirm>)
-        // .add_systems(Update, asky_system::<Toggle>)
+        .add_systems(Update, asky_system::<Toggle>)
         // .add_systems(Update, asky_system::<crate::Text>)
         // .add_systems(Update, asky_system::<Number<u8>>)
         // .add_systems(Update, asky_system::<Number<u16>>)

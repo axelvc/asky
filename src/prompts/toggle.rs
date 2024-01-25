@@ -5,7 +5,7 @@ use std::io;
 use crate::Error;
 use crate::Valuable;
 
-use crate::style::{DefaultStyle, Section, Style};
+use crate::style::{DefaultStyle, Section, Style2};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
@@ -90,42 +90,32 @@ impl<'a> Toggle<'a> {
 }
 
 impl Printable for Toggle<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
         use Section::*;
-        let draw_time = renderer.draw_time();
+        let draw_time = r.draw_time();
         let style = DefaultStyle { ascii: true };
 
-        renderer.print2(|writer| {
+        r.print_prompt(|r| {
             if draw_time == DrawTime::Last {
-                queue!(
-                    writer,
-                    style.begin(Query(true)),
-                    Print(&self.message),
-                    style.end(Query(true)),
-                    style.begin(Answer(true)),
-                    Print(&self.options[self.active as usize]),
-                    style.end(Answer(true)),
-                )?;
-                // style.begin(writer, Section::Answered)?;
-                // queue!(writer, Print(self.message.to_string()))?;
-                // style.end(writer)?;
-                // style.begin(writer, Section::Answer)?;
-                // queue!(writer, Print(options[self.active as usize]))?;
-                // style.end(writer)?;
+                style.begin(r, Query(true))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(true))?;
+
+                style.begin(r, Answer(true))?;
+                write!(r, "{}", &self.options[self.active as usize])?;
+                style.end(r, Answer(true))?;
                 Ok(1)
             } else {
-                queue!(
-                    writer,
-                    style.begin(Query(false)),
-                    Print(&self.message),
-                    style.end(Query(false)),
-                    style.begin(Toggle(!self.active)),
-                    Print(&self.options[0]),
-                    style.end(Toggle(!self.active)),
-                    style.begin(Toggle(self.active)),
-                    Print(&self.options[1]),
-                    style.end(Toggle(self.active)),
-                )?;
+                style.begin(r, Query(false))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(false))?;
+
+                style.begin(r, Toggle(!self.active))?;
+                write!(r, "{}", &self.options[0])?;
+                style.end(r, Toggle(!self.active))?;
+                style.begin(r, Toggle(self.active))?;
+                write!(r, "{}", &self.options[1])?;
+                style.end(r, Toggle(self.active))?;
                 Ok(2)
             }
         })
