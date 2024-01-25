@@ -11,6 +11,7 @@ use crossterm::{
 };
 use crate::utils::renderer::Renderer;
 use std::io;
+use text_style::{AnsiColor::*};
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -50,6 +51,208 @@ pub enum Region {
 pub trait Style2 {
     fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
     fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
+}
+
+impl Style2 for DefaultStyle {
+    fn begin<R: Renderer>(&self, r: &mut R, section: Section) -> io::Result<()> {
+        use Section::*;
+        match section {
+            Query(answered) => {
+                if answered {
+                    r.set_foreground(Green.dark())?;
+                    write!(r, "{}", if self.ascii { "[x]" } else { "■" })?;
+                    r.reset_color()?;
+                    write!(r, " ")?;
+                } else {
+                    r.set_foreground(Blue.dark())?;
+                    write!(r, "{}", if self.ascii { "[ ]" } else { "▣" })?;
+                    r.reset_color()?;
+                    write!(r, " ")?;
+                }
+            }
+            Answer(show) => {
+                r.set_foreground(Magenta.dark())?;
+                if !show {
+                    write!(r, "{}", if self.ascii { "..." } else { "…" })?;
+                }
+            } // was purple
+            Toggle(selected) => {
+                if selected {
+                    r.set_foreground(Black.dark())?;
+                    r.set_background(Blue.dark())?;
+                    write!(r, " ")?;
+                } else {
+                    r.set_foreground(White.dark())?;
+                    r.set_background(Black.light())?;
+                    // SetForegroundColor(Color::White).write_ansi(f)?;
+                    // SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
+                    write!(r, " ")?;
+                }
+            }
+            // OptionExclusive(flags) => {
+            //     match (
+            //         flags.contains(Flags::Focused),
+            //         flags.contains(Flags::Disabled),
+            //     ) {
+            //         (false, _) => {
+            //             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //             Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
+            //             SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //         }
+            //         (true, true) => {
+            //             SetForegroundColor(Color::Red).write_ansi(f)?;
+            //             Print(if self.ascii { "( )" } else { "○" }).write_ansi(f)?;
+            //             SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //         }
+            //         (true, false) => {
+            //             SetForegroundColor(Color::Blue).write_ansi(f)?;
+            //             Print(if self.ascii { "(x)" } else { "●" }).write_ansi(f)?;
+            //             SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //         }
+            //     }
+            //     Print(" ").write_ansi(f)?;
+            //     match (
+            //         flags.contains(Flags::Focused),
+            //         flags.contains(Flags::Disabled),
+            //     ) {
+            //         (_, true) => {
+            //             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //             SetAttribute(Attribute::OverLined).write_ansi(f)?;
+            //         }
+            //         (true, false) => {
+            //             SetForegroundColor(Color::Blue).write_ansi(f)?;
+            //         }
+            //         (false, false) => {}
+            //     }
+            // }
+            // Option(flags) => {
+            //     let prefix = match (
+            //         flags.contains(Flags::Selected),
+            //         flags.contains(Flags::Focused),
+            //     ) {
+            //         (true, true) => {
+            //             if self.ascii {
+            //                 "(o)"
+            //             } else {
+            //                 "◉"
+            //             }
+            //         }
+            //         (true, false) => {
+            //             if self.ascii {
+            //                 "(x)"
+            //             } else {
+            //                 "●"
+            //             }
+            //         }
+            //         _ => {
+            //             if self.ascii {
+            //                 "( )"
+            //             } else {
+            //                 "○"
+            //             }
+            //         }
+            //     };
+
+            //     match (
+            //         flags.contains(Flags::Focused),
+            //         flags.contains(Flags::Selected),
+            //         flags.contains(Flags::Disabled),
+            //     ) {
+            //         (true, _, true) => SetForegroundColor(Color::Red).write_ansi(f)?,
+            //         (true, _, false) => SetForegroundColor(Color::Blue).write_ansi(f)?,
+            //         (false, true, _) => SetForegroundColor(Color::Reset).write_ansi(f)?,
+            //         (false, false, _) => SetForegroundColor(Color::DarkGrey).write_ansi(f)?,
+            //     };
+            //     Print(prefix).write_ansi(f)?;
+            //     SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //     Print(" ").write_ansi(f)?;
+            //     match (
+            //         flags.contains(Flags::Focused),
+            //         flags.contains(Flags::Disabled),
+            //     ) {
+            //         (_, true) => {
+            //             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //             SetAttribute(Attribute::OverLined).write_ansi(f)?;
+            //         }
+            //         (true, false) => {
+            //             SetForegroundColor(Color::Blue).write_ansi(f)?;
+            //         }
+            //         (false, false) => {}
+            //     }
+            // }
+            // Message => {}
+            // Validator(valid) => {
+            //     SetForegroundColor(if valid { Color::Blue } else { Color::Red })
+            //         .write_ansi(f)?;
+            // }
+            // Placeholder => {
+            //     SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //     Print("Default: ").write_ansi(f)?;
+            // }
+            // Input => {
+            //     SetForegroundColor(Color::Blue).write_ansi(f)?;
+            //     Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
+            //     SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //     Print(" ").write_ansi(f)?;
+            //     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            // }
+            // List => Print("[").write_ansi(f)?,
+            // ListItem(first) => {
+            //     if !first {
+            //         Print(", ").write_ansi(f)?;
+            //     }
+            // }
+            // Page(i, count) => {
+            //     if count != 1 {
+            //         let icon = if self.ascii { "*" } else { "•" };
+
+            //         Print("\n").write_ansi(f)?;
+            //         Print(" ".repeat(if self.ascii { 4 } else { 2 })).write_ansi(f)?;
+            //         SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //         Print(icon.repeat(i as usize)).write_ansi(f)?;
+            //         SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //         Print(icon).write_ansi(f)?;
+            //         SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
+            //         Print(icon.repeat(count.saturating_sub(i + 1) as usize)).write_ansi(f)?;
+            //         SetForegroundColor(Color::Reset).write_ansi(f)?;
+            //         Print("\n").write_ansi(f)?;
+            //     }
+            // }
+            // x => todo!("{:?} not impl", x),
+            x => {},
+        }
+        Ok(())
+    }
+    fn end<R: Renderer>(&self, r: &mut R, section: Section) -> io::Result<()> {
+        use Section::*;
+        match section {
+            Query(answered) => {
+                if answered {
+                    write!(r, " ")?;
+                } else {
+                    write!(r, "\n")?;
+                }
+            }
+            Answer(_) => {
+                r.reset_color()?;
+                write!(r, "\n")?;
+            }
+            Toggle(_) => {
+                write!(r, " ")?;
+                r.reset_color()?;
+                write!(r, "  ")?;
+            }
+            OptionExclusive(_flags) | Option(_flags) => {
+                write!(r, "\n")?;
+                r.reset_color()?;
+            }
+            List => write!(r, "]")?,
+            ListItem(_) => {}
+            Message => write!(r, "\n")?,
+            _ => r.reset_color()?,
+        }
+        Ok(())
+    }
 }
 
 pub trait Style {
