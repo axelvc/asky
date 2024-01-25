@@ -6,7 +6,7 @@ use crate::{
 use std::io::{self, Write};
 
 use crate::prompts::text::Direction;
-use crate::style::{DefaultStyle, Style};
+use crate::style::{DefaultStyle, Style2};
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::{cursor, execute, queue, style::{self, Print, SetForegroundColor, SetBackgroundColor, ResetColor}, terminal};
@@ -190,73 +190,6 @@ impl Typeable<KeyEvent> for Text<'_> {
     }
 }
 
-impl Printable for Text<'_> {
-    fn hide_cursor(&self) -> bool {
-        false
-    }
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        // let mut out = ColoredStrings::default();
-        // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        // renderer.print(out)?;
-        // renderer.set_cursor(cursor)
-        use crate::style::Section::*;
-        let style = DefaultStyle { ascii: true };
-        let draw_time = renderer.draw_time();
-
-        renderer.print2(|writer| {
-            if draw_time == DrawTime::Last {
-                queue!(
-                    writer,
-                    style.begin(Query(true)),
-                    Print(&self.message),
-                    style.end(Query(true)),
-                    style.begin(Answer(true)),
-                    Print(&self.input.value),
-                    style.end(Answer(true)),
-                )?;
-                Ok(1)
-            } else {
-                queue!(
-                    writer,
-                    style.begin(Query(false)),
-                    Print(&self.message),
-                    style.end(Query(false)),
-                )?;
-                if let Some(_x) = self.default_value {
-                    queue!(
-                        writer,
-                        style.begin(DefaultAnswer),
-                        Print(&self.message),
-                        style.end(DefaultAnswer),
-                    )?;
-                }
-                queue!(writer, style.begin(Input), Print(&self.input.value))?;
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        queue!(
-                            writer,
-                            style.begin(Placeholder),
-                            Print(placeholder),
-                            style.end(Placeholder),
-                        )?;
-                    }
-                }
-                queue!(writer, style.end(Input),)?;
-                if let Err(error) = self.validator_result {
-                    queue!(
-                        writer,
-                        style.begin(Validator(false)),
-                        Print(error),
-                        style.end(Validator(false)),
-                    )?;
-                }
-                Ok(2)
-            }
-        })?;
-        renderer.set_cursor([2 + self.input.col, 1])
-    }
-}
-
 // Confirm
 impl Typeable<KeyEvent> for Confirm<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
@@ -306,64 +239,59 @@ impl<T: NumLike> Printable for Number<'_, T> {
         false
     }
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        // let mut out = ColoredStrings::default();
-        // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        // renderer.print(out)?;
-        // renderer.set_cursor(cursor)
-        //
         use crate::style::Section::*;
         let style = DefaultStyle { ascii: true };
         let draw_time = renderer.draw_time();
 
-        renderer.print2(|writer| {
-            if draw_time == DrawTime::Last {
-                queue!(
-                    writer,
-                    style.begin(Query(true)),
-                    Print(&self.message),
-                    style.end(Query(true)),
-                    style.begin(Answer(true)),
-                    Print(&self.input.value),
-                    style.end(Answer(true)),
-                )?;
-                Ok(1)
-            } else {
-                queue!(
-                    writer,
-                    style.begin(Query(false)),
-                    Print(&self.message),
-                    style.end(Query(false)),
-                )?;
-                if let Some(_x) = self.default_value {
-                    queue!(
-                        writer,
-                        style.begin(DefaultAnswer),
-                        Print(&self.message),
-                        style.end(DefaultAnswer),
-                    )?;
-                }
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        queue!(
-                            writer,
-                            style.begin(Placeholder),
-                            Print(placeholder),
-                            style.end(Placeholder),
-                        )?;
-                    }
-                }
-                let is_valid = self.validator_result.is_ok();
-                queue!(
-                    writer,
-                    style.begin(Validator(is_valid)),
-                    style.begin(Input),
-                    Print(&self.input.value),
-                    style.end(Input),
-                    style.end(Validator(is_valid)),
-                )?;
-                Ok(2)
-            }
-        })?;
+        // renderer.print2(|writer| {
+        //     if draw_time == DrawTime::Last {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(true)),
+        //             Print(&self.message),
+        //             style.end(Query(true)),
+        //             style.begin(Answer(true)),
+        //             Print(&self.input.value),
+        //             style.end(Answer(true)),
+        //         )?;
+        //         Ok(1)
+        //     } else {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(false)),
+        //             Print(&self.message),
+        //             style.end(Query(false)),
+        //         )?;
+        //         if let Some(_x) = self.default_value {
+        //             queue!(
+        //                 writer,
+        //                 style.begin(DefaultAnswer),
+        //                 Print(&self.message),
+        //                 style.end(DefaultAnswer),
+        //             )?;
+        //         }
+        //         if self.input.value.is_empty() {
+        //             if let Some(placeholder) = self.placeholder {
+        //                 queue!(
+        //                     writer,
+        //                     style.begin(Placeholder),
+        //                     Print(placeholder),
+        //                     style.end(Placeholder),
+        //                 )?;
+        //             }
+        //         }
+        //         let is_valid = self.validator_result.is_ok();
+        //         queue!(
+        //             writer,
+        //             style.begin(Validator(is_valid)),
+        //             style.begin(Input),
+        //             Print(&self.input.value),
+        //             style.end(Input),
+        //             style.end(Validator(is_valid)),
+        //         )?;
+        //         Ok(2)
+        //     }
+        // })?;
         renderer.set_cursor([2 + self.input.col, 1])
     }
 }
@@ -437,68 +365,63 @@ impl Typeable<KeyEvent> for Password<'_> {
 
 impl Printable for Password<'_> {
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        // let mut out = ColoredStrings::new();
-        // let cursor = (self.formatter)(self, renderer.draw_time(), &mut out);
-        // renderer.print(out)?;
-        // renderer.set_cursor(cursor)
-
         use crate::style::Section::*;
         let style = DefaultStyle { ascii: true };
         let draw_time = renderer.draw_time();
 
-        renderer.print2(|writer| {
-            if draw_time == DrawTime::Last {
-                queue!(
-                    writer,
-                    style.begin(Query(true)),
-                    Print(&self.message),
-                    style.end(Query(true)),
-                    style.begin(Answer(false)),
-                    style.end(Answer(false)),
-                )?;
-                Ok(1)
-            } else {
-                queue!(
-                    writer,
-                    style.begin(Query(false)),
-                    Print(&self.message),
-                    style.end(Query(false)),
-                )?;
-                if let Some(_x) = self.default_value {
-                    queue!(
-                        writer,
-                        style.begin(DefaultAnswer),
-                        Print(&self.message),
-                        style.end(DefaultAnswer),
-                    )?;
-                }
-                let text = match self.hidden {
-                    true => String::new(),
-                    false => "*".repeat(self.input.value.len()),
-                };
-                queue!(writer, style.begin(Input), Print(text))?;
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        queue!(
-                            writer,
-                            style.begin(Placeholder),
-                            Print(placeholder),
-                            style.end(Placeholder),
-                        )?;
-                    }
-                }
-                queue!(writer, style.end(Input),)?;
-                if let Err(error) = self.validator_result {
-                    queue!(
-                        writer,
-                        style.begin(Validator(false)),
-                        Print(error),
-                        style.end(Validator(false)),
-                    )?;
-                }
-                Ok(2)
-            }
-        })?;
+        // renderer.print2(|writer| {
+        //     if draw_time == DrawTime::Last {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(true)),
+        //             Print(&self.message),
+        //             style.end(Query(true)),
+        //             style.begin(Answer(false)),
+        //             style.end(Answer(false)),
+        //         )?;
+        //         Ok(1)
+        //     } else {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(false)),
+        //             Print(&self.message),
+        //             style.end(Query(false)),
+        //         )?;
+        //         if let Some(_x) = self.default_value {
+        //             queue!(
+        //                 writer,
+        //                 style.begin(DefaultAnswer),
+        //                 Print(&self.message),
+        //                 style.end(DefaultAnswer),
+        //             )?;
+        //         }
+        //         let text = match self.hidden {
+        //             true => String::new(),
+        //             false => "*".repeat(self.input.value.len()),
+        //         };
+        //         queue!(writer, style.begin(Input), Print(text))?;
+        //         if self.input.value.is_empty() {
+        //             if let Some(placeholder) = self.placeholder {
+        //                 queue!(
+        //                     writer,
+        //                     style.begin(Placeholder),
+        //                     Print(placeholder),
+        //                     style.end(Placeholder),
+        //                 )?;
+        //             }
+        //         }
+        //         queue!(writer, style.end(Input),)?;
+        //         if let Err(error) = self.validator_result {
+        //             queue!(
+        //                 writer,
+        //                 style.begin(Validator(false)),
+        //                 Print(error),
+        //                 style.end(Validator(false)),
+        //             )?;
+        //         }
+        //         Ok(2)
+        //     }
+        // })?;
         renderer.set_cursor([2 + self.input.col, 1])
     }
 }

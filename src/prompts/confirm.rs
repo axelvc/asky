@@ -92,15 +92,6 @@ impl Valuable for Confirm<'_> {
     }
 }
 
-// impl Write for Terminal {}
-
-// impl Write for Bevy {}
-
-// trait Formatter {
-//     fn message(&mut self, fmt: &mut Formatter) -> Result<(), Error>;
-// }
-// struct Run(F) where F : FnOnce(;
-
 impl Printable for Confirm<'_> {
     fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
         use Section::*;
@@ -133,34 +124,6 @@ impl Printable for Confirm<'_> {
                 Ok(2)
             }
         })
-        // renderer.print2(|writer| {
-        //     if draw_time == DrawTime::Last {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(true)),
-        //             Print(self.message.to_string()),
-        //             style.end(Query(true)),
-        //             style.begin(Answer(true)),
-        //             Print(options[self.active as usize]),
-        //             style.end(Answer(true)),
-        //         )?;
-        //         Ok(1)
-        //     } else {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(false)),
-        //             Print(self.message.to_string()),
-        //             style.end(Query(false)),
-        //             style.begin(Toggle(!self.active)),
-        //             Print(options[0]),
-        //             style.end(Toggle(!self.active)),
-        //             style.begin(Toggle(self.active)),
-        //             Print(options[1]),
-        //             style.end(Toggle(self.active)),
-        //         )?;
-        //         Ok(2)
-        //     }
-        // })
     }
 }
 

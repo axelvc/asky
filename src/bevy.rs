@@ -602,6 +602,11 @@ pub fn asky_system<T>(
                 //     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
                 let _ = prompt.draw(&mut *renderer);
+                let _ = if prompt.hide_cursor() {
+                    renderer.hide_cursor()
+                } else {
+                    renderer.show_cursor()
+                };
                 bevy_render(&mut commands, &asky_settings, &mut renderer, entity);
                 // This is just to affirm that we're not recreating the nodes unless we need to.
                 eprint!(".");
@@ -700,7 +705,7 @@ impl Plugin for AskyPlugin {
         })
         .add_systems(Update, asky_system::<Confirm>)
         .add_systems(Update, asky_system::<Toggle>)
-        // .add_systems(Update, asky_system::<crate::Text>)
+        .add_systems(Update, asky_system::<crate::Text>)
         // .add_systems(Update, asky_system::<Number<u8>>)
         // .add_systems(Update, asky_system::<Number<u16>>)
         // .add_systems(Update, asky_system::<Number<u32>>)

@@ -189,13 +189,12 @@ impl Style2 for DefaultStyle {
             //     SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
             //     Print("Default: ").write_ansi(f)?;
             // }
-            // Input => {
-            //     SetForegroundColor(Color::Blue).write_ansi(f)?;
-            //     Print(if self.ascii { ">" } else { "›" }).write_ansi(f)?;
-            //     SetForegroundColor(Color::Reset).write_ansi(f)?;
-            //     Print(" ").write_ansi(f)?;
-            //     // SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-            // }
+            Input => {
+                r.set_foreground(Blue.dark())?;
+                write!(r, "{}", if self.ascii { ">" } else { "›" })?;
+                r.reset_color()?;
+                write!(r, " ")?;
+            }
             // List => Print("[").write_ansi(f)?,
             // ListItem(first) => {
             //     if !first {
