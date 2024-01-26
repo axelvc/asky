@@ -9,7 +9,7 @@ use crate::Valuable;
 // use colored::ColoredStrings;
 use crate::style::{DefaultStyle, Section, Style};
 use crate::ColoredStrings;
-use crossterm::{queue, style::Print};
+
 
 type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

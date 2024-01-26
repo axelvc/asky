@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
 use std::future::Future;
-use std::io;
+
 
 use std::ops::{Deref, DerefMut};
 
@@ -411,7 +411,7 @@ fn cursorify(
     );
     let left = Some(to_colored_string(input));
     left.into_iter()
-        .chain(cursor.into_iter().chain(right.into_iter()))
+        .chain(cursor.into_iter().chain(right))
 }
 
 fn cursorify_iter(
@@ -433,7 +433,7 @@ fn cursorify_iter(
         }
 
         count += l;
-        a.into_iter().flatten().chain(b.into_iter())
+        a.into_iter().flatten().chain(b)
     })
 }
 
@@ -646,7 +646,7 @@ fn bevy_render(commands: &mut Commands, settings: &BevyAskySettings, out: &mut S
                                    } else {
                                        b = Some(s);
                                    }
-                                   a.into_iter().chain(b.into_iter())
+                                   a.into_iter().chain(b)
                                })
                                .group_by(|x| {
                                    if let Some(x) = next_line_count.take() {
@@ -729,33 +729,6 @@ impl Plugin for AskyPlugin {
         .add_systems(Update, poll_tasks_err::<()>)
         .add_systems(Update, run_closures)
         .add_systems(Update, run_timers);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_scan() {
-        let a = [1, 2, 3, 4];
-
-        let mut iter = a.iter().scan(0, |state, &x| {
-            // each iteration, we'll multiply the state by the element ...
-            *state += 1;
-
-            // ... and terminate if the state exceeds 6
-            if *state % 2 == 0 {
-                return None;
-            }
-            // ... else yield the negation of the state
-            Some(-x)
-        });
-
-        assert_eq!(iter.next(), Some(-1));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), Some(-3));
-        assert_eq!(iter.next(), None);
-        assert_eq!(iter.next(), None);
     }
 }
 
@@ -1090,6 +1063,33 @@ impl Typeable<KeyCode> for Message<'_> {
 
     fn handle_key(&mut self, _key: &KeyCode) -> bool {
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_scan() {
+        let a = [1, 2, 3, 4];
+
+        let mut iter = a.iter().scan(0, |state, &x| {
+            // each iteration, we'll multiply the state by the element ...
+            *state += 1;
+
+            // ... and terminate if the state exceeds 6
+            if *state % 2 == 0 {
+                return None;
+            }
+            // ... else yield the negation of the state
+            Some(-x)
+        });
+
+        assert_eq!(iter.next(), Some(-1));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), Some(-3));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
     }
 }
 

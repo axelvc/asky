@@ -1,7 +1,7 @@
 use std::io;
 use std::fmt::{self, Display, Write};
-use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString, Style, Color};
-use crossterm::{cursor, execute, queue, style::{self, Print, SetForegroundColor, SetBackgroundColor}, terminal};
+use text_style::{self, AnsiColor, AnsiMode, StyledString, Style, Color};
+use crossterm::{style::{self, Print, SetForegroundColor, SetBackgroundColor}};
 use crate::{DrawTime, utils::renderer::Renderer};
 
 #[derive(Debug, Clone, Default)]
@@ -98,7 +98,7 @@ impl std::io::Write for StyledStringWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s = std::str::from_utf8(buf).expect("Not a utf8 string");
         let ss = match self.strings.pop() {
-            None => StyledString::new(s.to_string(), self.style.clone()),
+            None => StyledString::new(s.to_string(), self.style),
             Some(mut text) => {
                 if text.style == self.style {
                     text.s.push_str(s);
@@ -106,7 +106,7 @@ impl std::io::Write for StyledStringWriter {
                 } else {
                     self.strings.push(text);
                     StyledString::new(s.to_string(),
-                                      self.style.clone())
+                                      self.style)
                 }
             }
         };
@@ -124,7 +124,7 @@ impl std::fmt::Write for StyledStringWriter {
     fn write_str(&mut self, s: &str) -> Result<(), fmt::Error> {
         // let s = std::str::from_utf8(buf).expect("Not a utf8 string");
         let ss = match self.strings.pop() {
-            None => StyledString::new(s.to_string(), self.style.clone()),
+            None => StyledString::new(s.to_string(), self.style),
             Some(mut text) => {
                 if text.style == self.style {
                     text.s.push_str(s);
@@ -132,7 +132,7 @@ impl std::fmt::Write for StyledStringWriter {
                 } else {
                     self.strings.push(text);
                     StyledString::new(s.to_string(),
-                                      self.style.clone())
+                                      self.style)
                 }
             }
         };
@@ -167,14 +167,14 @@ impl Renderer for StyledStringWriter {
     }
 
     fn reset_color(&mut self) -> io::Result<()> {
-        let mut style = self.style.get_or_insert(Style::default());
+        let style = self.style.get_or_insert(Style::default());
         style.fg = None;
         style.bg = None;
         Ok(())
     }
 
     // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-    fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
+    fn print2<F>(&mut self, _draw_text: F) -> io::Result<()>
     where
         F: FnOnce(&mut Self::Writer) -> io::Result<u16> {
         Ok(())
@@ -183,7 +183,7 @@ impl Renderer for StyledStringWriter {
     fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
     where
         F: FnOnce(&mut Self) -> io::Result<u16> {
-        let text_lines = draw_prompt(self)? - 1;
+        let _text_lines = draw_prompt(self)? - 1;
         Ok(())
     }
 

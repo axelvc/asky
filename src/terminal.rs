@@ -6,17 +6,17 @@ use crate::{
 use std::io::{self, Write};
 
 use crate::prompts::text::Direction;
-use crate::style::{DefaultStyle, Style};
+
 use crate::utils::key_listener::Typeable;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::{
     cursor, execute, queue,
-    style::{self, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    style::{Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal,
 };
 // use text_style::{Color, crossterm as ts_crossterm};
-use std::convert::{From, Into};
-use text_style::{crossterm::render, AnsiColor, AnsiMode, Color};
+use std::convert::{Into};
+use text_style::{Color};
 
 #[derive(Debug)]
 pub struct TermRenderer {
@@ -71,7 +71,7 @@ impl Renderer for TermRenderer {
         queue!(self.out, ResetColor)
     }
 
-    fn print2<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    fn print2<F>(&mut self, _draw_prompt: F) -> io::Result<()>
     where
         F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
     {

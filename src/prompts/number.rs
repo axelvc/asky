@@ -197,7 +197,7 @@ impl<T: NumLike> Printable for Number<'_, T> {
                     }
                 }
                 let is_valid = self.validator_result.is_ok();
-                if let Err(error) = self.validator_result {
+                if let Err(_error) = self.validator_result {
                     style.begin(r, Validator(is_valid))?;
                     style.begin(r, Input)?;
                     write!(r, "{}", &self.input.value)?;

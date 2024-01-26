@@ -15,7 +15,7 @@ pub enum Direction {
     Right,
 }
 use crate::style::{DefaultStyle, Flags, Section, Style};
-use crossterm::{queue, style::Print};
+
 
 // region: SelectOption
 

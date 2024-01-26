@@ -10,7 +10,7 @@ use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
     theme,
 };
-use crossterm::{queue, style::Print};
+
 
 type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 

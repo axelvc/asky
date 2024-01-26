@@ -6,8 +6,7 @@ use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, window::Pre
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
-    let options = vec![
-        "confirm",
+    let options = ["confirm",
         "toggle",
         "text",
         "number",
@@ -15,8 +14,7 @@ fn main() {
         "select",
         "password",
         "multi-select",
-        "message",
-    ];
+        "message"];
     if args.len() != 2 {
         eprintln!("Usage: bevy <{}>", options.join("|"));
         std::process::exit(1);

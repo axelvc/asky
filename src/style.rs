@@ -185,7 +185,7 @@ impl Style for DefaultStyle {
             Page(i, count) => {
                 if count != 1 {
                     let icon = if self.ascii { "*" } else { "•" };
-                    write!(r, "\n")?;
+                    writeln!(r)?;
                     write!(r, "{}", " ".repeat(if self.ascii { 4 } else { 2 }))?;
                     r.set_foreground(Black.light())?;
                     write!(r, "{}", icon.repeat(i as usize))?;
@@ -194,7 +194,7 @@ impl Style for DefaultStyle {
                     r.set_foreground(Black.light())?;
                     write!(r, "{}", icon.repeat(count.saturating_sub(i + 1) as usize))?;
                     r.reset_color()?;
-                    write!(r, "\n")?;
+                    writeln!(r)?;
                 }
             }
             x => todo!("{:?} not impl", x),
@@ -209,12 +209,12 @@ impl Style for DefaultStyle {
                 if answered {
                     write!(r, " ")?;
                 } else {
-                    write!(r, "\n")?;
+                    writeln!(r)?;
                 }
             }
             Answer(_) => {
                 r.reset_color()?;
-                write!(r, "\n")?;
+                writeln!(r)?;
             }
             Toggle(_) => {
                 write!(r, " ")?;
@@ -222,12 +222,12 @@ impl Style for DefaultStyle {
                 write!(r, "  ")?;
             }
             OptionExclusive(_flags) | Option(_flags) => {
-                write!(r, "\n")?;
+                writeln!(r)?;
                 r.reset_color()?;
             }
             List => write!(r, "]")?,
             ListItem(_) => {}
-            Message => write!(r, "\n")?,
+            Message => writeln!(r)?,
             _ => r.reset_color()?,
         }
         Ok(())
