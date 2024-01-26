@@ -14,7 +14,7 @@ pub enum Direction {
     Left,
     Right,
 }
-use crate::style::{DefaultStyle, Flags, Section, Style};
+use crate::style::{DefaultStyle, Flags, Section, Style2};
 use crossterm::{queue, style::Print};
 
 // region: SelectOption
@@ -309,30 +309,24 @@ impl<T> Valuable for Select<'_, T> {
 }
 
 impl<T> Printable for Select<'_, T> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
         use Section::*;
-        let draw_time = renderer.draw_time();
+        let draw_time = r.draw_time();
         let style = DefaultStyle { ascii: true };
 
-        renderer.print2(|writer| {
+        r.print_prompt(|r| {
             if draw_time == DrawTime::Last {
-                queue!(
-                    writer,
-                    style.begin(Query(true)),
-                    Print(self.message.to_string()),
-                    style.end(Query(true)),
-                    style.begin(Answer(true)),
-                    Print(&self.options[self.input.focused].title),
-                    style.end(Answer(true)),
-                )?;
+                style.begin(r, Query(true))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(true))?;
+                style.begin(r, Answer(true))?;
+                write!(r, "{}", &self.options[self.input.focused].title)?;
+                style.end(r, Answer(true))?;
                 Ok(1)
             } else {
-                queue!(
-                    writer,
-                    style.begin(Query(false)),
-                    Print(self.message.to_string()),
-                    style.end(Query(false)),
-                )?;
+                style.begin(r, Query(false))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(false))?;
 
                 let items_per_page = self.input.items_per_page;
                 let total = self.input.total_items;
@@ -350,22 +344,17 @@ impl<T> Printable for Select<'_, T> {
                     if option.disabled {
                         flags |= Flags::Disabled;
                     }
-                    queue!(
-                        writer,
-                        style.begin(OptionExclusive(flags)),
-                        Print(&option.title),
-                        style.end(OptionExclusive(flags)),
-                    )?;
+                    style.begin(r, OptionExclusive(flags))?;
+                    write!(r, "{}", &option.title)?;
+                    style.end(r, OptionExclusive(flags))?;
                 }
 
                 let page_i = self.input.get_page() as u8;
                 let page_count = self.input.count_pages() as u8;
                 let page_footer = if page_count != 1 { 2 } else { 0 };
-                queue!(
-                    writer,
-                    style.begin(Page(page_i, page_count)),
-                    style.end(Page(page_i, page_count)),
-                )?;
+
+                style.begin(r, Page(page_i, page_count))?;
+                style.end(r, Page(page_i, page_count))?;
                 Ok((2 + page_end - page_start + page_footer) as u16)
             }
         })
