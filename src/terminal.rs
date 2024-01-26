@@ -234,67 +234,6 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
     }
 }
 
-impl<T: NumLike> Printable for Number<'_, T> {
-    fn hide_cursor(&self) -> bool {
-        false
-    }
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        use crate::style::Section::*;
-        let style = DefaultStyle { ascii: true };
-        let draw_time = renderer.draw_time();
-
-        // renderer.print2(|writer| {
-        //     if draw_time == DrawTime::Last {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(true)),
-        //             Print(&self.message),
-        //             style.end(Query(true)),
-        //             style.begin(Answer(true)),
-        //             Print(&self.input.value),
-        //             style.end(Answer(true)),
-        //         )?;
-        //         Ok(1)
-        //     } else {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(false)),
-        //             Print(&self.message),
-        //             style.end(Query(false)),
-        //         )?;
-        //         if let Some(_x) = self.default_value {
-        //             queue!(
-        //                 writer,
-        //                 style.begin(DefaultAnswer),
-        //                 Print(&self.message),
-        //                 style.end(DefaultAnswer),
-        //             )?;
-        //         }
-        //         if self.input.value.is_empty() {
-        //             if let Some(placeholder) = self.placeholder {
-        //                 queue!(
-        //                     writer,
-        //                     style.begin(Placeholder),
-        //                     Print(placeholder),
-        //                     style.end(Placeholder),
-        //                 )?;
-        //             }
-        //         }
-        //         let is_valid = self.validator_result.is_ok();
-        //         queue!(
-        //             writer,
-        //             style.begin(Validator(is_valid)),
-        //             style.begin(Input),
-        //             Print(&self.input.value),
-        //             style.end(Input),
-        //             style.end(Validator(is_valid)),
-        //         )?;
-        //         Ok(2)
-        //     }
-        // })?;
-        renderer.set_cursor([2 + self.input.col, 1])
-    }
-}
 
 // Select
 impl<T> Typeable<KeyEvent> for Select<'_, T> {

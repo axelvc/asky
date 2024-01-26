@@ -1,10 +1,13 @@
 use crate::Error;
 
 use super::text::LineInput;
-use crate::utils::{num_like::NumLike, renderer::DrawTime, theme};
 use crate::ColoredStrings;
 use crate::Valuable;
 use std::borrow::Cow;
+
+use crate::utils::{num_like::NumLike, renderer::{DrawTime, Printable, Renderer}, theme};
+use std::io;
+use crate::style::{DefaultStyle, Style2};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;
@@ -148,6 +151,113 @@ impl<T: NumLike> Number<'_, T> {
         }
 
         self.validator_result.is_ok()
+    }
+}
+
+impl<T: NumLike> Printable for Number<'_, T> {
+    fn hide_cursor(&self) -> bool {
+        false
+    }
+    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+
+        use crate::style::Section::*;
+        let style = DefaultStyle { ascii: true };
+        let draw_time = r.draw_time();
+
+        r.print_prompt(|r| {
+            if draw_time == DrawTime::Last {
+                style.begin(r, Query(true))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(true))?;
+
+                style.begin(r, Answer(true))?;
+                write!(r, "{}", &self.input.value)?;
+                style.end(r, Answer(true))?;
+                Ok(1)
+            } else {
+                style.begin(r, Query(false))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(false))?;
+
+
+                if let Some(x) = self.default_value {
+                    style.begin(r, DefaultAnswer)?;
+                    write!(r, "{}", x)?;
+                    style.end(r, DefaultAnswer)?;
+                }
+                style.begin(r, Input)?;
+                write!(r, "{}", &self.input.value)?;
+                if self.input.value.is_empty() {
+                    if let Some(placeholder) = self.placeholder {
+                        style.begin(r, Placeholder)?;
+                        write!(r, "{}", placeholder)?;
+                        style.end(r, Placeholder)?;
+                    }
+                }
+                let is_valid = self.validator_result.is_ok();
+                if let Err(error) = self.validator_result {
+
+                    style.begin(r, Validator(is_valid))?;
+                    style.begin(r, Input)?;
+                    write!(r, "{}", &self.input.value)?;
+                    style.end(r, Input)?;
+                    style.end(r, Validator(is_valid))?;
+                }
+                Ok(2)
+            }
+        })?;
+        r.set_cursor([2 + self.input.col, 1])
+
+        // renderer.print2(|writer| {
+        //     if draw_time == DrawTime::Last {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(true)),
+        //             Print(&self.message),
+        //             style.end(Query(true)),
+        //             style.begin(Answer(true)),
+        //             Print(&self.input.value),
+        //             style.end(Answer(true)),
+        //         )?;
+        //         Ok(1)
+        //     } else {
+        //         queue!(
+        //             writer,
+        //             style.begin(Query(false)),
+        //             Print(&self.message),
+        //             style.end(Query(false)),
+        //         )?;
+        //         if let Some(_x) = self.default_value {
+        //             queue!(
+        //                 writer,
+        //                 style.begin(DefaultAnswer),
+        //                 Print(&self.message),
+        //                 style.end(DefaultAnswer),
+        //             )?;
+        //         }
+        //         if self.input.value.is_empty() {
+        //             if let Some(placeholder) = self.placeholder {
+        //                 queue!(
+        //                     writer,
+        //                     style.begin(Placeholder),
+        //                     Print(placeholder),
+        //                     style.end(Placeholder),
+        //                 )?;
+        //             }
+        //         }
+        //         let is_valid = self.validator_result.is_ok();
+        //         queue!(
+        //             writer,
+        //             style.begin(Validator(is_valid)),
+        //             style.begin(Input),
+        //             Print(&self.input.value),
+        //             style.end(Input),
+        //             style.end(Validator(is_valid)),
+        //         )?;
+        //         Ok(2)
+        //     }
+        // })?;
+        // r.set_cursor([2 + self.input.col, 1])
     }
 }
 
