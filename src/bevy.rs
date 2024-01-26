@@ -720,7 +720,7 @@ impl Plugin for AskyPlugin {
         // .add_systems(Update, asky_system::<Number<f64>>)
         // .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
         // .add_systems(Update, asky_system::<Select<'_, &'static str>>)
-        // .add_systems(Update, asky_system::<Password>)
+        .add_systems(Update, asky_system::<Password>)
         // .add_systems(Update, asky_system::<Message>)
         // .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
         // .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)

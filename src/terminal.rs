@@ -363,69 +363,6 @@ impl Typeable<KeyEvent> for Password<'_> {
     }
 }
 
-impl Printable for Password<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-        use crate::style::Section::*;
-        let style = DefaultStyle { ascii: true };
-        let draw_time = renderer.draw_time();
-
-        // renderer.print2(|writer| {
-        //     if draw_time == DrawTime::Last {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(true)),
-        //             Print(&self.message),
-        //             style.end(Query(true)),
-        //             style.begin(Answer(false)),
-        //             style.end(Answer(false)),
-        //         )?;
-        //         Ok(1)
-        //     } else {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(false)),
-        //             Print(&self.message),
-        //             style.end(Query(false)),
-        //         )?;
-        //         if let Some(_x) = self.default_value {
-        //             queue!(
-        //                 writer,
-        //                 style.begin(DefaultAnswer),
-        //                 Print(&self.message),
-        //                 style.end(DefaultAnswer),
-        //             )?;
-        //         }
-        //         let text = match self.hidden {
-        //             true => String::new(),
-        //             false => "*".repeat(self.input.value.len()),
-        //         };
-        //         queue!(writer, style.begin(Input), Print(text))?;
-        //         if self.input.value.is_empty() {
-        //             if let Some(placeholder) = self.placeholder {
-        //                 queue!(
-        //                     writer,
-        //                     style.begin(Placeholder),
-        //                     Print(placeholder),
-        //                     style.end(Placeholder),
-        //                 )?;
-        //             }
-        //         }
-        //         queue!(writer, style.end(Input),)?;
-        //         if let Err(error) = self.validator_result {
-        //             queue!(
-        //                 writer,
-        //                 style.begin(Validator(false)),
-        //                 Print(error),
-        //                 style.end(Validator(false)),
-        //             )?;
-        //         }
-        //         Ok(2)
-        //     }
-        // })?;
-        renderer.set_cursor([2 + self.input.col, 1])
-    }
-}
-
 // Toggle
 impl Typeable<KeyEvent> for Toggle<'_> {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {

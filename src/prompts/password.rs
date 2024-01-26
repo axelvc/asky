@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use crate::Error;
 use crate::Valuable;
 
-use crate::utils::{renderer::DrawTime, theme};
+use crate::utils::{renderer::{DrawTime, Printable, Renderer}, theme};
+use std::io;
+use crate::style::{DefaultStyle, Style2};
 
 use super::text::{InputValidator, LineInput};
 use crate::ColoredStrings;
@@ -140,6 +142,59 @@ impl Password<'_> {
         self.validator_result.is_ok()
     }
 }
+
+impl Printable for Password<'_> {
+
+    fn hide_cursor(&self) -> bool {
+        false
+    }
+
+    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+        use crate::style::Section::*;
+        let style = DefaultStyle { ascii: true };
+        let draw_time = r.draw_time();
+
+        r.print_prompt(|r| {
+            if draw_time == DrawTime::Last {
+                style.begin(r, Query(true))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(true))?;
+
+                style.begin(r, Answer(false))?;
+                // write!(r, "{}", &self.input.value)?;
+                style.end(r, Answer(false))?;
+                Ok(1)
+            } else {
+                style.begin(r, Query(false))?;
+                write!(r, "{}", self.message)?;
+                style.end(r, Query(false))?;
+                let text = match self.hidden {
+                    true => String::new(),
+                    false => "*".repeat(self.input.value.len()),
+                };
+                style.begin(r, Input)?;
+                write!(r, "{}", text)?;
+                if self.input.value.is_empty() {
+                    if let Some(placeholder) = self.placeholder {
+                        style.begin(r, Placeholder)?;
+                        write!(r, "{}", placeholder)?;
+                        style.end(r, Placeholder)?;
+                    }
+                }
+                style.end(r, Input)?;
+                if let Err(error) = self.validator_result {
+
+                    style.begin(r, Validator(false))?;
+                    write!(r, "{}", error)?;
+                    style.end(r, Validator(false))?;
+                }
+                Ok(2)
+            }
+        })?;
+        r.set_cursor([2 + self.input.col, 1])
+    }
+}
+
 
 #[cfg(feature = "terminal")]
 #[cfg(test)]
