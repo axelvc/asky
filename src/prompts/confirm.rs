@@ -3,15 +3,13 @@ use std::io;
 use std::borrow::Cow;
 
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
-use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
 // use colored::ColoredStrings;
 use crate::style::{DefaultStyle, Section, Style};
-use crate::ColoredStrings;
 
 
-type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
+// type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///
@@ -46,8 +44,6 @@ pub struct Confirm<'a> {
     pub message: Cow<'a, str>,
     /// Current state of the prompt.
     pub active: bool,
-    /// Current formatter
-    pub formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Confirm<'a> {
@@ -56,7 +52,6 @@ impl<'a> Confirm<'a> {
         Confirm {
             message: message.into(),
             active: false,
-            formatter: Box::new(theme::fmt_confirm2),
         }
     }
 
@@ -66,16 +61,6 @@ impl<'a> Confirm<'a> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Confirm, DrawTime, &mut ColoredStrings) + Send + Sync + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl Confirm<'_> {
@@ -144,17 +129,17 @@ mod tests {
         assert!(prompt.active);
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt: Confirm = Confirm::new("");
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt: Confirm = Confirm::new("");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
-        let mut out = ColoredStrings::new();
-        (prompt.formatter)(&prompt, draw_time, &mut out);
-        assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+    //     let mut out = ColoredStrings::new();
+    //     (prompt.formatter)(&prompt, draw_time, &mut out);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn update_and_submit() {

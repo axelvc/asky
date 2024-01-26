@@ -1,4 +1,3 @@
-use crate::ColoredStrings;
 use std::borrow::Cow;
 use std::io;
 
@@ -8,11 +7,7 @@ use crate::Valuable;
 use crate::style::{DefaultStyle, Section, Style};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
-
-
-type Formatter<'a> = dyn Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to choose between two options.
 ///
@@ -46,7 +41,6 @@ pub struct Toggle<'a> {
     pub options: [Cow<'a, str>; 2],
     /// Current state of the prompt.
     pub active: bool,
-    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl Valuable for Toggle<'_> {
@@ -67,7 +61,6 @@ impl<'a> Toggle<'a> {
             message: message.into(),
             options: [a.into(), b.into()],
             active: false,
-            formatter: Box::new(theme::fmt_toggle2),
         }
     }
 
@@ -77,16 +70,6 @@ impl<'a> Toggle<'a> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Toggle, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl Printable for Toggle<'_> {
@@ -145,17 +128,17 @@ mod tests {
         assert_eq!(prompt.get_value(), "bar");
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt = Toggle::new("", "foo", "bar");
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt = Toggle::new("", "foo", "bar");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
-        let mut out = ColoredStrings::new();
-        (prompt.formatter)(&prompt, draw_time, &mut out);
-        assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+    //     let mut out = ColoredStrings::new();
+    //     (prompt.formatter)(&prompt, draw_time, &mut out);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn sumit_focused() {

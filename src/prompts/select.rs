@@ -3,10 +3,9 @@ use std::io;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
 
-use crate::{ColoredStrings, Error, Valuable};
+use crate::{Error, Valuable};
 
 pub enum Direction {
     Up,
@@ -171,8 +170,6 @@ impl SelectInput {
 
 // endregion: SelectCursor
 
-type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
-
 /// Prompt to select an item from a list.
 ///
 /// To allow choosing multiple items, use the [`MultiSelect`] struct instead.
@@ -206,7 +203,6 @@ pub struct Select<'a, T> {
     pub options: Vec<SelectOption<'a, T>>,
     /// Input state.
     pub input: SelectInput,
-    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> Select<'a, T> {
@@ -249,7 +245,6 @@ impl<'a, T: 'a> Select<'a, T> {
             message: message.into(),
             options,
             input: SelectInput::new(options_len),
-            formatter: Box::new(theme::fmt_select2),
         }
     }
 
@@ -271,16 +266,6 @@ impl<'a, T: 'a> Select<'a, T> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Select<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl<T> Select<'_, T> {
@@ -387,17 +372,17 @@ mod tests {
         assert!(prompt.input.loop_mode);
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt = Select::new("", ["foo", "bar"]);
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt = Select::new("", ["foo", "bar"]);
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
-        let mut out = ColoredStrings::new();
-        (prompt.formatter)(&prompt, draw_time, &mut out);
-        assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+    //     let mut out = ColoredStrings::new();
+    //     (prompt.formatter)(&prompt, draw_time, &mut out);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn submit_selected_value() {

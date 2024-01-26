@@ -4,14 +4,9 @@ use std::io;
 use crate::style::{DefaultStyle, Style};
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
-use crate::utils::renderer::{DrawTime, Printable, Renderer};
-use crate::utils::theme;
-use crate::ColoredStrings;
+use crate::utils::renderer::{Printable, Renderer};
 use crate::Error;
 use crate::Valuable;
-
-
-type Formatter<'a> = dyn Fn(&Message, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
 ///
@@ -43,8 +38,6 @@ pub struct Message<'a> {
     pub message: Cow<'a, str>,
     pub action: Option<Cow<'a, str>>,
     // pub wait_for_any_key: bool,
-    /// Current formatter
-    pub formatter: Box<Formatter<'a>>,
 }
 
 impl Valuable for Message<'_> {
@@ -60,7 +53,6 @@ impl<'a> Message<'a> {
         Message {
             message: message.into(),
             action: Some(action.into()),
-            formatter: Box::new(theme::fmt_message2),
         }
     }
 
@@ -69,19 +61,7 @@ impl<'a> Message<'a> {
         Message {
             message: message.into(),
             action: None,
-            formatter: Box::new(theme::fmt_message2),
         }
-    }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Message, DrawTime, &mut ColoredStrings) + Send + Sync + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
     }
 
     #[cfg(feature = "terminal")]

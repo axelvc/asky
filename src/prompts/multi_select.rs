@@ -8,16 +8,10 @@ use crate::utils::key_listener;
 
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
 
 use super::select::{SelectInput, SelectOption};
 use crate::style::{DefaultStyle, Flags, Section, Style};
-
-
-use crate::ColoredStrings;
-
-type Formatter<'a, T> = dyn Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to select multiple items from a list.
 ///
@@ -58,7 +52,6 @@ pub struct MultiSelect<'a, T> {
     /// Input state.
     pub input: SelectInput,
     selected_count: usize,
-    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> MultiSelect<'a, T> {
@@ -104,7 +97,6 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
             max: None,
             selected_count: 0,
             input: SelectInput::new(options_len),
-            formatter: Box::new(theme::fmt_multi_select2),
         }
     }
 
@@ -141,17 +133,6 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     /// Set maximum number of items allowed to be selected.
     pub fn max(&mut self, max: usize) -> &mut Self {
         self.max = Some(max);
-        self
-    }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&MultiSelect<T>, DrawTime, &mut ColoredStrings) + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
         self
     }
 

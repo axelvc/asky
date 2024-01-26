@@ -14,9 +14,7 @@ use crossterm::{
     style::{Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal,
 };
-// use text_style::{Color, crossterm as ts_crossterm};
-use std::convert::{Into};
-use text_style::{Color};
+use text_style::Color;
 
 #[derive(Debug)]
 pub struct TermRenderer {

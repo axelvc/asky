@@ -6,15 +6,10 @@ use crate::Valuable;
 use crate::style::{DefaultStyle, Style};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
 use std::io;
 
 use super::text::{InputValidator, LineInput};
-use crate::ColoredStrings;
-
-type Formatter<'a> =
-    dyn Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input as password.
 ///
@@ -57,7 +52,6 @@ pub struct Password<'a> {
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl Valuable for Password<'_> {
@@ -78,7 +72,6 @@ impl<'a> Password<'a> {
             hidden: false,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_password2),
         }
     }
 
@@ -117,16 +110,6 @@ impl<'a> Password<'a> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Password, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl Password<'_> {

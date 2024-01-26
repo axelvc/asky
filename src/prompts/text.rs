@@ -1,12 +1,9 @@
 use crate::Error;
 use std::borrow::Cow;
 
-use crate::ColoredStrings;
-
 use crate::style::{DefaultStyle, Style};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
 use crate::Valuable;
 use std::io;
@@ -70,7 +67,6 @@ impl LineInput {
 // endregion: TextInput
 
 pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync;
-type Formatter<'a> = dyn Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input.
 ///
@@ -111,7 +107,6 @@ pub struct Text<'a> {
     /// State of the validation of the user input
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    pub(crate) formatter: Box<Formatter<'a>>,
 }
 
 impl<'a> Valuable for Text<'a> {
@@ -130,7 +125,6 @@ impl<'a> Text<'a> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_text2),
         }
     }
 
@@ -163,16 +157,6 @@ impl<'a> Text<'a> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Text, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl Text<'_> {
@@ -283,20 +267,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt: Text = Text::new("");
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt: Text = Text::new("");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| {
-            out.push(EXPECTED_VALUE.into());
-            [0, 0]
-        });
-        let mut out = ColoredStrings::new();
-        assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
-        assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| {
+    //         out.push(EXPECTED_VALUE.into());
+    //         [0, 0]
+    //     });
+    //     let mut out = ColoredStrings::new();
+    //     assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn update_value() {

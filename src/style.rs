@@ -29,6 +29,7 @@ pub enum Section {
     Validator(bool), // if valid -> Validator(true)
     Input,
     Page(u8, u8), // Page 0 of 8 -> Page(0, 8)
+    #[allow(dead_code)]
     Custom(&'static str),
 }
 

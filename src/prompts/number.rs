@@ -1,7 +1,6 @@
 use crate::Error;
 
 use super::text::LineInput;
-use crate::ColoredStrings;
 use crate::Valuable;
 use std::borrow::Cow;
 
@@ -9,14 +8,11 @@ use crate::style::{DefaultStyle, Style};
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
-    theme,
 };
 use std::io;
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;
-type Formatter<'a, T> =
-    dyn Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync;
 
 /// Prompt to get one-line user input of numbers.
 ///
@@ -63,7 +59,6 @@ pub struct Number<'a, T: NumLike> {
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a, T>>>,
-    pub(crate) formatter: Box<Formatter<'a, T>>,
 }
 
 impl<T: NumLike + Send> Valuable for Number<'_, T> {
@@ -91,7 +86,6 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_number2),
         }
     }
 
@@ -124,16 +118,6 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self
     }
 
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Number<T>, DrawTime, &mut ColoredStrings) -> [usize; 2] + 'a + Send + Sync,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
 }
 
 impl<T: NumLike> Number<'_, T> {
@@ -305,20 +289,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt: Number<u8> = Number::new("");
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt: Number<u8> = Number::new("");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _, out| {
-            out.push(EXPECTED_VALUE.into());
-            [0, 0]
-        });
-        let mut out = ColoredStrings::new();
-        assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
-        assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| {
+    //         out.push(EXPECTED_VALUE.into());
+    //         [0, 0]
+    //     });
+    //     let mut out = ColoredStrings::new();
+    //     assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn update_cursor_position() {
