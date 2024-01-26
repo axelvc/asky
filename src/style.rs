@@ -40,13 +40,13 @@ pub enum Section {
     Validator(bool), // if valid -> Validator(true)
     Input,
     Page(u8, u8), // Page 0 of 8 -> Page(0, 8)
+    Custom(&'static str),
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Region {
     Begin(Section),
     End(Section),
-    // Wrap(Section, Box<dyn Command>),
 }
 
 pub trait Style2 {
@@ -85,8 +85,6 @@ impl Style2 for DefaultStyle {
                 } else {
                     r.set_foreground(White.dark())?;
                     r.set_background(Black.light())?;
-                    // SetForegroundColor(Color::White).write_ansi(f)?;
-                    // SetBackgroundColor(Color::DarkGrey).write_ansi(f)?;
                     write!(r, " ")?;
                 }
             }
@@ -126,82 +124,81 @@ impl Style2 for DefaultStyle {
                     (false, false) => {}
                 }
             }
-            // Option(flags) => {
-            //     let prefix = match (
-            //         flags.contains(Flags::Selected),
-            //         flags.contains(Flags::Focused),
-            //     ) {
-            //         (true, true) => {
-            //             if self.ascii {
-            //                 "(o)"
-            //             } else {
-            //                 "◉"
-            //             }
-            //         }
-            //         (true, false) => {
-            //             if self.ascii {
-            //                 "(x)"
-            //             } else {
-            //                 "●"
-            //             }
-            //         }
-            //         _ => {
-            //             if self.ascii {
-            //                 "( )"
-            //             } else {
-            //                 "○"
-            //             }
-            //         }
-            //     };
+            Option(flags) => {
+                let prefix = match (
+                    flags.contains(Flags::Selected),
+                    flags.contains(Flags::Focused),
+                ) {
+                    (true, true) => {
+                        if self.ascii {
+                            "(o)"
+                        } else {
+                            "◉"
+                        }
+                    }
+                    (true, false) => {
+                        if self.ascii {
+                            "(x)"
+                        } else {
+                            "●"
+                        }
+                    }
+                    _ => {
+                        if self.ascii {
+                            "( )"
+                        } else {
+                            "○"
+                        }
+                    }
+                };
 
-            //     match (
-            //         flags.contains(Flags::Focused),
-            //         flags.contains(Flags::Selected),
-            //         flags.contains(Flags::Disabled),
-            //     ) {
-            //         (true, _, true) => SetForegroundColor(Color::Red).write_ansi(f)?,
-            //         (true, _, false) => SetForegroundColor(Color::Blue).write_ansi(f)?,
-            //         (false, true, _) => SetForegroundColor(Color::Reset).write_ansi(f)?,
-            //         (false, false, _) => SetForegroundColor(Color::DarkGrey).write_ansi(f)?,
-            //     };
-            //     Print(prefix).write_ansi(f)?;
-            //     SetForegroundColor(Color::Reset).write_ansi(f)?;
-            //     Print(" ").write_ansi(f)?;
-            //     match (
-            //         flags.contains(Flags::Focused),
-            //         flags.contains(Flags::Disabled),
-            //     ) {
-            //         (_, true) => {
-            //             SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-            //             SetAttribute(Attribute::OverLined).write_ansi(f)?;
-            //         }
-            //         (true, false) => {
-            //             SetForegroundColor(Color::Blue).write_ansi(f)?;
-            //         }
-            //         (false, false) => {}
-            //     }
-            // }
-            // Message => {}
-            // Validator(valid) => {
-            //     SetForegroundColor(if valid { Color::Blue } else { Color::Red })
-            //         .write_ansi(f)?;
-            // }
-            // Placeholder => {
-            //     SetForegroundColor(Color::DarkGrey).write_ansi(f)?;
-            //     Print("Default: ").write_ansi(f)?;
-            // }
+                match (
+                    flags.contains(Flags::Focused),
+                    flags.contains(Flags::Selected),
+                    flags.contains(Flags::Disabled),
+                ) {
+                    (true, _, true) => r.set_foreground(Red.dark())?,
+                    (true, _, false) => r.set_foreground(Blue.dark())?,
+                    (false, true, _) => r.reset_color()?,
+                    (false, false, _) => r.set_foreground(Black.light())?,
+                };
+                write!(r, "{}", prefix)?;
+                r.reset_color()?;
+                write!(r, " ")?;
+                match (
+                    flags.contains(Flags::Focused),
+                    flags.contains(Flags::Disabled),
+                ) {
+                    (_, true) => {
+                        r.set_foreground(Black.light())?;
+                        // SetAttribute(Attribute::OverLined).write_ansi(f)?;
+                    }
+                    (true, false) => {
+                        r.set_foreground(Blue.dark())?;
+                    }
+                    (false, false) => {}
+                }
+            }
+            Message => {}
+            Validator(valid) => {
+                r.set_foreground(if valid { Blue.dark() } else { Red.dark() })?;
+            }
+            Placeholder => {
+                r.set_foreground(Black.light())?;
+                write!(r, "Default: ")?;
+            }
             Input => {
                 r.set_foreground(Blue.dark())?;
                 write!(r, "{}", if self.ascii { ">" } else { "›" })?;
                 r.reset_color()?;
                 write!(r, " ")?;
             }
-            // List => Print("[").write_ansi(f)?,
-            // ListItem(first) => {
-            //     if !first {
-            //         Print(", ").write_ansi(f)?;
-            //     }
-            // }
+            List => write!(r, "[")?,
+            ListItem(first) => {
+                if !first {
+                    write!(r, ", ")?;
+                }
+            }
             Page(i, count) => {
                 if count != 1 {
                     let icon = if self.ascii { "*" } else { "•" };
@@ -217,8 +214,8 @@ impl Style2 for DefaultStyle {
                     write!(r, "\n")?;
                 }
             }
-            // x => todo!("{:?} not impl", x),
-            x => {},
+            x => todo!("{:?} not impl", x),
+            // x => {},
         }
         Ok(())
     }

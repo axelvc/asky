@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::io;
 
-use crate::style::{DefaultStyle, Style};
+use crate::style::{DefaultStyle, Style2};
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
@@ -42,6 +42,7 @@ pub struct Message<'a> {
     // pub message: &'a str,
     pub message: Cow<'a, str>,
     pub action: Option<Cow<'a, str>>,
+    // pub wait_for_any_key: bool,
     /// Current formatter
     pub formatter: Box<Formatter<'a>>,
 }
@@ -91,16 +92,13 @@ impl<'a> Message<'a> {
 }
 
 impl Printable for Message<'_> {
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
         use crate::style::Section::*;
         let style = DefaultStyle { ascii: true };
-        renderer.print2(|writer| {
-            queue!(
-                writer,
-                style.begin(Message),
-                Print(self.message.to_string()),
-                style.end(Message),
-            )?;
+        r.print_prompt(|r| {
+            style.begin(r, Message)?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Message)?;
             Ok(1)
         })
     }
