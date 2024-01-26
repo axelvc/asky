@@ -7,7 +7,7 @@ use crate::utils::theme;
 use crate::Error;
 use crate::Valuable;
 // use colored::ColoredStrings;
-use crate::style::{DefaultStyle, Section, Style2};
+use crate::style::{DefaultStyle, Section, Style};
 use crate::ColoredStrings;
 use crossterm::{queue, style::Print};
 
@@ -107,7 +107,7 @@ impl Printable for Confirm<'_> {
                 style.end(r, Query(true))?;
 
                 style.begin(r, Answer(true))?;
-                write!(r, "{}",options[self.active as usize])?;
+                write!(r, "{}", options[self.active as usize])?;
                 style.end(r, Answer(true))?;
                 Ok(1)
             } else {
@@ -116,10 +116,10 @@ impl Printable for Confirm<'_> {
                 style.end(r, Query(false))?;
 
                 style.begin(r, Toggle(!self.active))?;
-                write!(r, "{}",options[0])?;
+                write!(r, "{}", options[0])?;
                 style.end(r, Toggle(!self.active))?;
                 style.begin(r, Toggle(self.active))?;
-                write!(r, "{}",options[1])?;
+                write!(r, "{}", options[1])?;
                 style.end(r, Toggle(self.active))?;
                 Ok(2)
             }

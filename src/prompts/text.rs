@@ -3,10 +3,13 @@ use std::borrow::Cow;
 
 use crate::ColoredStrings;
 
-use crate::utils::{renderer::{DrawTime, Printable, Renderer}, theme};
+use crate::style::{DefaultStyle, Style};
+use crate::utils::{
+    renderer::{DrawTime, Printable, Renderer},
+    theme,
+};
 use crate::Valuable;
 use std::io;
-use crate::style::{DefaultStyle, Style2};
 
 pub enum Direction {
     Left,
@@ -213,7 +216,6 @@ impl Printable for Text<'_> {
                 write!(r, "{}", self.message)?;
                 style.end(r, Query(false))?;
 
-
                 if let Some(x) = self.default_value {
                     style.begin(r, DefaultAnswer)?;
                     write!(r, "{}", x)?;
@@ -230,7 +232,6 @@ impl Printable for Text<'_> {
                 }
                 style.end(r, Input)?;
                 if let Err(error) = self.validator_result {
-
                     style.begin(r, Validator(false))?;
                     write!(r, "{}", error)?;
                     style.end(r, Validator(false))?;
@@ -241,7 +242,6 @@ impl Printable for Text<'_> {
         r.set_cursor([2 + self.input.col, 1])
     }
 }
-
 
 #[cfg(feature = "terminal")]
 #[cfg(test)]

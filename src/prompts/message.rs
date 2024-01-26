@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::io;
 
-use crate::style::{DefaultStyle, Style2};
+use crate::style::{DefaultStyle, Style};
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};

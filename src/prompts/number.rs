@@ -5,9 +5,13 @@ use crate::ColoredStrings;
 use crate::Valuable;
 use std::borrow::Cow;
 
-use crate::utils::{num_like::NumLike, renderer::{DrawTime, Printable, Renderer}, theme};
+use crate::style::{DefaultStyle, Style};
+use crate::utils::{
+    num_like::NumLike,
+    renderer::{DrawTime, Printable, Renderer},
+    theme,
+};
 use std::io;
-use crate::style::{DefaultStyle, Style2};
 
 type InputValidator<'a, T> =
     dyn Fn(&str, Result<T, Error>) -> Result<(), &'a str> + 'a + Send + Sync;
@@ -159,7 +163,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
         false
     }
     fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
-
         use crate::style::Section::*;
         let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
@@ -179,7 +182,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 write!(r, "{}", self.message)?;
                 style.end(r, Query(false))?;
 
-
                 if let Some(x) = self.default_value {
                     style.begin(r, DefaultAnswer)?;
                     write!(r, "{}", x)?;
@@ -196,7 +198,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 }
                 let is_valid = self.validator_result.is_ok();
                 if let Err(error) = self.validator_result {
-
                     style.begin(r, Validator(is_valid))?;
                     style.begin(r, Input)?;
                     write!(r, "{}", &self.input.value)?;

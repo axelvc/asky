@@ -3,9 +3,12 @@ use std::borrow::Cow;
 use crate::Error;
 use crate::Valuable;
 
-use crate::utils::{renderer::{DrawTime, Printable, Renderer}, theme};
+use crate::style::{DefaultStyle, Style};
+use crate::utils::{
+    renderer::{DrawTime, Printable, Renderer},
+    theme,
+};
 use std::io;
-use crate::style::{DefaultStyle, Style2};
 
 use super::text::{InputValidator, LineInput};
 use crate::ColoredStrings;
@@ -144,7 +147,6 @@ impl Password<'_> {
 }
 
 impl Printable for Password<'_> {
-
     fn hide_cursor(&self) -> bool {
         false
     }
@@ -183,7 +185,6 @@ impl Printable for Password<'_> {
                 }
                 style.end(r, Input)?;
                 if let Err(error) = self.validator_result {
-
                     style.begin(r, Validator(false))?;
                     write!(r, "{}", error)?;
                     style.end(r, Validator(false))?;
@@ -194,7 +195,6 @@ impl Printable for Password<'_> {
         r.set_cursor([2 + self.input.col, 1])
     }
 }
-
 
 #[cfg(feature = "terminal")]
 #[cfg(test)]

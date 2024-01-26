@@ -12,7 +12,7 @@ use crate::utils::{
 };
 
 use super::select::{SelectInput, SelectOption};
-use crate::style::{DefaultStyle, Flags, Section, Style2};
+use crate::style::{DefaultStyle, Flags, Section, Style};
 use crossterm::{queue, style::Print};
 
 use crate::ColoredStrings;
