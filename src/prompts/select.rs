@@ -293,7 +293,12 @@ impl<T> Printable for Select<'_, T> {
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
-        // let style = DefaultStyle { ascii: true };
+        // if true {
+        // r.pre_prompt()?;
+        // writeln!(r, "hi");
+        // r.post_prompt(1)?;
+        // return Ok(());
+        // }
 
         r.pre_prompt()?;
         let line_count = if draw_time == DrawTime::Last {
@@ -336,8 +341,10 @@ impl<T> Printable for Select<'_, T> {
 
             style.begin(r, Page(page_i, page_count))?;
             style.end(r, Page(page_i, page_count))?;
-            (2 + page_end - page_start + page_footer) as u16
+            (1 + page_end - page_start + page_footer) as u16
         };
+        // assert_eq!(r.newline_count(), &line_count);
+        let line_count = *r.newline_count();
         r.post_prompt(line_count)
     }
 }

@@ -1,11 +1,9 @@
 use std::io;
-
 use std::borrow::Cow;
 
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::Error;
 use crate::Valuable;
-// use colored::ColoredStrings;
 use crate::style::{Section, Style};
 
 // type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
@@ -84,7 +82,7 @@ impl Printable for Confirm<'_> {
         let options = ["No", "Yes"];
 
         r.pre_prompt()?;
-        let line_count = if draw_time == DrawTime::Last {
+        let line_count: u16 = if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -107,6 +105,8 @@ impl Printable for Confirm<'_> {
             2
         };
 
+        // assert_eq!(r.newline_count(), &line_count);
+        let line_count = *r.newline_count();
         r.post_prompt(line_count)
     }
 }

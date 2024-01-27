@@ -172,6 +172,7 @@ impl Printable for Password<'_> {
             }
             2
         };
+        let line_count = *r.newline_count();
         r.post_prompt(line_count)?;
         r.set_cursor([2 + self.input.col, 1])
     }

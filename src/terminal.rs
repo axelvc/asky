@@ -1,6 +1,6 @@
 use crate::utils::num_like::NumLike;
 use crate::{
-    utils::renderer::{Printable, Renderer},
+    utils::renderer::{Printable, Renderer, count_newlines},
     Confirm, DrawTime, Message, MultiSelect, Number, Password, Select, Text, Toggle, Valuable,
 };
 use std::io::{self, Write};
@@ -20,6 +20,7 @@ use text_style::Color;
 pub struct TermRenderer {
     pub draw_time: DrawTime,
     out: io::Stdout,
+    line_count: u16,
 }
 
 impl TermRenderer {
@@ -27,6 +28,7 @@ impl TermRenderer {
         TermRenderer {
             draw_time: DrawTime::First,
             out: io::stdout(),
+            line_count: 0,
         }
     }
 }
@@ -35,6 +37,7 @@ impl io::Write for TermRenderer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s = std::str::from_utf8(buf).expect("Not a utf8 string");
 
+        *self.newline_count() += count_newlines(s);
         queue!(self.out, Print(s))?;
         Ok(buf.len())
     }
@@ -48,6 +51,10 @@ impl Renderer for TermRenderer {
     // type Writer = io::Stdout;
     fn draw_time(&self) -> DrawTime {
         self.draw_time
+    }
+
+    fn newline_count(&mut self) -> &mut u16 {
+        &mut self.line_count
     }
 
     fn update_draw_time(&mut self) {
@@ -92,9 +99,19 @@ impl Renderer for TermRenderer {
         if self.draw_time != DrawTime::Last {
             let (col, row) = cursor::position()?;
 
+            if newline_count > 0 {
+                queue!(
+                    self.out,
+                    cursor::MoveToPreviousLine(newline_count)
+                )?;
+            } else {
+                queue!(
+                    self.out,
+                    cursor::MoveToColumn(0)
+                )?;
+            }
             queue!(
                 self.out,
-                cursor::MoveToPreviousLine(text_lines),
                 cursor::SavePosition,
                 cursor::MoveTo(col, row)
             )?;

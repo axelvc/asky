@@ -255,6 +255,7 @@ impl<T> Printable for MultiSelect<'_, T> {
             (2 + page_end - page_start + page_footer) as u16
         };
 
+        let line_count = *r.newline_count();
         r.post_prompt(line_count)
     }
 }

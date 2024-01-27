@@ -216,10 +216,14 @@ impl Printable for Text<'_> {
                 write!(r, "{}", error)?;
                 style.end(r, Validator(false))?;
             }
-            2
+            1
         };
-        r.post_prompt(line_count)?;
-        r.set_cursor([2 + self.input.col, 1])
+
+        // assert_eq!(r.newline_count(), &line_count);
+        // assert_eq!(r.newline_count(), &0);
+        let line_count = *r.newline_count();
+        r.post_prompt(line_count)
+        // r.set_cursor([2 + self.input.col, line_count as usize])
     }
 }
 

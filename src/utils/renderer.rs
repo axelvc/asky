@@ -51,6 +51,10 @@ where
     T: Printable,
     S: Style,
 {
+
+    fn hide_cursor(&self) -> bool {
+        self.0.hide_cursor()
+    }
     fn draw_with_style<R: Renderer, U: Style>(
         &self,
         renderer: &mut R,
@@ -73,6 +77,7 @@ pub enum DrawTime {
 }
 
 pub trait Renderer: io::Write {
+    fn newline_count(&mut self) -> &mut u16;
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
     fn set_foreground(&mut self, color: Color) -> io::Result<()>;
@@ -97,11 +102,17 @@ pub trait Renderer: io::Write {
 pub struct StringRenderer {
     pub string: String,
     pub draw_time: DrawTime,
+    pub line_count: u16,
+}
+
+pub(crate) fn count_newlines(input: &str) -> u16 {
+    input.chars().filter(|&c| c == '\n').count() as u16
 }
 
 impl std::io::Write for StringRenderer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s = std::str::from_utf8(buf).expect("Not a utf8 string");
+        *self.newline_count() += count_newlines(s);
         self.string.push_str(s);
         Ok(buf.len())
     }
@@ -113,12 +124,17 @@ impl std::io::Write for StringRenderer {
 
 impl std::fmt::Write for StringRenderer {
     fn write_str(&mut self, s: &str) -> Result<(), std::fmt::Error> {
+        *self.newline_count() += count_newlines(s);
         self.string.push_str(s);
         Ok(())
     }
 }
 
 impl Renderer for StringRenderer {
+    fn newline_count(&mut self) -> &mut u16 {
+        &mut self.line_count
+    }
+
     fn draw_time(&self) -> DrawTime {
         self.draw_time
     }

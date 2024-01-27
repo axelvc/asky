@@ -75,7 +75,7 @@ impl Printable for Toggle<'_> {
         let draw_time = r.draw_time();
 
         r.pre_prompt()?;
-        let line_count = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -83,7 +83,6 @@ impl Printable for Toggle<'_> {
             style.begin(r, Answer(true))?;
             write!(r, "{}", &self.options[self.active as usize])?;
             style.end(r, Answer(true))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -95,8 +94,8 @@ impl Printable for Toggle<'_> {
             style.begin(r, Toggle(self.active))?;
             write!(r, "{}", &self.options[1])?;
             style.end(r, Toggle(self.active))?;
-            2
-        };
+        }
+        let line_count = *r.newline_count();
         r.post_prompt(line_count)
     }
 }
