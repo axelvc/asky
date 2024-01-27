@@ -184,8 +184,8 @@ impl Printable for Text<'_> {
         use crate::style::Section::*;
         let draw_time = r.draw_time();
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
+        r.pre_prompt()?;
+        let line_count = if draw_time == DrawTime::Last {
                 style.begin(r, Query(true))?;
                 write!(r, "{}", self.message)?;
                 style.end(r, Query(true))?;
@@ -193,7 +193,7 @@ impl Printable for Text<'_> {
                 style.begin(r, Answer(true))?;
                 write!(r, "{}", &self.input.value)?;
                 style.end(r, Answer(true))?;
-                Ok(1)
+                1
             } else {
                 style.begin(r, Query(false))?;
                 write!(r, "{}", self.message)?;
@@ -219,9 +219,9 @@ impl Printable for Text<'_> {
                     write!(r, "{}", error)?;
                     style.end(r, Validator(false))?;
                 }
-                Ok(2)
-            }
-        })?;
+                2
+            };
+        r.post_prompt(line_count)?;
         r.set_cursor([2 + self.input.col, 1])
     }
 }

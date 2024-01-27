@@ -85,30 +85,31 @@ impl Printable for Confirm<'_> {
 
         let options = ["No", "Yes"];
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
+        r.pre_prompt()?;
+        let line_count = if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
 
-                style.begin(r, Answer(true))?;
-                write!(r, "{}", options[self.active as usize])?;
-                style.end(r, Answer(true))?;
-                Ok(1)
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", options[self.active as usize])?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
 
-                style.begin(r, Toggle(!self.active))?;
-                write!(r, "{}", options[0])?;
-                style.end(r, Toggle(!self.active))?;
-                style.begin(r, Toggle(self.active))?;
-                write!(r, "{}", options[1])?;
-                style.end(r, Toggle(self.active))?;
-                Ok(2)
-            }
-        })
+            style.begin(r, Toggle(!self.active))?;
+            write!(r, "{}", options[0])?;
+            style.end(r, Toggle(!self.active))?;
+            style.begin(r, Toggle(self.active))?;
+            write!(r, "{}", options[1])?;
+            style.end(r, Toggle(self.active))?;
+            2
+        };
+
+        r.post_prompt(line_count)
     }
 }
 

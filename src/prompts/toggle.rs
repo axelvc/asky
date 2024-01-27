@@ -76,10 +76,9 @@ impl Printable for Toggle<'_> {
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
-        // let style = DefaultStyle { ascii: true };
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
+        r.pre_prompt()?;
+        let line_count = if draw_time == DrawTime::Last {
                 style.begin(r, Query(true))?;
                 write!(r, "{}", self.message)?;
                 style.end(r, Query(true))?;
@@ -87,7 +86,7 @@ impl Printable for Toggle<'_> {
                 style.begin(r, Answer(true))?;
                 write!(r, "{}", &self.options[self.active as usize])?;
                 style.end(r, Answer(true))?;
-                Ok(1)
+                1
             } else {
                 style.begin(r, Query(false))?;
                 write!(r, "{}", self.message)?;
@@ -99,9 +98,9 @@ impl Printable for Toggle<'_> {
                 style.begin(r, Toggle(self.active))?;
                 write!(r, "{}", &self.options[1])?;
                 style.end(r, Toggle(self.active))?;
-                Ok(2)
-            }
-        })
+                2
+            };
+        r.post_prompt(line_count)
     }
 }
 

@@ -74,13 +74,11 @@ impl<'a> Message<'a> {
 impl Printable for Message<'_> {
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use crate::style::Section::*;
-        // let style = DefaultStyle { ascii: true };
-        r.print_prompt(|r| {
-            style.begin(r, Message)?;
-            write!(r, "{}", self.message)?;
-            style.end(r, Message)?;
-            Ok(1)
-        })
+        r.pre_prompt()?;
+        style.begin(r, Message)?;
+        write!(r, "{}", self.message)?;
+        style.end(r, Message)?;
+        r.post_prompt(1)
     }
 }
 

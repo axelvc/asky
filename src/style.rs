@@ -35,10 +35,20 @@ pub enum Section {
 
 pub struct WithStyle<T, S>(pub(crate) T, pub(crate) S);
 
-impl<T,S,K> Typeable<K> for WithStyle<T,S> where
-    T: Typeable<K> {
+#[cfg(feature = "bevy")]
+impl<T,S> Typeable<bevy::KeyEvent> for WithStyle<T,S> where
+    T: Typeable<bevy::KeyEvent> {
 
-    fn handle_key(&mut self, key: &K) -> bool {
+    fn handle_key(&mut self, key: &bevy::KeyEvent) -> bool {
+        self.0.handle_key(key)
+    }
+}
+
+#[cfg(feature = "terminal")]
+impl<T,S> Typeable<crossterm::event::KeyEvent> for WithStyle<T,S> where
+    T: Typeable<crossterm::event::KeyEvent> {
+
+    fn handle_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
         self.0.handle_key(key)
     }
 }

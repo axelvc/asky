@@ -200,63 +200,64 @@ impl<T> Printable for MultiSelect<'_, T> {
         let draw_time = r.draw_time();
         // let style = DefaultStyle { ascii: true };
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
-                style.begin(r, Answer(true))?;
-                style.begin(r, List)?;
+        r.pre_prompt()?;
+        let line_count = if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+            style.begin(r, Answer(true))?;
+            style.begin(r, List)?;
 
-                let mut first = true;
-                for option in self.options.iter().filter(|opt| opt.active) {
-                    style.begin(r, ListItem(first))?;
-                    write!(r, "{}", &option.title)?;
-                    style.end(r, ListItem(first))?;
-                    first = false;
-                }
-                style.end(r, List)?;
-                style.end(r, Answer(true))?;
-                Ok(1)
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
-
-                let items_per_page = self.input.items_per_page;
-                let total = self.input.total_items;
-
-                let page_len = items_per_page.min(total);
-                let page_start = self.input.get_page() * items_per_page;
-                let page_end = (page_start + page_len).min(total);
-                let page_focused = self.input.focused % items_per_page;
-
-                for (n, option) in self.options[page_start..page_end].iter().enumerate() {
-                    let mut flags = Flags::empty();
-                    if n == page_focused {
-                        flags |= Flags::Focused;
-                    }
-                    if option.disabled {
-                        flags |= Flags::Disabled;
-                    }
-
-                    if option.active {
-                        flags |= Flags::Selected;
-                    }
-                    style.begin(r, Option(flags))?;
-                    write!(r, "{}", &option.title)?;
-                    style.end(r, Option(flags))?;
-                }
-
-                let page_i = self.input.get_page() as u8;
-                let page_count = self.input.count_pages() as u8;
-                let page_footer = if page_count != 1 { 2 } else { 0 };
-
-                style.begin(r, Page(page_i, page_count))?;
-                style.end(r, Page(page_i, page_count))?;
-                Ok((2 + page_end - page_start + page_footer) as u16)
+            let mut first = true;
+            for option in self.options.iter().filter(|opt| opt.active) {
+                style.begin(r, ListItem(first))?;
+                write!(r, "{}", &option.title)?;
+                style.end(r, ListItem(first))?;
+                first = false;
             }
-        })
+            style.end(r, List)?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+
+            let items_per_page = self.input.items_per_page;
+            let total = self.input.total_items;
+
+            let page_len = items_per_page.min(total);
+            let page_start = self.input.get_page() * items_per_page;
+            let page_end = (page_start + page_len).min(total);
+            let page_focused = self.input.focused % items_per_page;
+
+            for (n, option) in self.options[page_start..page_end].iter().enumerate() {
+                let mut flags = Flags::empty();
+                if n == page_focused {
+                    flags |= Flags::Focused;
+                }
+                if option.disabled {
+                    flags |= Flags::Disabled;
+                }
+
+                if option.active {
+                    flags |= Flags::Selected;
+                }
+                style.begin(r, Option(flags))?;
+                write!(r, "{}", &option.title)?;
+                style.end(r, Option(flags))?;
+            }
+
+            let page_i = self.input.get_page() as u8;
+            let page_count = self.input.count_pages() as u8;
+            let page_footer = if page_count != 1 { 2 } else { 0 };
+
+            style.begin(r, Page(page_i, page_count))?;
+            style.end(r, Page(page_i, page_count))?;
+            (2 + page_end - page_start + page_footer) as u16
+        };
+
+        r.post_prompt(line_count)
     }
 }
 

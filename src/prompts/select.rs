@@ -299,15 +299,15 @@ impl<T> Printable for Select<'_, T> {
         let draw_time = r.draw_time();
         // let style = DefaultStyle { ascii: true };
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
+        r.pre_prompt()?;
+        let line_count = if draw_time == DrawTime::Last {
                 style.begin(r, Query(true))?;
                 write!(r, "{}", self.message)?;
                 style.end(r, Query(true))?;
                 style.begin(r, Answer(true))?;
                 write!(r, "{}", &self.options[self.input.focused].title)?;
                 style.end(r, Answer(true))?;
-                Ok(1)
+                1
             } else {
                 style.begin(r, Query(false))?;
                 write!(r, "{}", self.message)?;
@@ -340,9 +340,9 @@ impl<T> Printable for Select<'_, T> {
 
                 style.begin(r, Page(page_i, page_count))?;
                 style.end(r, Page(page_i, page_count))?;
-                Ok((2 + page_end - page_start + page_footer) as u16)
-            }
-        })
+                (2 + page_end - page_start + page_footer) as u16
+            };
+        r.post_prompt(line_count)
     }
 }
 

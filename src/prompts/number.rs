@@ -151,98 +151,48 @@ impl<T: NumLike> Printable for Number<'_, T> {
         // let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
+        r.pre_prompt()?;
 
-                style.begin(r, Answer(true))?;
-                write!(r, "{}", &self.input.value)?;
-                style.end(r, Answer(true))?;
-                Ok(1)
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
+        let line_count = if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
 
-                if let Some(x) = self.default_value {
-                    style.begin(r, DefaultAnswer)?;
-                    write!(r, "{}", x)?;
-                    style.end(r, DefaultAnswer)?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.input.value)?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+
+            if let Some(x) = self.default_value {
+                style.begin(r, DefaultAnswer)?;
+                write!(r, "{}", x)?;
+                style.end(r, DefaultAnswer)?;
+            }
+            style.begin(r, Input)?;
+            write!(r, "{}", &self.input.value)?;
+            if self.input.value.is_empty() {
+                if let Some(placeholder) = self.placeholder {
+                    style.begin(r, Placeholder)?;
+                    write!(r, "{}", placeholder)?;
+                    style.end(r, Placeholder)?;
                 }
+            }
+            let is_valid = self.validator_result.is_ok();
+            if let Err(_error) = self.validator_result {
+                style.begin(r, Validator(is_valid))?;
                 style.begin(r, Input)?;
                 write!(r, "{}", &self.input.value)?;
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        style.begin(r, Placeholder)?;
-                        write!(r, "{}", placeholder)?;
-                        style.end(r, Placeholder)?;
-                    }
-                }
-                let is_valid = self.validator_result.is_ok();
-                if let Err(_error) = self.validator_result {
-                    style.begin(r, Validator(is_valid))?;
-                    style.begin(r, Input)?;
-                    write!(r, "{}", &self.input.value)?;
-                    style.end(r, Input)?;
-                    style.end(r, Validator(is_valid))?;
-                }
-                Ok(2)
+                style.end(r, Input)?;
+                style.end(r, Validator(is_valid))?;
             }
-        })?;
+            2
+        };
+        r.post_prompt(line_count)?;
         r.set_cursor([2 + self.input.col, 1])
-
-        // renderer.print2(|writer| {
-        //     if draw_time == DrawTime::Last {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(true)),
-        //             Print(&self.message),
-        //             style.end(Query(true)),
-        //             style.begin(Answer(true)),
-        //             Print(&self.input.value),
-        //             style.end(Answer(true)),
-        //         )?;
-        //         Ok(1)
-        //     } else {
-        //         queue!(
-        //             writer,
-        //             style.begin(Query(false)),
-        //             Print(&self.message),
-        //             style.end(Query(false)),
-        //         )?;
-        //         if let Some(_x) = self.default_value {
-        //             queue!(
-        //                 writer,
-        //                 style.begin(DefaultAnswer),
-        //                 Print(&self.message),
-        //                 style.end(DefaultAnswer),
-        //             )?;
-        //         }
-        //         if self.input.value.is_empty() {
-        //             if let Some(placeholder) = self.placeholder {
-        //                 queue!(
-        //                     writer,
-        //                     style.begin(Placeholder),
-        //                     Print(placeholder),
-        //                     style.end(Placeholder),
-        //                 )?;
-        //             }
-        //         }
-        //         let is_valid = self.validator_result.is_ok();
-        //         queue!(
-        //             writer,
-        //             style.begin(Validator(is_valid)),
-        //             style.begin(Input),
-        //             Print(&self.input.value),
-        //             style.end(Input),
-        //             style.end(Validator(is_valid)),
-        //         )?;
-        //         Ok(2)
-        //     }
-        // })?;
-        // r.set_cursor([2 + self.input.col, 1])
     }
 }
 

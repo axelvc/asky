@@ -139,42 +139,43 @@ impl Printable for Password<'_> {
         // let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
 
-        r.print_prompt(|r| {
-            if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
+        r.pre_prompt()?;
 
-                style.begin(r, Answer(false))?;
-                // write!(r, "{}", &self.input.value)?;
-                style.end(r, Answer(false))?;
-                Ok(1)
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
-                let text = match self.hidden {
-                    true => String::new(),
-                    false => "*".repeat(self.input.value.len()),
-                };
-                style.begin(r, Input)?;
-                write!(r, "{}", text)?;
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        style.begin(r, Placeholder)?;
-                        write!(r, "{}", placeholder)?;
-                        style.end(r, Placeholder)?;
-                    }
+        let line_count = if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+
+            style.begin(r, Answer(false))?;
+            // write!(r, "{}", &self.input.value)?;
+            style.end(r, Answer(false))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+            let text = match self.hidden {
+                true => String::new(),
+                false => "*".repeat(self.input.value.len()),
+            };
+            style.begin(r, Input)?;
+            write!(r, "{}", text)?;
+            if self.input.value.is_empty() {
+                if let Some(placeholder) = self.placeholder {
+                    style.begin(r, Placeholder)?;
+                    write!(r, "{}", placeholder)?;
+                    style.end(r, Placeholder)?;
                 }
-                style.end(r, Input)?;
-                if let Err(error) = self.validator_result {
-                    style.begin(r, Validator(false))?;
-                    write!(r, "{}", error)?;
-                    style.end(r, Validator(false))?;
-                }
-                Ok(2)
             }
-        })?;
+            style.end(r, Input)?;
+            if let Err(error) = self.validator_result {
+                style.begin(r, Validator(false))?;
+                write!(r, "{}", error)?;
+                style.end(r, Validator(false))?;
+            }
+            2
+        };
+        r.post_prompt(line_count)?;
         r.set_cursor([2 + self.input.col, 1])
     }
 }

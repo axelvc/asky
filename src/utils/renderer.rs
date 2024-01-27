@@ -58,13 +58,15 @@ pub trait Renderer: io::Write{
     fn set_foreground(&mut self, color: Color) -> io::Result<()>;
     fn set_background(&mut self, color: Color) -> io::Result<()>;
     fn reset_color(&mut self) -> io::Result<()>;
+    fn pre_prompt(&mut self) -> io::Result<()>;
+    fn post_prompt(&mut self, line_count: u16) -> io::Result<()>;
 
     // fn print2<F>(&mut self, draw_prompt: F) -> io::Result<()>
     // where
     //     F: FnOnce(&mut Self::Writer) -> io::Result<u16>;
-    fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self) -> io::Result<u16>;
+    // fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self) -> io::Result<u16>;
     // fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
@@ -120,12 +122,20 @@ impl Renderer for StringRenderer {
         Ok(())
     }
 
-    fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self) -> io::Result<u16> {
-        let _text_lines = draw_prompt(self)? - 1;
+    fn pre_prompt(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    fn post_prompt(&mut self, line_count: u16) -> io::Result<()> {
+        Ok(())
+    }
+
+    // fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self) -> io::Result<u16> {
+    //     let _text_lines = draw_prompt(self)? - 1;
+    //     Ok(())
+    // }
 
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.

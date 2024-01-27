@@ -102,12 +102,20 @@ impl Renderer for StyledStringWriter {
         Ok(())
     }
 
-    fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self) -> io::Result<u16> {
-        let _text_lines = draw_prompt(self)? - 1;
+    fn pre_prompt(&mut self) -> io::Result<()>
         Ok(())
     }
+
+    fn post_prompt(&mut self, line_count: u16) -> io::Result<()>
+        Ok(())
+    }
+
+    // fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self) -> io::Result<u16> {
+    //     let _text_lines = draw_prompt(self)? - 1;
+    //     Ok(())
+    // }
 
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.
