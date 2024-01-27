@@ -1,4 +1,4 @@
-use crate::utils::renderer::Renderer;
+use crate::{Typeable, Valuable, utils::renderer::Renderer};
 use bitflags::bitflags;
 use std::io;
 use text_style::AnsiColor::*;
@@ -33,9 +33,66 @@ pub enum Section {
     Custom(&'static str),
 }
 
+pub struct WithStyle<T, S>(pub(crate) T, pub(crate) S);
+
+impl<T,S,K> Typeable<K> for WithStyle<T,S> where
+    T: Typeable<K> {
+
+    fn handle_key(&mut self, key: &K) -> bool {
+        self.0.handle_key(key)
+    }
+}
+
+impl<T,S> Valuable for WithStyle<T,S> where
+    T: Valuable {
+    type Output = T::Output;
+    fn value(&self) -> Result<Self::Output, crate::Error> {
+        self.0.value()
+    }
+}
+
+// impl<T,S> std::ops::Deref for WithStyle<T,S> {
+//     type Target = T;
+
+//     // Required method
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
+
+// impl<T,S> std::ops::DerefMut for WithStyle<T,S> {
+
+//     // Required method
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.0
+//     }
+// }
+
+pub struct WithFormat<T, F>(pub(crate) T, pub(crate) F);
+
+impl<T,S> std::ops::Deref for WithFormat<T,S> {
+    type Target = T;
+
+    // Required method
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 pub trait Style {
     fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
     fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
+}
+
+pub struct NoStyle;
+
+impl Style for NoStyle {
+    fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()> {
+        Ok(())
+    }
+    fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 impl Style for DefaultStyle {

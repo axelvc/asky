@@ -147,7 +147,7 @@ pub use utils::renderer::DrawTime;
 
 pub mod prelude {
     pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
-    pub use super::{Error, Promptable, SelectOption, Valuable};
+    pub use super::{Error, Promptable, SelectOption, Valuable, utils::renderer::Printable};
 }
 
 #[cfg(feature = "terminal")]
@@ -158,4 +158,4 @@ pub mod bevy;
 #[cfg(feature = "bevy")]
 mod text_style_adapter;
 
-mod style;
+pub mod style;

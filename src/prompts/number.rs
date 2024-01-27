@@ -4,7 +4,7 @@ use super::text::LineInput;
 use crate::Valuable;
 use std::borrow::Cow;
 
-use crate::style::{DefaultStyle, Style};
+use crate::style::Style;
 use crate::utils::{
     num_like::NumLike,
     renderer::{DrawTime, Printable, Renderer},
@@ -146,9 +146,9 @@ impl<T: NumLike> Printable for Number<'_, T> {
     fn hide_cursor(&self) -> bool {
         false
     }
-    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use crate::style::Section::*;
-        let style = DefaultStyle { ascii: true };
+        // let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
 
         r.print_prompt(|r| {

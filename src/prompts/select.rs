@@ -13,7 +13,7 @@ pub enum Direction {
     Left,
     Right,
 }
-use crate::style::{DefaultStyle, Flags, Section, Style};
+use crate::style::{Flags, Section, Style};
 
 
 // region: SelectOption
@@ -294,10 +294,10 @@ impl<T> Valuable for Select<'_, T> {
 }
 
 impl<T> Printable for Select<'_, T> {
-    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
-        let style = DefaultStyle { ascii: true };
+        // let style = DefaultStyle { ascii: true };
 
         r.print_prompt(|r| {
             if draw_time == DrawTime::Last {

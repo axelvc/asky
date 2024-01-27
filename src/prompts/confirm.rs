@@ -6,7 +6,7 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::Error;
 use crate::Valuable;
 // use colored::ColoredStrings;
-use crate::style::{DefaultStyle, Section, Style};
+use crate::style::{Section, Style};
 
 
 // type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
@@ -78,10 +78,10 @@ impl Valuable for Confirm<'_> {
 }
 
 impl Printable for Confirm<'_> {
-    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
-        let style = DefaultStyle { ascii: true };
+        // let style = DefaultStyle { ascii: true };
 
         let options = ["No", "Yes"];
 

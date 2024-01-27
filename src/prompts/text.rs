@@ -1,7 +1,7 @@
 use crate::Error;
 use std::borrow::Cow;
 
-use crate::style::{DefaultStyle, Style};
+use crate::style::{Style, NoStyle};
 use crate::utils::{
     renderer::{DrawTime, Printable, Renderer},
 };
@@ -180,9 +180,8 @@ impl Printable for Text<'_> {
     fn hide_cursor(&self) -> bool {
         false
     }
-    fn draw<R: Renderer>(&self, r: &mut R) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use crate::style::Section::*;
-        let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
 
         r.print_prompt(|r| {
@@ -231,8 +230,9 @@ impl Printable for Text<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::key_listener::Typeable;
+    use crate::utils::{renderer::StringRenderer, key_listener::Typeable};
     use crossterm::event::{KeyCode, KeyEvent};
+    use std::io::Write;
 
     #[test]
     fn set_placeholder() {
@@ -267,20 +267,27 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn set_custom_formatter() {
-    //     let mut prompt: Text = Text::new("");
-    //     let draw_time = DrawTime::First;
-    //     const EXPECTED_VALUE: &str = "foo";
+    #[test]
+    fn set_custom_formatter() {
+        let mut prompt: Text = Text::new("");
+        let draw_time = DrawTime::First;
+        const EXPECTED_VALUE: &str = "foo";
+        let styled_prompt = prompt.with_format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
+        let mut out = StringRenderer::default();
+        let _ = styled_prompt.draw(&mut out);
+        assert_eq!(out.string, EXPECTED_VALUE);
+    }
 
-    //     prompt.format(|_, _, out| {
-    //         out.push(EXPECTED_VALUE.into());
-    //         [0, 0]
-    //     });
-    //     let mut out = ColoredStrings::new();
-    //     assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
-    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
-    // }
+    #[test]
+    fn set_custom_style() {
+        const EXPECTED_VALUE: &str = "foo";
+        let mut prompt: Text = Text::new(EXPECTED_VALUE);
+        let draw_time = DrawTime::First;
+        let styled_prompt = prompt.with_style(NoStyle);
+        let mut out = StringRenderer::default();
+        let _ = styled_prompt.draw(&mut out);
+        assert_eq!(out.string, EXPECTED_VALUE);
+    }
 
     #[test]
     fn update_value() {

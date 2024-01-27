@@ -1,11 +1,43 @@
 use std::io;
 use text_style::Color;
+use crate::style::{DefaultStyle, Style, WithStyle, WithFormat};
 
 pub trait Printable {
+    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, style: &S) -> io::Result<()>;
+
     fn hide_cursor(&self) -> bool {
         true
     }
-    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()>;
+
+    fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
+        let style = DefaultStyle::default();
+        self.draw_with_style(renderer, &style)
+    }
+
+    fn with_style<S: Style>(self, style: S) -> WithStyle<Self, S> where Self: Sized {
+        WithStyle(self, style)
+    }
+
+    fn with_format<F: Fn(&Self, &mut dyn std::io::Write) -> io::Result<()>>(self, format: F) -> WithFormat<Self, F> where Self: Sized {
+        WithFormat(self, format)
+    }
+}
+
+impl<T,F> Printable for WithFormat<T,F>
+    where F: Fn(&T, &mut dyn std::io::Write) -> io::Result<()>
+{
+    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, _style: &S) -> io::Result<()> {
+        (self.1)(&self.0, renderer)
+    }
+}
+
+impl<T,S> Printable for WithStyle<T,S>
+    where T: Printable,
+          S: Style
+{
+    fn draw_with_style<R: Renderer, U: Style>(&self, renderer: &mut R, _style: &U) -> io::Result<()> {
+        self.0.draw_with_style(renderer, &self.1)
+    }
 }
 
 /// Enum that indicates the current draw time to format closures.
@@ -20,17 +52,16 @@ pub enum DrawTime {
     Last,
 }
 
-pub trait Renderer : io::Write{
-    type Writer: std::io::Write;
+pub trait Renderer: io::Write{
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
     fn set_foreground(&mut self, color: Color) -> io::Result<()>;
     fn set_background(&mut self, color: Color) -> io::Result<()>;
     fn reset_color(&mut self) -> io::Result<()>;
 
-    fn print2<F>(&mut self, draw_prompt: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self::Writer) -> io::Result<u16>;
+    // fn print2<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    // where
+    //     F: FnOnce(&mut Self::Writer) -> io::Result<u16>;
     fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
     where
         F: FnOnce(&mut Self) -> io::Result<u16>;
@@ -38,4 +69,75 @@ pub trait Renderer : io::Write{
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
     fn show_cursor(&mut self) -> io::Result<()>;
+}
+
+#[derive(Clone, Default)]
+pub struct StringRenderer {
+    pub string: String,
+    pub draw_time: DrawTime,
+}
+
+impl std::io::Write for StringRenderer {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s = std::str::from_utf8(buf).expect("Not a utf8 string");
+        self.string.push_str(s);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl std::fmt::Write for StringRenderer {
+    fn write_str(&mut self, s: &str) -> Result<(), std::fmt::Error> {
+        self.string.push_str(s);
+        Ok(())
+    }
+}
+
+impl Renderer for StringRenderer {
+    fn draw_time(&self) -> DrawTime {
+        self.draw_time
+    }
+
+    fn update_draw_time(&mut self) {
+        self.draw_time = match self.draw_time {
+            DrawTime::First => DrawTime::Update,
+            _ => DrawTime::Last,
+        }
+    }
+
+    fn set_foreground(&mut self, _color: Color) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn set_background(&mut self, _color: Color) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reset_color(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
+    where
+        F: FnOnce(&mut Self) -> io::Result<u16> {
+        let _text_lines = draw_prompt(self)? - 1;
+        Ok(())
+    }
+
+    /// Utility function for line input.
+    /// Set initial position based on the position after drawing.
+    fn set_cursor(&mut self, _pos: [usize; 2]) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn hide_cursor(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn show_cursor(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }

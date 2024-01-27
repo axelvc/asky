@@ -45,7 +45,7 @@ impl io::Write for TermRenderer {
 }
 
 impl Renderer for TermRenderer {
-    type Writer = io::Stdout;
+    // type Writer = io::Stdout;
     fn draw_time(&self) -> DrawTime {
         self.draw_time
     }
@@ -67,13 +67,6 @@ impl Renderer for TermRenderer {
 
     fn reset_color(&mut self) -> io::Result<()> {
         queue!(self.out, ResetColor)
-    }
-
-    fn print2<F>(&mut self, _draw_prompt: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self::Writer) -> io::Result<u16>,
-    {
-        Ok(())
     }
 
     fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>

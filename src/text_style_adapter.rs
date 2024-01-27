@@ -48,7 +48,6 @@ impl std::io::Write for StyledStringWriter {
     }
 }
 
-
 impl std::fmt::Write for StyledStringWriter {
     fn write_str(&mut self, s: &str) -> Result<(), fmt::Error> {
         // let s = std::str::from_utf8(buf).expect("Not a utf8 string");
@@ -70,8 +69,9 @@ impl std::fmt::Write for StyledStringWriter {
     }
 }
 
+
 impl Renderer for StyledStringWriter {
-    type Writer = StyledStringWriter;
+    // type Writer = StyledStringWriter;
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
     }
@@ -99,13 +99,6 @@ impl Renderer for StyledStringWriter {
         let style = self.style.get_or_insert(Style::default());
         style.fg = None;
         style.bg = None;
-        Ok(())
-    }
-
-    // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-    fn print2<F>(&mut self, _draw_text: F) -> io::Result<()>
-    where
-        F: FnOnce(&mut Self::Writer) -> io::Result<u16> {
         Ok(())
     }
 
