@@ -6,9 +6,7 @@ use std::borrow::Cow;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener;
 
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 
 use super::select::{SelectInput, SelectOption};
 use crate::style::{Flags, Section, Style};

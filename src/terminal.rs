@@ -69,8 +69,7 @@ impl Renderer for TermRenderer {
         queue!(self.out, ResetColor)
     }
 
-    fn pre_prompt(&mut self) -> io::Result<()>
-    {
+    fn pre_prompt(&mut self) -> io::Result<()> {
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
@@ -81,8 +80,7 @@ impl Renderer for TermRenderer {
         Ok(())
     }
 
-    fn post_prompt(&mut self, line_count: u16) -> io::Result<()>
-    {
+    fn post_prompt(&mut self, line_count: u16) -> io::Result<()> {
         let text_lines = line_count - 1;
 
         // Saved position is updated each draw because the text lines could be different

@@ -4,9 +4,7 @@ use crate::Error;
 use crate::Valuable;
 
 use crate::style::Style;
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use std::io;
 
 use super::text::{InputValidator, LineInput};
@@ -109,7 +107,6 @@ impl<'a> Password<'a> {
         self.validator = Some(Box::new(validator));
         self
     }
-
 }
 
 impl Password<'_> {

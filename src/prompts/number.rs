@@ -117,7 +117,6 @@ impl<'a, T: NumLike + 'a> Number<'a, T> {
         self.validator = Some(Box::new(validator));
         self
     }
-
 }
 
 impl<T: NumLike> Number<'_, T> {

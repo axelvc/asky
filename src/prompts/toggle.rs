@@ -5,9 +5,7 @@ use crate::Error;
 use crate::Valuable;
 
 use crate::style::{Section, Style};
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 
 /// Prompt to choose between two options.
 ///
@@ -69,7 +67,6 @@ impl<'a> Toggle<'a> {
         self.active = value;
         self
     }
-
 }
 
 impl Printable for Toggle<'_> {
@@ -79,27 +76,27 @@ impl Printable for Toggle<'_> {
 
         r.pre_prompt()?;
         let line_count = if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
 
-                style.begin(r, Answer(true))?;
-                write!(r, "{}", &self.options[self.active as usize])?;
-                style.end(r, Answer(true))?;
-                1
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.options[self.active as usize])?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
 
-                style.begin(r, Toggle(!self.active))?;
-                write!(r, "{}", &self.options[0])?;
-                style.end(r, Toggle(!self.active))?;
-                style.begin(r, Toggle(self.active))?;
-                write!(r, "{}", &self.options[1])?;
-                style.end(r, Toggle(self.active))?;
-                2
-            };
+            style.begin(r, Toggle(!self.active))?;
+            write!(r, "{}", &self.options[0])?;
+            style.end(r, Toggle(!self.active))?;
+            style.begin(r, Toggle(self.active))?;
+            write!(r, "{}", &self.options[1])?;
+            style.end(r, Toggle(self.active))?;
+            2
+        };
         r.post_prompt(line_count)
     }
 }

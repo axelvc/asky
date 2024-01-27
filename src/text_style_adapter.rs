@@ -1,7 +1,7 @@
-use std::io;
+use crate::{utils::renderer::Renderer, DrawTime};
 use std::fmt;
-use text_style::{self, StyledString, Style, Color};
-use crate::{DrawTime, utils::renderer::Renderer};
+use std::io;
+use text_style::{self, Color, Style, StyledString};
 
 #[derive(Debug, Clone, Default)]
 pub struct StyledStringWriter {
@@ -34,8 +34,7 @@ impl std::io::Write for StyledStringWriter {
                     text
                 } else {
                     self.strings.push(text);
-                    StyledString::new(s.to_string(),
-                                      self.style)
+                    StyledString::new(s.to_string(), self.style)
                 }
             }
         };
@@ -59,8 +58,7 @@ impl std::fmt::Write for StyledStringWriter {
                     text
                 } else {
                     self.strings.push(text);
-                    StyledString::new(s.to_string(),
-                                      self.style)
+                    StyledString::new(s.to_string(), self.style)
                 }
             }
         };
@@ -68,7 +66,6 @@ impl std::fmt::Write for StyledStringWriter {
         Ok(())
     }
 }
-
 
 impl Renderer for StyledStringWriter {
     // type Writer = StyledStringWriter;
@@ -102,11 +99,11 @@ impl Renderer for StyledStringWriter {
         Ok(())
     }
 
-    fn pre_prompt(&mut self) -> io::Result<()>
+    fn pre_prompt(&mut self) -> io::Result<()> {
         Ok(())
     }
 
-    fn post_prompt(&mut self, line_count: u16) -> io::Result<()>
+    fn post_prompt(&mut self, line_count: u16) -> io::Result<()> {
         Ok(())
     }
 

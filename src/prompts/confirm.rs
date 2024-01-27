@@ -8,7 +8,6 @@ use crate::Valuable;
 // use colored::ColoredStrings;
 use crate::style::{Section, Style};
 
-
 // type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
 
 /// Prompt to ask yes/no questions.
@@ -60,7 +59,6 @@ impl<'a> Confirm<'a> {
         self.active = active;
         self
     }
-
 }
 
 impl Confirm<'_> {

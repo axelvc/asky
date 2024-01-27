@@ -1,10 +1,8 @@
 use crate::Error;
 use std::borrow::Cow;
 
-use crate::style::{Style, NoStyle};
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
+use crate::style::{NoStyle, Style};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::Valuable;
 use std::io;
 
@@ -156,7 +154,6 @@ impl<'a> Text<'a> {
         self.validator = Some(Box::new(validator));
         self
     }
-
 }
 
 impl Text<'_> {
@@ -186,41 +183,41 @@ impl Printable for Text<'_> {
 
         r.pre_prompt()?;
         let line_count = if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
 
-                style.begin(r, Answer(true))?;
-                write!(r, "{}", &self.input.value)?;
-                style.end(r, Answer(true))?;
-                1
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.input.value)?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
 
-                if let Some(x) = self.default_value {
-                    style.begin(r, DefaultAnswer)?;
-                    write!(r, "{}", x)?;
-                    style.end(r, DefaultAnswer)?;
+            if let Some(x) = self.default_value {
+                style.begin(r, DefaultAnswer)?;
+                write!(r, "{}", x)?;
+                style.end(r, DefaultAnswer)?;
+            }
+            style.begin(r, Input)?;
+            write!(r, "{}", &self.input.value)?;
+            if self.input.value.is_empty() {
+                if let Some(placeholder) = self.placeholder {
+                    style.begin(r, Placeholder)?;
+                    write!(r, "{}", placeholder)?;
+                    style.end(r, Placeholder)?;
                 }
-                style.begin(r, Input)?;
-                write!(r, "{}", &self.input.value)?;
-                if self.input.value.is_empty() {
-                    if let Some(placeholder) = self.placeholder {
-                        style.begin(r, Placeholder)?;
-                        write!(r, "{}", placeholder)?;
-                        style.end(r, Placeholder)?;
-                    }
-                }
-                style.end(r, Input)?;
-                if let Err(error) = self.validator_result {
-                    style.begin(r, Validator(false))?;
-                    write!(r, "{}", error)?;
-                    style.end(r, Validator(false))?;
-                }
-                2
-            };
+            }
+            style.end(r, Input)?;
+            if let Err(error) = self.validator_result {
+                style.begin(r, Validator(false))?;
+                write!(r, "{}", error)?;
+                style.end(r, Validator(false))?;
+            }
+            2
+        };
         r.post_prompt(line_count)?;
         r.set_cursor([2 + self.input.col, 1])
     }
@@ -230,7 +227,7 @@ impl Printable for Text<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{renderer::StringRenderer, key_listener::Typeable};
+    use crate::utils::{key_listener::Typeable, renderer::StringRenderer};
     use crossterm::event::{KeyCode, KeyEvent};
     use std::io::Write;
 
@@ -272,7 +269,8 @@ mod tests {
         let mut prompt: Text = Text::new("");
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
-        let styled_prompt = prompt.with_format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
+        let styled_prompt =
+            prompt.with_format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
         let mut out = StringRenderer::default();
         let _ = styled_prompt.draw(&mut out);
         assert_eq!(out.string, EXPECTED_VALUE);

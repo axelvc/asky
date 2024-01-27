@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 use std::io;
 
-use crate::utils::{
-    renderer::{DrawTime, Printable, Renderer},
-};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 
 use crate::{Error, Valuable};
 
@@ -14,7 +12,6 @@ pub enum Direction {
     Right,
 }
 use crate::style::{Flags, Section, Style};
-
 
 // region: SelectOption
 
@@ -265,7 +262,6 @@ impl<'a, T: 'a> Select<'a, T> {
         self.input.set_items_per_page(item_per_page);
         self
     }
-
 }
 
 impl<T> Select<'_, T> {
@@ -301,47 +297,47 @@ impl<T> Printable for Select<'_, T> {
 
         r.pre_prompt()?;
         let line_count = if draw_time == DrawTime::Last {
-                style.begin(r, Query(true))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(true))?;
-                style.begin(r, Answer(true))?;
-                write!(r, "{}", &self.options[self.input.focused].title)?;
-                style.end(r, Answer(true))?;
-                1
-            } else {
-                style.begin(r, Query(false))?;
-                write!(r, "{}", self.message)?;
-                style.end(r, Query(false))?;
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.options[self.input.focused].title)?;
+            style.end(r, Answer(true))?;
+            1
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
 
-                let items_per_page = self.input.items_per_page;
-                let total = self.input.total_items;
+            let items_per_page = self.input.items_per_page;
+            let total = self.input.total_items;
 
-                let page_len = items_per_page.min(total);
-                let page_start = self.input.get_page() * items_per_page;
-                let page_end = (page_start + page_len).min(total);
-                let page_focused = self.input.focused % items_per_page;
+            let page_len = items_per_page.min(total);
+            let page_start = self.input.get_page() * items_per_page;
+            let page_end = (page_start + page_len).min(total);
+            let page_focused = self.input.focused % items_per_page;
 
-                for (n, option) in self.options[page_start..page_end].iter().enumerate() {
-                    let mut flags = Flags::empty();
-                    if n == page_focused {
-                        flags |= Flags::Focused;
-                    }
-                    if option.disabled {
-                        flags |= Flags::Disabled;
-                    }
-                    style.begin(r, OptionExclusive(flags))?;
-                    write!(r, "{}", &option.title)?;
-                    style.end(r, OptionExclusive(flags))?;
+            for (n, option) in self.options[page_start..page_end].iter().enumerate() {
+                let mut flags = Flags::empty();
+                if n == page_focused {
+                    flags |= Flags::Focused;
                 }
+                if option.disabled {
+                    flags |= Flags::Disabled;
+                }
+                style.begin(r, OptionExclusive(flags))?;
+                write!(r, "{}", &option.title)?;
+                style.end(r, OptionExclusive(flags))?;
+            }
 
-                let page_i = self.input.get_page() as u8;
-                let page_count = self.input.count_pages() as u8;
-                let page_footer = if page_count != 1 { 2 } else { 0 };
+            let page_i = self.input.get_page() as u8;
+            let page_count = self.input.count_pages() as u8;
+            let page_footer = if page_count != 1 { 2 } else { 0 };
 
-                style.begin(r, Page(page_i, page_count))?;
-                style.end(r, Page(page_i, page_count))?;
-                (2 + page_end - page_start + page_footer) as u16
-            };
+            style.begin(r, Page(page_i, page_count))?;
+            style.end(r, Page(page_i, page_count))?;
+            (2 + page_end - page_start + page_footer) as u16
+        };
         r.post_prompt(line_count)
     }
 }

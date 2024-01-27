@@ -1,9 +1,10 @@
+use crate::style::{DefaultStyle, Style, WithFormat, WithStyle};
 use std::io;
 use text_style::Color;
-use crate::style::{DefaultStyle, Style, WithStyle, WithFormat};
 
 pub trait Printable {
-    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, style: &S) -> io::Result<()>;
+    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, style: &S)
+        -> io::Result<()>;
 
     fn hide_cursor(&self) -> bool {
         true
@@ -14,28 +15,47 @@ pub trait Printable {
         self.draw_with_style(renderer, &style)
     }
 
-    fn with_style<S: Style>(self, style: S) -> WithStyle<Self, S> where Self: Sized {
+    fn with_style<S: Style>(self, style: S) -> WithStyle<Self, S>
+    where
+        Self: Sized,
+    {
         WithStyle(self, style)
     }
 
-    fn with_format<F: Fn(&Self, &mut dyn std::io::Write) -> io::Result<()>>(self, format: F) -> WithFormat<Self, F> where Self: Sized {
+    fn with_format<F: Fn(&Self, &mut dyn std::io::Write) -> io::Result<()>>(
+        self,
+        format: F,
+    ) -> WithFormat<Self, F>
+    where
+        Self: Sized,
+    {
         WithFormat(self, format)
     }
 }
 
-impl<T,F> Printable for WithFormat<T,F>
-    where F: Fn(&T, &mut dyn std::io::Write) -> io::Result<()>
+impl<T, F> Printable for WithFormat<T, F>
+where
+    F: Fn(&T, &mut dyn std::io::Write) -> io::Result<()>,
 {
-    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, _style: &S) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, S: Style>(
+        &self,
+        renderer: &mut R,
+        _style: &S,
+    ) -> io::Result<()> {
         (self.1)(&self.0, renderer)
     }
 }
 
-impl<T,S> Printable for WithStyle<T,S>
-    where T: Printable,
-          S: Style
+impl<T, S> Printable for WithStyle<T, S>
+where
+    T: Printable,
+    S: Style,
 {
-    fn draw_with_style<R: Renderer, U: Style>(&self, renderer: &mut R, _style: &U) -> io::Result<()> {
+    fn draw_with_style<R: Renderer, U: Style>(
+        &self,
+        renderer: &mut R,
+        _style: &U,
+    ) -> io::Result<()> {
         self.0.draw_with_style(renderer, &self.1)
     }
 }
@@ -52,7 +72,7 @@ pub enum DrawTime {
     Last,
 }
 
-pub trait Renderer: io::Write{
+pub trait Renderer: io::Write {
     fn draw_time(&self) -> DrawTime;
     fn update_draw_time(&mut self);
     fn set_foreground(&mut self, color: Color) -> io::Result<()>;

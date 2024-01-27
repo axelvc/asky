@@ -1,4 +1,4 @@
-use crate::{Typeable, Valuable, utils::renderer::Renderer};
+use crate::{utils::renderer::Renderer, Typeable, Valuable};
 use bitflags::bitflags;
 use std::io;
 use text_style::AnsiColor::*;
@@ -36,32 +36,38 @@ pub enum Section {
 pub struct WithStyle<T, S>(pub(crate) T, pub(crate) S);
 
 #[cfg(feature = "bevy")]
-impl<T,S> Typeable<bevy::KeyEvent> for WithStyle<T,S> where
-    T: Typeable<bevy::KeyEvent> {
-
+impl<T, S> Typeable<bevy::KeyEvent> for WithStyle<T, S>
+where
+    T: Typeable<bevy::KeyEvent>,
+{
     fn handle_key(&mut self, key: &bevy::KeyEvent) -> bool {
         self.0.handle_key(key)
     }
 }
 
 #[cfg(feature = "terminal")]
-impl<T,S> Typeable<crossterm::event::KeyEvent> for WithStyle<T,S> where
-    T: Typeable<crossterm::event::KeyEvent> {
-
+impl<T, S> Typeable<crossterm::event::KeyEvent> for WithStyle<T, S>
+where
+    T: Typeable<crossterm::event::KeyEvent>,
+{
     fn handle_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
         self.0.handle_key(key)
     }
 }
 
-impl<T,S> Valuable for WithStyle<T,S> where
-    T: Valuable {
+impl<T, S> Valuable for WithStyle<T, S>
+where
+    T: Valuable,
+{
     type Output = T::Output;
     fn value(&self) -> Result<Self::Output, crate::Error> {
         self.0.value()
     }
 }
 
-// impl<T,S> std::ops::Deref for WithStyle<T,S> {
+pub struct WithFormat<T, F>(pub(crate) T, pub(crate) F);
+
+// impl<T,S> std::ops::Deref for WithFormat<T,S> {
 //     type Target = T;
 
 //     // Required method
@@ -69,25 +75,6 @@ impl<T,S> Valuable for WithStyle<T,S> where
 //         &self.0
 //     }
 // }
-
-// impl<T,S> std::ops::DerefMut for WithStyle<T,S> {
-
-//     // Required method
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.0
-//     }
-// }
-
-pub struct WithFormat<T, F>(pub(crate) T, pub(crate) F);
-
-impl<T,S> std::ops::Deref for WithFormat<T,S> {
-    type Target = T;
-
-    // Required method
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 pub trait Style {
     fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;

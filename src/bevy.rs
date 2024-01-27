@@ -2,7 +2,6 @@ use crate::utils::renderer::{Printable, Renderer};
 
 use crate::Typeable;
 use crate::{DrawTime, NumLike};
-use std::borrow::Cow;
 use bevy::{
     ecs::{
         component::Tick,
@@ -16,23 +15,20 @@ use promise_out::{
     pair::{Consumer, Producer},
     Promise,
 };
+use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
 use std::future::Future;
 
-
 use std::ops::{Deref, DerefMut};
 
-use crate::{
-    Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle,
-    Valuable,
-};
+use crate::text_style_adapter::StyledStringWriter;
+use crate::{Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle, Valuable};
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use futures_lite::future;
 use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
-use crate::text_style_adapter::{StyledStringWriter};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -410,8 +406,7 @@ fn cursorify(
         .on(cursor_color),
     );
     let left = Some(to_colored_string(input));
-    left.into_iter()
-        .chain(cursor.into_iter().chain(right))
+    left.into_iter().chain(cursor.into_iter().chain(right))
 }
 
 fn cursorify_iter(
@@ -621,7 +616,13 @@ pub fn asky_system<T>(
     }
 }
 
-fn bevy_render(commands: &mut Commands, settings: &BevyAskySettings, out: &mut StyledStringWriter, column: Entity) {// -> io::Result<()>
+fn bevy_render(
+    commands: &mut Commands,
+    settings: &BevyAskySettings,
+    out: &mut StyledStringWriter,
+    column: Entity,
+) {
+    // -> io::Result<()>
     let white = text_style::Color::Ansi {
         color: AnsiColor::White,
         mode: AnsiMode::Dark,
@@ -633,30 +634,31 @@ fn bevy_render(commands: &mut Commands, settings: &BevyAskySettings, out: &mut S
     commands.entity(column).with_children(|column| {
         let mut next_line_count: Option<usize> = None;
         let mut line_count: usize = 0;
-        let lines = strings.into_iter()
-                               .flat_map(|mut s| {
-                                   let mut a = vec![];
-                                   let mut b = None;
-                                   if s.s.contains('\n') {
-                                       let str = std::mem::take(&mut s.s);
-                                       a.extend(str.split_inclusive('\n').map(move |line| StyledString {
-                                           s: line.to_string(),
-                                           ..s.clone()
-                                       }));
-                                   } else {
-                                       b = Some(s);
-                                   }
-                                   a.into_iter().chain(b)
-                               })
-                               .group_by(|x| {
-                                   if let Some(x) = next_line_count.take() {
-                                       line_count = x;
-                                   }
-                                   if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
-                                       next_line_count = Some(line_count + 1);
-                                   }
-                                   line_count
-                               });
+        let lines = strings
+            .into_iter()
+            .flat_map(|mut s| {
+                let mut a = vec![];
+                let mut b = None;
+                if s.s.contains('\n') {
+                    let str = std::mem::take(&mut s.s);
+                    a.extend(str.split_inclusive('\n').map(move |line| StyledString {
+                        s: line.to_string(),
+                        ..s.clone()
+                    }));
+                } else {
+                    b = Some(s);
+                }
+                a.into_iter().chain(b)
+            })
+            .group_by(|x| {
+                if let Some(x) = next_line_count.take() {
+                    line_count = x;
+                }
+                if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
+                    next_line_count = Some(line_count + 1);
+                }
+                line_count
+            });
 
         let mut line_num = 0;
         for (_key, line) in &lines {

@@ -146,8 +146,8 @@ pub use utils::num_like::NumLike;
 pub use utils::renderer::DrawTime;
 
 pub mod prelude {
+    pub use super::{utils::renderer::Printable, Error, Promptable, SelectOption, Valuable};
     pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
-    pub use super::{Error, Promptable, SelectOption, Valuable, utils::renderer::Printable};
 }
 
 #[cfg(feature = "terminal")]
