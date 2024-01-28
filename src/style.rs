@@ -169,23 +169,23 @@ impl Style for DefaultStyle {
                 ) {
                     (true, true) => {
                         if self.ascii {
-                            "(o)"
+                            "[o]"
                         } else {
-                            "◉"
+                            "▣"
                         }
                     }
                     (true, false) => {
                         if self.ascii {
-                            "(x)"
+                            "[x]"
                         } else {
-                            "●"
+                            "■"
                         }
                     }
                     _ => {
                         if self.ascii {
-                            "( )"
+                            "[ ]"
                         } else {
-                            "○"
+                            "□"
                         }
                     }
                 };
