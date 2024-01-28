@@ -77,18 +77,35 @@ impl Renderer for TermRenderer {
     }
 
     fn pre_prompt(&mut self) -> io::Result<()> {
+
+        let newline_count = *self.newline_count();
         if self.draw_time != DrawTime::First {
             queue!(
                 self.out,
-                cursor::RestorePosition,
+                cursor::MoveToPreviousLine(newline_count),
                 terminal::Clear(terminal::ClearType::FromCursorDown),
             )?;
         }
+        *self.newline_count() = 0;
+
+        // let (col, row) = cursor::position()?;
+        // eprintln!("pre cursor {} {}", col, row);
         Ok(())
     }
 
-    fn post_prompt(&mut self, line_count: u16) -> io::Result<()> {
-        let text_lines = line_count - 1;
+    fn save_cursor(&mut self) -> io::Result<()> {
+
+        // panic!();
+        // let (col, row) = cursor::position()?;
+        // eprintln!("                 \n\n\n save cursor {} {}", col, row);
+        queue!(
+            self.out,
+            cursor::SavePosition
+        )
+    }
+
+    fn post_prompt(&mut self, newline_count: u16) -> io::Result<()> {
+        // let text_lines = line_count.saturating_sub(1);
 
         // Saved position is updated each draw because the text lines could be different
         // between draws. The last draw is ignored to always set the cursor at the end
@@ -98,23 +115,24 @@ impl Renderer for TermRenderer {
         // and when trying to restore, the next draw will be below the last row.
         if self.draw_time != DrawTime::Last {
             let (col, row) = cursor::position()?;
-
-            if newline_count > 0 {
-                queue!(
-                    self.out,
-                    cursor::MoveToPreviousLine(newline_count)
-                )?;
-            } else {
-                queue!(
-                    self.out,
-                    cursor::MoveToColumn(0)
-                )?;
-            }
+            // eprintln!("post cursor {} {}", col, row);
             queue!(
                 self.out,
-                cursor::SavePosition,
-                cursor::MoveTo(col, row)
+                cursor::RestorePosition,
+                // cursor::MoveTo(col, row)
             )?;
+
+            if newline_count > 0 {
+                // queue!(
+                //     self.out,
+                //     cursor::MoveToPreviousLine(newline_count)
+                // )?;
+            } else {
+                // queue!(
+                //     self.out,
+                //     // cursor::MoveToColumn(0)
+                // )?;
+            }
         }
 
         self.out.flush()

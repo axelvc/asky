@@ -84,7 +84,7 @@ pub trait Renderer: io::Write {
     fn set_background(&mut self, color: Color) -> io::Result<()>;
     fn reset_color(&mut self) -> io::Result<()>;
     fn pre_prompt(&mut self) -> io::Result<()>;
-    fn post_prompt(&mut self, line_count: u16) -> io::Result<()>;
+    fn post_prompt(&mut self, newline_count: u16) -> io::Result<()>;
 
     // fn print2<F>(&mut self, draw_prompt: F) -> io::Result<()>
     // where
@@ -94,6 +94,8 @@ pub trait Renderer: io::Write {
     //     F: FnOnce(&mut Self) -> io::Result<u16>;
     // fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn set_cursor(&mut self, position: [usize; 2]) -> io::Result<()>;
+    fn move_cursor(&mut self, direction: [usize; 2]) -> io::Result<()> { Ok(()) }
+    fn save_cursor(&mut self) -> io::Result<()> { Ok(()) }
     fn hide_cursor(&mut self) -> io::Result<()>;
     fn show_cursor(&mut self) -> io::Result<()>;
 }

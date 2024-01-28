@@ -202,6 +202,7 @@ impl Printable for Text<'_> {
                 style.end(r, DefaultAnswer)?;
             }
             style.begin(r, Input)?;
+            r.save_cursor()?;
             write!(r, "{}", &self.input.value)?;
             if self.input.value.is_empty() {
                 if let Some(placeholder) = self.placeholder {
@@ -222,8 +223,8 @@ impl Printable for Text<'_> {
         // assert_eq!(r.newline_count(), &line_count);
         // assert_eq!(r.newline_count(), &0);
         let line_count = *r.newline_count();
-        r.post_prompt(line_count)
-        // r.set_cursor([2 + self.input.col, line_count as usize])
+        r.post_prompt(line_count)?;
+        r.set_cursor([self.input.col, 0])
     }
 }
 

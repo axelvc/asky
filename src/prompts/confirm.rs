@@ -106,8 +106,8 @@ impl Printable for Confirm<'_> {
         };
 
         // assert_eq!(r.newline_count(), &line_count);
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)
+        let newline_count = *r.newline_count();
+        r.post_prompt(newline_count)
     }
 }
 

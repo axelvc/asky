@@ -78,8 +78,8 @@ impl Printable for Message<'_> {
         style.begin(r, Message)?;
         write!(r, "{}", self.message)?;
         style.end(r, Message)?;
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)
+        let newline_count = *r.newline_count();
+        r.post_prompt(newline_count)
     }
 }
 
