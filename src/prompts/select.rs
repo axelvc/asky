@@ -344,8 +344,7 @@ impl<T> Printable for Select<'_, T> {
             (1 + page_end - page_start + page_footer) as u16
         };
         // assert_eq!(r.newline_count(), &line_count);
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)
+        r.post_prompt()
     }
 }
 

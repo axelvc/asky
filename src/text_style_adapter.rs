@@ -8,6 +8,7 @@ pub struct StyledStringWriter {
     pub style: Option<text_style::Style>,
     pub strings: Vec<StyledString>,
     pub state: RendererState,
+    newline_count: u16,
 }
 
 impl StyledStringWriter {
@@ -68,9 +69,12 @@ impl std::fmt::Write for StyledStringWriter {
 }
 
 impl Renderer for StyledStringWriter {
-    // type Writer = StyledStringWriter;
     fn draw_time(&self) -> DrawTime {
         self.state.draw_time
+    }
+
+    fn newline_count(&mut self) -> &mut u16 {
+        &mut self.newline_count
     }
 
     fn update_draw_time(&mut self) {
@@ -103,25 +107,18 @@ impl Renderer for StyledStringWriter {
         Ok(())
     }
 
-    fn post_prompt(&mut self, line_count: u16) -> io::Result<()> {
+    fn post_prompt(&mut self) -> io::Result<()> {
         Ok(())
     }
 
-    // fn print_prompt<F>(&mut self, draw_prompt: F) -> io::Result<()>
-    // where
-    //     F: FnOnce(&mut Self) -> io::Result<u16> {
-    //     let _text_lines = draw_prompt(self)? - 1;
-    //     Ok(())
-    // }
-
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.
-    fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
+    fn move_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
         if self.state.draw_time == DrawTime::Last {
             return Ok(());
         }
-        self.state.cursor_pos[0] = x;
-        self.state.cursor_pos[1] = y;
+        self.state.cursor_pos[0] += x;
+        self.state.cursor_pos[1] += y;
         Ok(())
     }
 

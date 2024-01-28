@@ -95,8 +95,7 @@ impl Printable for Toggle<'_> {
             write!(r, "{}", &self.options[1])?;
             style.end(r, Toggle(self.active))?;
         }
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)
+        r.post_prompt()
     }
 }
 

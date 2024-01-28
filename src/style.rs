@@ -36,11 +36,11 @@ pub enum Section {
 pub struct WithStyle<T, S>(pub(crate) T, pub(crate) S);
 
 #[cfg(feature = "bevy")]
-impl<T, S> Typeable<bevy::KeyEvent> for WithStyle<T, S>
+impl<T, S> Typeable<crate::bevy::KeyEvent> for WithStyle<T, S>
 where
-    T: Typeable<bevy::KeyEvent>,
+    T: Typeable<crate::bevy::KeyEvent>,
 {
-    fn handle_key(&mut self, key: &bevy::KeyEvent) -> bool {
+    fn handle_key(&mut self, key: &crate::bevy::KeyEvent) -> bool {
         self.0.handle_key(key)
     }
 }

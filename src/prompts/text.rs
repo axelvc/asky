@@ -222,9 +222,8 @@ impl Printable for Text<'_> {
 
         // assert_eq!(r.newline_count(), &line_count);
         // assert_eq!(r.newline_count(), &0);
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)?;
-        r.set_cursor([self.input.col, 0])
+        r.post_prompt()?;
+        r.move_cursor([self.input.col, 0])
     }
 }
 
@@ -240,7 +239,6 @@ mod tests {
     fn set_placeholder() {
         let mut text = Text::new("");
         text.placeholder("foo");
-
         assert_eq!(text.placeholder, Some("foo"));
     }
 

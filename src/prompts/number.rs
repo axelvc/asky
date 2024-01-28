@@ -190,9 +190,8 @@ impl<T: NumLike> Printable for Number<'_, T> {
             }
             2
         };
-        let line_count = *r.newline_count();
-        r.post_prompt(line_count)?;
-        r.set_cursor([2 + self.input.col, 1])
+        r.post_prompt()?;
+        r.move_cursor([self.input.col, 0])
     }
 }
 

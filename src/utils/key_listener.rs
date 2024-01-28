@@ -49,7 +49,6 @@ pub fn listen(
         if let Event::Key(key) = key {
             handle_abort(key, &mut renderer);
             submit = prompt.handle_key(&key);
-            // *renderer.newline_count() = 0;
             prompt.draw(&mut renderer)?;
         }
     }
@@ -60,7 +59,6 @@ pub fn listen(
         renderer.show_cursor()?;
     }
 
-    // *renderer.newline_count() = 0;
     prompt.draw(&mut renderer)
 }
 

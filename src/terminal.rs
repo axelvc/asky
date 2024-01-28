@@ -104,8 +104,8 @@ impl Renderer for TermRenderer {
         )
     }
 
-    fn post_prompt(&mut self, newline_count: u16) -> io::Result<()> {
-        // let text_lines = line_count.saturating_sub(1);
+    fn post_prompt(&mut self) -> io::Result<()> {
+        let newline_count = *self.newline_count();
 
         // Saved position is updated each draw because the text lines could be different
         // between draws. The last draw is ignored to always set the cursor at the end
@@ -173,7 +173,7 @@ impl Renderer for TermRenderer {
 
     /// Utility function for line input
     /// Set initial position based on the position after drawing
-    fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
+    fn move_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
         if self.draw_time == DrawTime::Last {
             return Ok(());
         }
