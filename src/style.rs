@@ -19,6 +19,7 @@ pub enum Section {
     Answer(bool), // if show -> Answer(true)
     DefaultAnswer,
     Message,
+    Action,
     Toggle(bool), // if selected -> Toggle(true)
     Option(Flags),
     OptionExclusive(Flags),
@@ -250,6 +251,10 @@ impl Style for DefaultStyle {
                 }
             }
             Message => {}
+            Action => {
+                write!(r, " ")?;
+                r.set_foreground(Blue.dark())?;
+            }
             Validator(valid) => {
                 r.set_foreground(if valid { Blue.dark() } else { Red.dark() })?;
             }

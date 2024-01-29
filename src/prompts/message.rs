@@ -5,8 +5,7 @@ use crate::style::Style;
 #[cfg(feature = "terminal")]
 use crate::utils::key_listener::listen;
 use crate::utils::renderer::{Printable, Renderer};
-use crate::Error;
-use crate::Valuable;
+use crate::{DrawTime, Error, Valuable};
 
 /// Prompt to ask yes/no questions.
 ///
@@ -37,7 +36,7 @@ pub struct Message<'a> {
     // pub message: &'a str,
     pub message: Cow<'a, str>,
     pub action: Option<Cow<'a, str>>,
-    // pub wait_for_any_key: bool,
+    pub wait_for_key: bool,
 }
 
 impl Valuable for Message<'_> {
@@ -49,10 +48,19 @@ impl Valuable for Message<'_> {
 
 impl<'a> Message<'a> {
     /// Create a new message prompt with an call to action, e.g., "Press Any Key".
-    pub fn with_option<T: Into<Cow<'a, str>>>(message: T, action: T) -> Self {
+    pub fn wait<T: Into<Cow<'a, str>>>(message: T) -> Self {
+        Message {
+            message: message.into(),
+            action: None,
+            wait_for_key: true,
+        }
+    }
+
+    pub fn call_to_action<T: Into<Cow<'a, str>>>(message: T, action: T) -> Self {
         Message {
             message: message.into(),
             action: Some(action.into()),
+            wait_for_key: true,
         }
     }
 
@@ -61,6 +69,7 @@ impl<'a> Message<'a> {
         Message {
             message: message.into(),
             action: None,
+            wait_for_key: false,
         }
     }
 
@@ -74,10 +83,27 @@ impl<'a> Message<'a> {
 impl Printable for Message<'_> {
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use crate::style::Section::*;
+        let draw_time = r.draw_time();
         r.pre_prompt()?;
-        style.begin(r, Message)?;
-        write!(r, "{}", self.message)?;
-        style.end(r, Message)?;
+        if ! self.wait_for_key {
+            // XXX: This is a little funky. It'd be better to pass done some other way.
+            r.update_draw_time();
+            r.update_draw_time();
+        }
+        if draw_time == DrawTime::Last {
+            style.begin(r, Message)?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Message)?;
+        } else {
+            style.begin(r, Message)?;
+            write!(r, "{}", self.message)?;
+            if let Some(action) = &self.action {
+                style.begin(r, Action)?;
+                write!(r, "{}", action)?;
+                style.end(r, Action)?;
+            }
+            style.end(r, Message)?;
+        }
         r.post_prompt()
     }
 }

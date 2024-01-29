@@ -1,8 +1,9 @@
 use asky::Message;
 
 fn main() -> std::io::Result<()> {
-    Message::new("You can press any key to continue.").prompt()?;
-    println!("That's the Message.");
+    Message::wait("Hello", "Press any key to continue").prompt()?;
+    Message::new("That's the message.").prompt()?;
+    // println!("That's the Message.");
 
     // ...
 

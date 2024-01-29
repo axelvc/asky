@@ -103,7 +103,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
         .await?;
         asky.prompt(Message::new("The asky lib works for bevy now!"), id)
             .await?;
-        asky.prompt(Message::new("So..."), id).await?;
+        asky.prompt(Message::wait("So..."), id).await?;
         let _ = asky
             .prompt(Confirm::new("Let's sign you up on our email list."), id)
             .await?;
@@ -113,7 +113,7 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
             .await
         {
             Ok(p) => {
-                asky.prompt(Message::new("Heh heh."), id).await?;
+                asky.prompt(Message::wait("Heh heh."), id).await?;
                 p
             }
             Err(_) => {
@@ -121,10 +121,10 @@ fn ask_user(mut asky: Asky, mut commands: Commands) -> impl Future<Output = Resu
                     .await?
             }
         };
-        asky.prompt(Message::new("Just kidding."), id).await?;
-        asky.prompt(Message::new("I don't NEED your password."), id)
+        asky.prompt(Message::wait("Just kidding."), id).await?;
+        asky.prompt(Message::wait("I don't NEED your password."), id)
             .await?;
-        asky.prompt(Message::new("I just wanted it for REASONS."), id)
+        asky.prompt(Message::wait("I just wanted it for REASONS."), id)
             .await?;
         Ok::<(), Error>(())
     }

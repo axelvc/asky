@@ -450,11 +450,19 @@ pub fn asky_system<T>(
                 };
                 bevy_render(&mut commands, &asky_settings, &mut renderer, entity);
                 // This is just to affirm that we're not recreating the nodes unless we need to.
+                let draw_time = renderer.draw_time();
                 eprint!(".");
                 if draw_time == DrawTime::First {
                     renderer.update_draw_time();
                 } else if draw_time == DrawTime::Last {
                     renderer.clear();
+                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
+                    if let AskyState::Waiting(promise) = waiting_maybe {
+                        match prompt.0.value() {
+                            Ok(v) => promise.resolve(v),
+                            Err(e) => promise.reject(e),
+                        }
+                    }
                 }
             }
         }

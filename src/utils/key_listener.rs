@@ -36,9 +36,11 @@ pub fn listen(
         renderer.hide_cursor()?;
     }
 
+    // `submit` is almost always initialized to false except for Message
+    // sometimes.
+    let mut submit = renderer.draw_time() == crate::DrawTime::Last;
     renderer.update_draw_time();
 
-    let mut submit = false;
 
     while !submit {
         // raw mode to listen each key
