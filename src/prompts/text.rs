@@ -228,7 +228,6 @@ mod tests {
     use super::*;
     use crate::{style::NoStyle, utils::{key_listener::Typeable, renderer::StringRenderer}};
     use crossterm::event::{KeyCode, KeyEvent};
-    use std::io::Write;
 
     #[test]
     fn set_placeholder() {
@@ -264,8 +263,7 @@ mod tests {
 
     #[test]
     fn set_custom_formatter() {
-        let mut prompt: Text = Text::new("");
-        let draw_time = DrawTime::First;
+        let prompt: Text = Text::new("");
         const EXPECTED_VALUE: &str = "foo";
         let styled_prompt =
             prompt.format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
@@ -277,8 +275,7 @@ mod tests {
     #[test]
     fn set_custom_style() {
         const EXPECTED_VALUE: &str = "foo";
-        let mut prompt: Text = Text::new(EXPECTED_VALUE);
-        let draw_time = DrawTime::First;
+        let prompt: Text = Text::new(EXPECTED_VALUE);
         let styled_prompt = prompt.style(NoStyle);
         let mut out = StringRenderer::default();
         let _ = styled_prompt.draw(&mut out);

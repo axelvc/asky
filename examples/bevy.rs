@@ -71,7 +71,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
     });
     let confirm: Confirm<'static> = Confirm::new("Hi?");
     let message: Message<'static> = Message::new("My message");
-    let toggle: Toggle<'static> = Toggle::new("Hi?", "Bye", "What?");
+    let toggle: Toggle<'static> = Toggle::new("Hi?", ["Bye", "What?"]);
     let text_input: asky::Text<'static> = asky::Text::new("Hi?");
     let number: Number<'static, u8> = Number::new("Number?");
     let float: Number<'static, f32> = Number::new("Float?");

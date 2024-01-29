@@ -189,7 +189,7 @@ impl Renderer for StyledStringWriter {
 
     /// Utility function for line input.
     /// Set initial position based on the position after drawing.
-    fn move_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
+    fn move_cursor(&mut self, [x, _y]: [usize; 2]) -> io::Result<()> {
         if self.state.draw_time == DrawTime::Last {
             return Ok(());
         }
@@ -227,7 +227,7 @@ impl Renderer for StyledStringWriter {
 mod test {
     use super::*;
     use std::io::Write;
-    use text_style::{self, Color, AnsiColor, Style, StyledString};
+    use text_style::{self, AnsiColor, StyledString};
     #[test]
     fn test_cursorify() {
         let mut w = StyledStringWriter::default();
@@ -236,13 +236,14 @@ mod test {
     }
 
     #[test]
-    fn test_cursorify2() {
+    fn test_cursorify2() -> std::io::Result<()> {
         let mut w = StyledStringWriter::default();
-        write!(w, "what the fuck");
-        w.set_foreground(AnsiColor::Black.light());
-        write!(w, "huh");
+        write!(w, "what the fuck")?;
+        w.set_foreground(AnsiColor::Black.light())?;
+        write!(w, "huh")?;
         let v = w.drain_with_styled_cursor(AnsiColor::White.dark());
         assert_eq!(v.len(), 3);
+        Ok(())
     }
 
     #[test]
@@ -250,7 +251,7 @@ mod test {
         let s = StyledString::new(" ".into(), None);
         let v: Vec<_> = cursorify(s, 0, AnsiColor::White.dark()).collect();
         assert_eq!(v.len(), 2);
-        assert_eq!(&v[0].s, " ");
+        assert_eq!(&v[0].s, "");
         assert_eq!(v[0].style, None);
         assert_eq!(&v[1].s, " ");
         assert_ne!(v[1].style, None);

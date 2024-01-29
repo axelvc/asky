@@ -329,56 +329,6 @@ pub struct BevyAskySettings {
     pub style: TextStyle,
 }
 
-fn cursorify(
-    cs: StyledString,
-    i: usize,
-    cursor_color: text_style::Color,
-) -> impl Iterator<Item = StyledString> {
-    let to_colored_string = |s: String| -> StyledString { StyledString { s, ..cs.clone() } };
-    let mut input = cs.s.to_string();
-    let mut right = None;
-    if let Some((byte_index, _)) = input.char_indices().nth(i + 1) {
-        let (l, r) = input.split_at(byte_index);
-        right = Some(to_colored_string(r.to_owned()));
-        input = l.to_owned();
-    }
-    let cursor = Some(
-        to_colored_string(
-            input
-                .pop()
-                // Newline is not printed. So use a space if necessary.
-                .map(|c| if c == '\n' { ' ' } else { c })
-                .expect("Could not get cursor")
-                .to_string(),
-        )
-        .on(cursor_color),
-    );
-    let left = Some(to_colored_string(input));
-    left.into_iter().chain(cursor.into_iter().chain(right))
-}
-
-fn cursorify_iter(
-    iter: impl Iterator<Item = StyledString>,
-    cursor_pos: usize,
-    cursor_color: text_style::Color,
-) -> impl Iterator<Item = StyledString> {
-    let mut count = 0;
-    iter.flat_map(move |ss| {
-        let l = ss.s.chars().count();
-        let has_index = cursor_pos < count + l && cursor_pos >= count;
-
-        let mut a = None;
-        let mut b = None;
-        if has_index {
-            a = Some(cursorify(ss, cursor_pos - count, cursor_color));
-        } else {
-            b = Some(ss);
-        }
-
-        count += l;
-        a.into_iter().flatten().chain(b)
-    })
-}
 
 pub fn asky_system<T>(
     mut commands: Commands,
@@ -439,7 +389,7 @@ pub fn asky_system<T>(
                 }
                 // let mut renderer =
                 //     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
-                let draw_time = renderer.draw_time();
+                // let draw_time = renderer.draw_time();
                 renderer.cursor_pos = None;
                 renderer.cursor_pos_save = None;
                 let _ = prompt.draw(&mut *renderer);

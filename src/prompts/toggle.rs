@@ -24,7 +24,7 @@ use crate::utils::renderer::{DrawTime, Printable, Renderer};
 ///
 /// # fn main() -> Result<(), Error> {
 /// # #[cfg(feature = "terminal")]
-/// let os = Toggle::new("What is your favorite OS?", "Android", "iOS").prompt()?;
+/// let os = Toggle::new("What is your favorite OS?", ["Android", "iOS"]).prompt()?;
 /// # #[cfg(not(feature = "terminal"))]
 /// # let os = "iOS";
 ///
@@ -50,14 +50,14 @@ impl Valuable for Toggle<'_> {
 
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
-    pub fn new(
+    pub fn new<T: Into<Cow<'a, str>>>(
         message: impl Into<Cow<'a, str>>,
-        a: impl Into<Cow<'a, str>>,
-        b: impl Into<Cow<'a, str>>,
+        options: [T; 2]
     ) -> Self {
+        let mut iter = options.into_iter();
         Toggle {
             message: message.into(),
-            options: [a.into(), b.into()],
+            options: [iter.next().unwrap().into(), iter.next().unwrap().into()],
             active: false,
         }
     }
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn set_initial_value() {
-        let mut prompt = Toggle::new("", "foo", "bar");
+        let mut prompt = Toggle::new("", ["foo", "bar"]);
 
         prompt.initial(false);
         assert_eq!(prompt.get_value(), "foo");
@@ -139,7 +139,7 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Toggle::new("", "foo", "bar");
+            let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(&simulated_key);
@@ -160,7 +160,7 @@ mod tests {
         ];
 
         for (key, initial, expected) in events {
-            let mut prompt = Toggle::new("", "foo", "bar");
+            let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
