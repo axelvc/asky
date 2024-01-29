@@ -1,8 +1,8 @@
-use asky::Toggle;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
-    let tabs = Toggle::new("Which is better?", ["Tabs", "Spaces"]).prompt()?;
-    println!("Great choice");
+fn main() -> Result<(), Error> {
+    let second = Toggle::new("Which is better?", ["Tabs", "Spaces"]).prompt()?;
+    println!("I also prefer {}.", if second { "spaces" } else { "tabs" });
 
     // ...
 

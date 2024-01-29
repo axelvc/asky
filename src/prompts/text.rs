@@ -1,12 +1,10 @@
+use crate::Error;
+use std::borrow::Cow;
+
+use crate::style::Style;
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
+use crate::Valuable;
 use std::io;
-
-use crossterm::event::{KeyCode, KeyEvent};
-
-use crate::utils::{
-    key_listener::{self, Typeable},
-    renderer::{DrawTime, Printable, Renderer},
-    theme,
-};
 
 pub enum Direction {
     Left,
@@ -66,8 +64,7 @@ impl LineInput {
 
 // endregion: TextInput
 
-pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a;
-type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a;
+pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync;
 
 /// Prompt to get one-line user input.
 ///
@@ -84,11 +81,13 @@ type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Text;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// let name = Text::new("What is your name?").prompt()?;
 ///
+/// # #[cfg(feature = "terminal")]
 /// println!("Hello, {}!", name);
 ///
 /// # Ok(())
@@ -96,7 +95,7 @@ type Formatter<'a> = dyn Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a;
 /// ```
 pub struct Text<'a> {
     /// Message used to display in the prompt
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Input state for the prompt
     pub input: LineInput,
     /// Placeholder to show when the input is empty
@@ -106,20 +105,24 @@ pub struct Text<'a> {
     /// State of the validation of the user input
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    formatter: Box<Formatter<'a>>,
 }
 
+impl<'a> Valuable for Text<'a> {
+    type Output = String;
+    fn value(&self) -> Result<String, Error> {
+        Ok(self.input.value.to_string())
+    }
+}
 impl<'a> Text<'a> {
     /// Create a new text prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
         Text {
-            message,
+            message: message.into(),
             input: LineInput::new(),
             placeholder: None,
             default_value: None,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_text),
         }
     }
 
@@ -146,27 +149,10 @@ impl<'a> Text<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a,
+        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
-    }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Text, DrawTime) -> (String, [usize; 2]) + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
-
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self, false)?;
-        Ok(self.get_value().to_owned())
     }
 }
 
@@ -178,7 +164,7 @@ impl Text<'_> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
+    pub(crate) fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
             self.validator_result = validator(self.get_value());
         }
@@ -187,45 +173,66 @@ impl Text<'_> {
     }
 }
 
-impl Typeable for Text<'_> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter => submit = self.validate_to_submit(),
-            // type
-            KeyCode::Char(c) => self.input.insert(c),
-            // remove delete
-            KeyCode::Backspace => self.input.backspace(),
-            KeyCode::Delete => self.input.delete(),
-            // move cursor
-            KeyCode::Left => self.input.move_cursor(Direction::Left),
-            KeyCode::Right => self.input.move_cursor(Direction::Right),
-            _ => (),
-        };
-
-        submit
-    }
-}
-
 impl Printable for Text<'_> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
-        renderer.print(text)?;
-        renderer.set_cursor(cursor)
+    fn hide_cursor(&self) -> bool {
+        false
+    }
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+        use crate::style::Section::*;
+        let draw_time = r.draw_time();
+
+        r.pre_prompt()?;
+        if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.input.value)?;
+            style.end(r, Answer(true))?;
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+
+            if let Some(x) = self.default_value {
+                style.begin(r, DefaultAnswer)?;
+                write!(r, "{}", x)?;
+                style.end(r, DefaultAnswer)?;
+            }
+            style.begin(r, Input)?;
+            r.save_cursor()?;
+            write!(r, "{}", &self.input.value)?;
+            if self.input.value.is_empty() {
+                if let Some(placeholder) = self.placeholder {
+                    style.begin(r, Placeholder)?;
+                    write!(r, "{}", placeholder)?;
+                    style.end(r, Placeholder)?;
+                }
+            }
+            style.end(r, Input)?;
+            if let Err(error) = self.validator_result {
+                style.begin(r, Validator(false))?;
+                write!(r, "{}", error)?;
+                style.end(r, Validator(false))?;
+            }
+        }
+        r.restore_cursor()?;
+        r.move_cursor([self.input.col, 0])
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{style::NoStyle, utils::{key_listener::Typeable, renderer::StringRenderer}};
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_placeholder() {
         let mut text = Text::new("");
         text.placeholder("foo");
-
         assert_eq!(text.placeholder, Some("foo"));
     }
 
@@ -256,16 +263,23 @@ mod tests {
 
     #[test]
     fn set_custom_formatter() {
-        let mut prompt: Text = Text::new("");
-        let draw_time = DrawTime::First;
+        let prompt: Text = Text::new("");
         const EXPECTED_VALUE: &str = "foo";
+        let styled_prompt =
+            prompt.format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
+        let mut out = StringRenderer::default();
+        let _ = styled_prompt.draw(&mut out);
+        assert_eq!(out.string, EXPECTED_VALUE);
+    }
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
-
-        assert_eq!(
-            (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), [0, 0])
-        );
+    #[test]
+    fn set_custom_style() {
+        const EXPECTED_VALUE: &str = "foo";
+        let prompt: Text = Text::new(EXPECTED_VALUE);
+        let styled_prompt = prompt.style(NoStyle);
+        let mut out = StringRenderer::default();
+        let _ = styled_prompt.draw(&mut out);
+        assert_eq!(out.string, EXPECTED_VALUE);
     }
 
     #[test]
@@ -276,7 +290,7 @@ mod tests {
         let text = "foo";
 
         for char in text.chars() {
-            prompt.handle_key(KeyEvent::from(KeyCode::Char(char)));
+            prompt.handle_key(&KeyEvent::from(KeyCode::Char(char)));
         }
 
         assert_eq!(prompt.input.value, "foo");
@@ -287,7 +301,7 @@ mod tests {
         prompt.input.col = 2;
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.value, expected);
             assert_eq!(prompt.input.col, 1);
@@ -303,7 +317,7 @@ mod tests {
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.col, expected);
         }
@@ -317,14 +331,14 @@ mod tests {
         prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
 
         // invalid value
-        let mut submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        let mut submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(!submit);
         assert_eq!(prompt.validator_result, Err(err_str));
 
         // valid value
         prompt.input.set_value("foo");
-        submit = prompt.handle_key(KeyEvent::from(KeyCode::Enter));
+        submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(submit);
         assert_eq!(prompt.validator_result, Ok(()));

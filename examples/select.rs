@@ -1,8 +1,12 @@
-use asky::Select;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
-    let choice = Select::new("Choose number", 1..=30).prompt()?;
-    println!("{choice}, Interesting choice");
+fn main() -> Result<(), Error> {
+    let options = 1..=30;
+    let choice = Select::new("Choose number", options.clone()).prompt()?;
+    println!(
+        "{}, interesting choice.",
+        options.into_iter().nth(choice).unwrap()
+    );
 
     // ...
 

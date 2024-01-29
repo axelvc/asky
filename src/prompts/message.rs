@@ -1,12 +1,11 @@
-use std::io;
 use std::borrow::Cow;
+use std::io;
 
-use crate::utils::renderer::{DrawTime, Printable, Renderer};
-use crate::Error;
-use crate::Valuable;
-use crate::style::{Section, Style};
-
-// type Formatter<'a> = dyn Fn(&Confirm, DrawTime, &mut ColoredStrings) + 'a + Send + Sync;
+use crate::style::Style;
+#[cfg(feature = "terminal")]
+use crate::utils::key_listener::listen;
+use crate::utils::renderer::{Printable, Renderer};
+use crate::{DrawTime, Error, Valuable};
 
 /// Prompt to ask yes/no questions.
 ///
@@ -23,86 +22,88 @@ use crate::style::{Section, Style};
 /// # Examples
 ///
 /// ```no_run
-/// use asky::prelude::*;
+/// use asky::Message;
 ///
-/// # fn main() -> Result<(), Error> {
+/// # fn main() -> std::io::Result<()> {
 /// # #[cfg(feature = "terminal")]
-/// if Confirm::new("Do you like the pizza?").prompt()? {
-///     println!("Great!");
-/// } else {
-///     println!("Interesting!");
-/// }
+/// Message::new("Well, that's great.").prompt()?;
 /// # Ok(())
 /// # }
 /// ```
 // #[derive(Debug)]
-pub struct Confirm<'a> {
+pub struct Message<'a> {
     /// Message used to display in the prompt.
+    // pub message: &'a str,
     pub message: Cow<'a, str>,
-    /// Current state of the prompt.
-    pub active: bool,
+    pub action: Option<Cow<'a, str>>,
+    pub wait_for_key: bool,
 }
 
-impl<'a> Confirm<'a> {
+impl Valuable for Message<'_> {
+    type Output = ();
+    fn value(&self) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<'a> Message<'a> {
+    /// Create a new message prompt with an call to action, e.g., "Press Any Key".
+    pub fn wait<T: Into<Cow<'a, str>>>(message: T) -> Self {
+        Message {
+            message: message.into(),
+            action: None,
+            wait_for_key: true,
+        }
+    }
+
+    pub fn call_to_action<T: Into<Cow<'a, str>>>(message: T, action: T) -> Self {
+        Message {
+            message: message.into(),
+            action: Some(action.into()),
+            wait_for_key: true,
+        }
+    }
+
     /// Create a new confirm prompt.
     pub fn new<T: Into<Cow<'a, str>>>(message: T) -> Self {
-        Confirm {
+        Message {
             message: message.into(),
-            active: false,
+            action: None,
+            wait_for_key: false,
         }
     }
 
-    /// Set whether the prompt should be active at start.
-    pub fn initial(&mut self, active: bool) -> &mut Self {
-        self.active = active;
-        self
+    #[cfg(feature = "terminal")]
+    /// Display the prompt and return the user answer.
+    pub fn prompt(&mut self) -> io::Result<()> {
+        listen(self, true)
     }
 }
 
-impl Confirm<'_> {
-    pub(crate) fn update_and_submit(&mut self, active: bool) -> bool {
-        self.active = active;
-        true
-    }
-}
-
-impl Valuable for Confirm<'_> {
-    type Output = bool;
-    fn value(&self) -> Result<bool, Error> {
-        Ok(self.active)
-    }
-}
-
-impl Printable for Confirm<'_> {
+impl Printable for Message<'_> {
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
-        use Section::*;
+        use crate::style::Section::*;
         let draw_time = r.draw_time();
-        // let style = DefaultStyle { ascii: true };
-
-        let options = ["No", "Yes"];
-
         r.pre_prompt()?;
-        if draw_time == DrawTime::Last {
-            style.begin(r, Query(true))?;
-            write!(r, "{}", self.message)?;
-            style.end(r, Query(true))?;
-
-            style.begin(r, Answer(true))?;
-            write!(r, "{}", options[self.active as usize])?;
-            style.end(r, Answer(true))?;
-        } else {
-            style.begin(r, Query(false))?;
-            write!(r, "{}", self.message)?;
-            style.end(r, Query(false))?;
-
-            style.begin(r, Toggle(!self.active))?;
-            write!(r, "{}", options[0])?;
-            style.end(r, Toggle(!self.active))?;
-            style.begin(r, Toggle(self.active))?;
-            write!(r, "{}", options[1])?;
-            style.end(r, Toggle(self.active))?;
+        if ! self.wait_for_key {
+            // XXX: This is a little funky. It'd be better to pass done some other way.
+            r.update_draw_time();
+            r.update_draw_time();
         }
-
+        if draw_time == DrawTime::Last {
+            style.begin(r, Message)?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Message)?;
+        } else {
+            style.begin(r, Message)?;
+            write!(r, "{}", self.message)?;
+            if let Some(action) = &self.action {
+                style.begin(r, Action)?;
+                write!(r, "{}", action)?;
+                style.end(r, Action)?;
+            }
+            style.end(r, Message)?;
+        }
         r.post_prompt()
     }
 }
@@ -111,22 +112,12 @@ impl Printable for Confirm<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::key_listener::Typeable;
+    use crate::{utils::key_listener::Typeable};
     use crossterm::event::{KeyCode, KeyEvent};
-
-    #[test]
-    fn set_initial_value() {
-        let mut prompt = Confirm::new("");
-
-        prompt.initial(false);
-        assert!(!prompt.active);
-        prompt.initial(true);
-        assert!(prompt.active);
-    }
 
     // #[test]
     // fn set_custom_formatter() {
-    //     let mut prompt: Confirm = Confirm::new("");
+    //     let mut prompt: Message = Message::new("");
     //     let draw_time = DrawTime::First;
     //     const EXPECTED_VALUE: &str = "foo";
 
@@ -140,14 +131,13 @@ mod tests {
     fn update_and_submit() {
         let events = [('y', true), ('Y', true), ('n', false), ('N', false)];
 
-        for (char, expected) in events {
-            let mut prompt = Confirm::new("");
+        for (char, _expected) in events {
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(KeyCode::Char(char));
 
-            prompt.initial(!expected);
+            // prompt.initial(!expected);
             let submit = prompt.handle_key(&simulated_key);
 
-            assert_eq!(prompt.active, expected);
             assert!(submit);
         }
     }
@@ -157,11 +147,11 @@ mod tests {
         let events = [KeyCode::Enter, KeyCode::Backspace];
 
         for event in events {
-            let mut prompt = Confirm::new("");
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(event);
 
             let submit = prompt.handle_key(&simulated_key);
-            assert!(!prompt.active);
+            // assert!(!prompt.active);
             assert!(submit);
         }
     }
@@ -177,15 +167,15 @@ mod tests {
             (KeyCode::Char('L'), false, true),
         ];
 
-        for (key, initial, expected) in events {
-            let mut prompt = Confirm::new("");
+        for (key, _initial, _expected) in events {
+            let mut prompt = Message::new("");
             let simulated_key = KeyEvent::from(key);
 
-            prompt.initial(initial);
+            // prompt.initial(initial);
             let submit = prompt.handle_key(&simulated_key);
 
-            assert_eq!(prompt.active, expected);
-            assert!(!submit);
+            // assert_eq!(prompt.active, expected);
+            assert!(submit);
         }
     }
 }

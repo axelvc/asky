@@ -1,4 +1,5 @@
 pub mod confirm;
+pub mod message;
 pub mod multi_select;
 pub mod number;
 pub mod password;

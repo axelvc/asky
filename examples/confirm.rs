@@ -1,6 +1,6 @@
-use asky::Confirm;
+use asky::prelude::*;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Error> {
     if Confirm::new("Do you like coffe?").prompt()? {
         println!("Great, me too!");
     }

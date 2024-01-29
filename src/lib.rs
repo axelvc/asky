@@ -13,11 +13,13 @@
 //! # Simple Example
 //!
 //! ```rust, no_run
-//! use asky::{Confirm, Text};
+//! use asky::prelude::*;
 //!
-//! fn main() -> std::io::Result<()> {
+//! fn main() -> Result<(), Error> {
+//! #   #[cfg(feature = "terminal")]
 //!     let name = Text::new("Hi. What's your name?").prompt()?;
 //!
+//! #   #[cfg(feature = "terminal")]
 //!     if Confirm::new("Do you like coffee?").prompt()? {
 //!         println!("Great! Me too");
 //!     } else {
@@ -44,12 +46,13 @@
 //! #### Example
 //!
 //! ```rust, no_run
-//! # use asky::Confirm;
-//! # fn main() -> std::io::Result<()> {
+//! # use asky::prelude::*;
+//! # fn main() -> Result<(), Error> {
+//! # #[cfg(feature = "terminal")]
 //! Confirm::new("Do you like Rust?")
-//!     .format(|prompt, _draw_time| {
+//!     .format(|prompt, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
-//!         format!("{} {}\n", prompt.message, state)
+//!         write!(out, "{} {}\n", prompt.message, state)
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -70,20 +73,18 @@
 //! #### Example
 //!
 //! ```rust, no_run
-//! # use asky::Text;
-//! # fn main() -> std::io::Result<()> {
+//! # use asky::{Text, Error, Promptable, Printable};
+//! # fn main() -> Result<(), Error> {
+//! # #[cfg(feature = "terminal")]
 //! Text::new("What is your name")
-//!     .format(|prompt, _draw_time| {
+//!     .format(|prompt, out| {
 //!         let cursor_col = prompt.input.col;
 //!         let prefix = "> ";
 //!
 //!         let x = (prefix.len() + cursor_col);
 //!         let y = 1;
 //!
-//!         (
-//!             format!("{}\n{} {}", prompt.message, prefix, prompt.input.value),
-//!             [x, y],
-//!         )
+//!         write!(out, "{}\n{} {}", prompt.message, prefix, prompt.input.value)
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -99,12 +100,38 @@
 //! ```
 //!
 //! Where `|` is the cursor position.
-#![deny(missing_docs)]
-
+// #![deny(missing_docs)]
+#![cfg_attr(not(feature = "terminal"), allow(dead_code))]
 mod prompts;
-mod utils;
+pub mod utils;
+
+pub trait Valuable {
+    type Output: Send;
+    fn value(&self) -> Result<Self::Output, Error>;
+}
+#[derive(Debug)]
+pub enum Error {
+    Cancel,
+    InvalidInput,
+    InvalidCount { expected: usize, actual: usize },
+    ValidationFail,
+    Io(std::io::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(x: std::io::Error) -> Self {
+        Error::Io(x)
+    }
+}
+
+pub trait Promptable {
+    type Output;
+    fn prompt(&mut self) -> Result<Self::Output, crate::Error>;
+}
+
 
 pub use prompts::confirm::Confirm;
+pub use prompts::message::Message;
 pub use prompts::multi_select::MultiSelect;
 pub use prompts::number::Number;
 pub use prompts::password::Password;
@@ -114,5 +141,21 @@ pub use prompts::toggle::Toggle;
 
 pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;
+pub use utils::key_listener::Typeable;
 pub use utils::num_like::NumLike;
-pub use utils::renderer::DrawTime;
+pub use utils::renderer::{DrawTime, Printable};
+
+pub mod prelude {
+    pub use super::{utils::renderer::Printable, Error, Promptable, SelectOption, Valuable};
+    pub use super::{Confirm, Message, MultiSelect, Number, Password, Select, Text, Toggle};
+}
+
+#[cfg(feature = "terminal")]
+mod terminal;
+
+#[cfg(feature = "bevy")]
+pub mod bevy;
+#[cfg(feature = "bevy")]
+mod text_style_adapter;
+
+pub mod style;

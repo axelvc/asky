@@ -1,16 +1,13 @@
+use std::borrow::Cow;
+
+use crate::Error;
+use crate::Valuable;
+
+use crate::style::Style;
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use std::io;
 
-use crossterm::event::{KeyCode, KeyEvent};
-
-use crate::utils::{
-    key_listener::{self, Typeable},
-    renderer::{DrawTime, Printable, Renderer},
-    theme,
-};
-
-use super::text::{Direction, InputValidator, LineInput};
-
-type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a;
+use super::text::{InputValidator, LineInput};
 
 /// Prompt to get one-line user input as password.
 ///
@@ -30,9 +27,10 @@ type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Password;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
 /// let password = Password::new("Your IG Password:").prompt()?;
 /// # Ok(())
 /// # }
@@ -40,7 +38,7 @@ type Formatter<'a> = dyn Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a;
 /// [`Text`]: crate::Text
 pub struct Password<'a> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Input state for the prompt.
     pub input: LineInput,
     /// Placeholder to show when the input is empty.
@@ -52,21 +50,26 @@ pub struct Password<'a> {
     /// State of the validation of the user input.
     pub validator_result: Result<(), &'a str>,
     validator: Option<Box<InputValidator<'a>>>,
-    formatter: Box<Formatter<'a>>,
+}
+
+impl Valuable for Password<'_> {
+    type Output = String;
+    fn value(&self) -> Result<String, Error> {
+        Ok(self.input.value.to_string())
+    }
 }
 
 impl<'a> Password<'a> {
     /// Create a new password prompt.
-    pub fn new(message: &'a str) -> Self {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
         Password {
-            message,
+            message: message.into(),
             input: LineInput::new(),
             placeholder: None,
             default_value: None,
             hidden: false,
             validator: None,
             validator_result: Ok(()),
-            formatter: Box::new(theme::fmt_password),
         }
     }
 
@@ -99,27 +102,10 @@ impl<'a> Password<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a,
+        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
-    }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Password, DrawTime) -> (String, [usize; 2]) + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
-
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self, false)?;
-        Ok(self.get_value().to_owned())
     }
 }
 
@@ -131,7 +117,7 @@ impl Password<'_> {
         }
     }
 
-    fn validate_to_submit(&mut self) -> bool {
+    pub(crate) fn validate_to_submit(&mut self) -> bool {
         if let Some(validator) = &self.validator {
             self.validator_result = validator(self.get_value());
         }
@@ -140,39 +126,62 @@ impl Password<'_> {
     }
 }
 
-impl Typeable for Password<'_> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit
-            KeyCode::Enter => submit = self.validate_to_submit(),
-            // type
-            KeyCode::Char(c) => self.input.insert(c),
-            // remove delete
-            KeyCode::Backspace => self.input.backspace(),
-            KeyCode::Delete => self.input.delete(),
-            // move cursor
-            KeyCode::Left => self.input.move_cursor(Direction::Left),
-            KeyCode::Right => self.input.move_cursor(Direction::Right),
-            _ => (),
-        };
-
-        submit
-    }
-}
-
 impl Printable for Password<'_> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let (text, cursor) = (self.formatter)(self, renderer.draw_time);
-        renderer.print(text)?;
-        renderer.set_cursor(cursor)
+    fn hide_cursor(&self) -> bool {
+        false
+    }
+
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+        use crate::style::Section::*;
+        // let style = DefaultStyle { ascii: true };
+        let draw_time = r.draw_time();
+
+        r.pre_prompt()?;
+
+        if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+
+            style.begin(r, Answer(false))?;
+            // write!(r, "{}", &self.input.value)?;
+            style.end(r, Answer(false))?;
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+            let text = match self.hidden {
+                true => String::new(),
+                false => "*".repeat(self.input.value.len()),
+            };
+            style.begin(r, Input)?;
+            r.save_cursor()?;
+            write!(r, "{}", text)?;
+            if self.input.value.is_empty() {
+                if let Some(placeholder) = self.placeholder {
+                    style.begin(r, Placeholder)?;
+                    write!(r, "{}", placeholder)?;
+                    style.end(r, Placeholder)?;
+                }
+            }
+            style.end(r, Input)?;
+            if let Err(error) = self.validator_result {
+                style.begin(r, Validator(false))?;
+                write!(r, "{}", error)?;
+                style.end(r, Validator(false))?;
+            }
+        }
+        r.restore_cursor()?;
+        r.move_cursor([self.input.col, 0])
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_placeholder() {
@@ -209,19 +218,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt: Password = Password::new("");
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt: Password = Password::new("");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| (String::from(EXPECTED_VALUE), [0, 0]));
-
-        assert_eq!(
-            (prompt.formatter)(&prompt, draw_time),
-            (String::from(EXPECTED_VALUE), [0, 0])
-        );
-    }
+    //     prompt.format(|_, _, out| {
+    //         out.push(EXPECTED_VALUE.into());
+    //         [0, 0]
+    //     });
+    //     let mut out = ColoredStrings::new();
+    //     assert_eq!((prompt.formatter)(&prompt, draw_time, &mut out), [0, 0]);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn set_hidden_value() {
@@ -241,7 +251,7 @@ mod tests {
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
 
         for (key, expected) in keys {
-            prompt.handle_key(KeyEvent::from(key));
+            prompt.handle_key(&KeyEvent::from(key));
 
             assert_eq!(prompt.input.col, expected);
         }

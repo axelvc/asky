@@ -1,7 +1,10 @@
-use asky::Text;
+use asky::prelude::*;
+use asky::style::NoStyle;
 
-fn main() -> std::io::Result<()> {
-    let color = Text::new("What's your favorite color?").prompt()?;
+fn main() -> Result<(), Error> {
+    let color = Text::new("What's your \nfavorite color?")
+        // .style(NoStyle)
+        .prompt()?;
     println!("{color} is a beautiful color");
 
     // ...

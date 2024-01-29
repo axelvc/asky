@@ -1,12 +1,9 @@
+use std::borrow::Cow;
 use std::io;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 
-use crate::utils::{
-    key_listener::{self, Typeable},
-    renderer::{DrawTime, Printable, Renderer},
-    theme,
-};
+use crate::{Error, Valuable};
 
 pub enum Direction {
     Up,
@@ -14,6 +11,7 @@ pub enum Direction {
     Left,
     Right,
 }
+use crate::style::{Flags, Section, Style};
 
 // region: SelectOption
 
@@ -169,8 +167,6 @@ impl SelectInput {
 
 // endregion: SelectCursor
 
-type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
-
 /// Prompt to select an item from a list.
 ///
 /// To allow choosing multiple items, use the [`MultiSelect`] struct instead.
@@ -187,10 +183,11 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Select;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
+/// # fn main() -> Result<(), Error> {
 /// let languages = ["Rust", "Go", "Python", "Javascript", "Brainfuck", "Other"];
+/// # #[cfg(feature = "terminal")]
 /// let answer = Select::new("What is your favorite language?", languages).prompt()?;
 /// # Ok(())
 /// # }
@@ -198,17 +195,16 @@ type Formatter<'a, T> = dyn Fn(&Select<T>, DrawTime) -> String + 'a;
 /// [`MultiSelect`]: crate::MultiSelect
 pub struct Select<'a, T> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// List of options.
     pub options: Vec<SelectOption<'a, T>>,
     /// Input state.
     pub input: SelectInput,
-    formatter: Box<Formatter<'a, T>>,
 }
 
 impl<'a, T: 'a> Select<'a, T> {
     /// Create a new select prompt.
-    pub fn new<I>(message: &'a str, iter: I) -> Self
+    pub fn new<I>(message: impl Into<Cow<'a, str>>, iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: ToString,
@@ -222,9 +218,9 @@ impl<'a, T: 'a> Select<'a, T> {
     /// Example:
     ///
     /// ```no_run
-    /// use asky::{Select, SelectOption};
+    /// use asky::prelude::*;
     ///
-    /// # fn main() -> std::io::Result<()> {
+    /// # fn main() -> Result<(), Error> {
     /// let options = vec![
     ///     SelectOption::new(1),
     ///     SelectOption::new(2),
@@ -232,17 +228,20 @@ impl<'a, T: 'a> Select<'a, T> {
     ///     SelectOption::new(4).title("Fish"),
     /// ];
     ///
+    /// # #[cfg(feature = "terminal")]
     /// Select::new_complex("Choose a number", options).prompt()?;
     /// # Ok(())
     /// # }
-    pub fn new_complex(message: &'a str, options: Vec<SelectOption<'a, T>>) -> Self {
+    pub fn new_complex(
+        message: impl Into<Cow<'a, str>>,
+        options: Vec<SelectOption<'a, T>>,
+    ) -> Self {
         let options_len = options.len();
 
         Select {
-            message,
+            message: message.into(),
             options,
             input: SelectInput::new(options_len),
-            formatter: Box::new(theme::fmt_select),
         }
     }
 
@@ -263,66 +262,94 @@ impl<'a, T: 'a> Select<'a, T> {
         self.input.set_items_per_page(item_per_page);
         self
     }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Select<T>, DrawTime) -> String + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
-
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<T> {
-        key_listener::listen(self, true)?;
-
-        let selected = self.options.remove(self.input.focused);
-
-        Ok(selected.value)
-    }
 }
 
 impl<T> Select<'_, T> {
     /// Only submit if the option isn't disabled.
-    fn validate_to_submit(&self) -> bool {
+    pub(crate) fn validate_to_submit(&self) -> bool {
         let focused = &self.options[self.input.focused];
 
         !focused.disabled
     }
 }
 
-impl<T> Typeable for Select<'_, T> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
-        let mut submit = false;
+impl<T> Valuable for Select<'_, T> {
+    type Output = usize;
+    fn value(&self) -> Result<usize, Error> {
+        let focused = &self.options[self.input.focused];
 
-        match key.code {
-            // submit
-            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
-            // update value
-            KeyCode::Up | KeyCode::Char('k' | 'K') => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::Char('j' | 'J') => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.input.move_cursor(Direction::Right),
-            _ => (),
+        if !focused.disabled {
+            Ok(self.input.focused)
+        } else {
+            Err(Error::InvalidCount {
+                expected: 1,
+                actual: 0,
+            })
         }
-
-        submit
     }
 }
 
 impl<T> Printable for Select<'_, T> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
-        renderer.print(text)
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+        use Section::*;
+        let draw_time = r.draw_time();
+        // if true {
+        // r.pre_prompt()?;
+        // writeln!(r, "hi");
+        // r.post_prompt(1)?;
+        // return Ok(());
+        // }
+
+        r.pre_prompt()?;
+        if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.options[self.input.focused].title)?;
+            style.end(r, Answer(true))?;
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+
+            let items_per_page = self.input.items_per_page;
+            let total = self.input.total_items;
+
+            let page_len = items_per_page.min(total);
+            let page_start = self.input.get_page() * items_per_page;
+            let page_end = (page_start + page_len).min(total);
+            let page_focused = self.input.focused % items_per_page;
+
+            for (n, option) in self.options[page_start..page_end].iter().enumerate() {
+                let mut flags = Flags::empty();
+                if n == page_focused {
+                    flags |= Flags::Focused;
+                }
+                if option.disabled {
+                    flags |= Flags::Disabled;
+                }
+                style.begin(r, OptionExclusive(flags))?;
+                write!(r, "{}", &option.title)?;
+                style.end(r, OptionExclusive(flags))?;
+            }
+
+            let page_i = self.input.get_page() as u8;
+            let page_count = self.input.count_pages() as u8;
+
+            style.begin(r, Page(page_i, page_count))?;
+            style.end(r, Page(page_i, page_count))?;
+        }
+        r.post_prompt()
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
 
     #[test]
     fn set_initial_value() {
@@ -343,16 +370,17 @@ mod tests {
         assert!(prompt.input.loop_mode);
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt = Select::new("", ["foo", "bar"]);
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt = Select::new("", ["foo", "bar"]);
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+    //     let mut out = ColoredStrings::new();
+    //     (prompt.formatter)(&prompt, draw_time, &mut out);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn submit_selected_value() {
@@ -364,7 +392,7 @@ mod tests {
 
             prompt.selected(1);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert_eq!(prompt.input.focused, 1);
             assert!(submit);
         }
@@ -377,7 +405,7 @@ mod tests {
         for event in events {
             let mut prompt = Select::new_complex("", vec![SelectOption::new("foo").disabled(true)]);
 
-            let submit = prompt.handle_key(KeyEvent::from(event));
+            let submit = prompt.handle_key(&KeyEvent::from(event));
             assert!(!submit);
         }
     }
@@ -407,7 +435,7 @@ mod tests {
 
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
-                prompt.handle_key(simulated_key);
+                prompt.handle_key(&simulated_key);
                 assert_eq!(prompt.input.focused, expected);
             }
         }
@@ -419,7 +447,7 @@ mod tests {
 
                 prompt.selected(initial);
                 prompt.in_loop(in_loop);
-                prompt.handle_key(simulated_key);
+                prompt.handle_key(&simulated_key);
                 assert_eq!(prompt.input.focused, expected);
             }
         }

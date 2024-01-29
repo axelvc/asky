@@ -1,0 +1,7 @@
+#+title: Todo
+* TODO Use AskyPlugin to accept settings
+* TODO Figure out how to do replacement
+* Announce
+There's a cool little #rust project called asky for the terminal. You can solicit the user for text, yes/no, radio select, checkbox select, etc. I had been working on a prompt system for #bevy but it only solicited text. Instead of moving that forward, I decided to make asky work with bevy. Here's a sneak preview.  1/
+
+https://github.com/axelvc/asky

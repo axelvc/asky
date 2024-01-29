@@ -1,14 +1,11 @@
+use std::borrow::Cow;
 use std::io;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::Error;
+use crate::Valuable;
 
-use crate::utils::{
-    key_listener::{self, Typeable},
-    renderer::{DrawTime, Printable, Renderer},
-    theme,
-};
-
-type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
+use crate::style::{Section, Style};
+use crate::utils::renderer::{DrawTime, Printable, Renderer};
 
 /// Prompt to choose between two options.
 ///
@@ -23,10 +20,13 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
 /// # Examples
 ///
 /// ```no_run
-/// use asky::Toggle;
+/// use asky::prelude::*;
 ///
-/// # fn main() -> std::io::Result<()> {
-/// let os = Toggle::new("What is your favorite OS?", ["Android", "IOS"]).prompt()?;
+/// # fn main() -> Result<(), Error> {
+/// # #[cfg(feature = "terminal")]
+/// let os = Toggle::new("What is your favorite OS?", ["Android", "iOS"]).prompt()?;
+/// # #[cfg(not(feature = "terminal"))]
+/// # let os = "iOS";
 ///
 /// println!("{os} is the best!");
 /// # Ok(())
@@ -34,22 +34,31 @@ type Formatter<'a> = dyn Fn(&Toggle, DrawTime) -> String + 'a;
 /// ```
 pub struct Toggle<'a> {
     /// Message used to display in the prompt.
-    pub message: &'a str,
+    pub message: Cow<'a, str>,
     /// Options to display in the prompt.
-    pub options: [&'a str; 2],
+    pub options: [Cow<'a, str>; 2],
     /// Current state of the prompt.
     pub active: bool,
-    formatter: Box<Formatter<'a>>,
+}
+
+impl Valuable for Toggle<'_> {
+    type Output = bool;
+    fn value(&self) -> Result<bool, Error> {
+        Ok(self.active)
+    }
 }
 
 impl<'a> Toggle<'a> {
     /// Create a new toggle prompt.
-    pub fn new(message: &'a str, options: [&'a str; 2]) -> Self {
+    pub fn new<T: Into<Cow<'a, str>>>(
+        message: impl Into<Cow<'a, str>>,
+        options: [T; 2]
+    ) -> Self {
+        let mut iter = options.into_iter();
         Toggle {
-            message,
-            options,
+            message: message.into(),
+            options: [iter.next().unwrap().into(), iter.next().unwrap().into()],
             active: false,
-            formatter: Box::new(theme::fmt_toggle),
         }
     }
 
@@ -58,58 +67,50 @@ impl<'a> Toggle<'a> {
         self.active = value;
         self
     }
-
-    /// Set custom closure to format the prompt.
-    ///
-    /// See: [`Customization`](index.html#customization).
-    pub fn format<F>(&mut self, formatter: F) -> &mut Self
-    where
-        F: Fn(&Toggle, DrawTime) -> String + 'a,
-    {
-        self.formatter = Box::new(formatter);
-        self
-    }
-
-    /// Display the prompt and return the user answer.
-    pub fn prompt(&mut self) -> io::Result<String> {
-        key_listener::listen(self, true)?;
-        Ok(String::from(self.get_value()))
-    }
-}
-
-impl Toggle<'_> {
-    fn get_value(&self) -> &str {
-        self.options[self.active as usize]
-    }
-}
-
-impl Typeable for Toggle<'_> {
-    fn handle_key(&mut self, key: KeyEvent) -> bool {
-        let mut submit = false;
-
-        match key.code {
-            // submit focused/initial option
-            KeyCode::Enter | KeyCode::Backspace => submit = true,
-            // update focus option
-            KeyCode::Left | KeyCode::Char('h' | 'H') => self.active = false,
-            KeyCode::Right | KeyCode::Char('l' | 'L') => self.active = true,
-            _ => (),
-        }
-
-        submit
-    }
 }
 
 impl Printable for Toggle<'_> {
-    fn draw(&self, renderer: &mut Renderer) -> io::Result<()> {
-        let text = (self.formatter)(self, renderer.draw_time);
-        renderer.print(text)
+    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+        use Section::*;
+        let draw_time = r.draw_time();
+
+        r.pre_prompt()?;
+        if draw_time == DrawTime::Last {
+            style.begin(r, Query(true))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(true))?;
+
+            style.begin(r, Answer(true))?;
+            write!(r, "{}", &self.options[self.active as usize])?;
+            style.end(r, Answer(true))?;
+        } else {
+            style.begin(r, Query(false))?;
+            write!(r, "{}", self.message)?;
+            style.end(r, Query(false))?;
+
+            style.begin(r, Toggle(!self.active))?;
+            write!(r, "{}", &self.options[0])?;
+            style.end(r, Toggle(!self.active))?;
+            style.begin(r, Toggle(self.active))?;
+            write!(r, "{}", &self.options[1])?;
+            style.end(r, Toggle(self.active))?;
+        }
+        r.post_prompt()
     }
 }
 
+#[cfg(feature = "terminal")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::key_listener::Typeable;
+    use crossterm::event::{KeyCode, KeyEvent};
+
+    impl Toggle<'_> {
+        fn get_value(&self) -> &str {
+            self.options[self.active as usize].as_ref()
+        }
+    }
 
     #[test]
     fn set_initial_value() {
@@ -121,16 +122,17 @@ mod tests {
         assert_eq!(prompt.get_value(), "bar");
     }
 
-    #[test]
-    fn set_custom_formatter() {
-        let mut prompt = Toggle::new("", ["foo", "bar"]);
-        let draw_time = DrawTime::First;
-        const EXPECTED_VALUE: &str = "foo";
+    // #[test]
+    // fn set_custom_formatter() {
+    //     let mut prompt = Toggle::new("", "foo", "bar");
+    //     let draw_time = DrawTime::First;
+    //     const EXPECTED_VALUE: &str = "foo";
 
-        prompt.format(|_, _| String::from(EXPECTED_VALUE));
-
-        assert_eq!((prompt.formatter)(&prompt, draw_time), EXPECTED_VALUE);
-    }
+    //     prompt.format(|_, _, out| out.push(EXPECTED_VALUE.into()));
+    //     let mut out = ColoredStrings::new();
+    //     (prompt.formatter)(&prompt, draw_time, &mut out);
+    //     assert_eq!(format!("{}", out), EXPECTED_VALUE);
+    // }
 
     #[test]
     fn sumit_focused() {
@@ -140,7 +142,7 @@ mod tests {
             let mut prompt = Toggle::new("", ["foo", "bar"]);
             let simulated_key = KeyEvent::from(event);
 
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
             assert_eq!(prompt.get_value(), "foo");
             assert!(submit);
         }
@@ -162,7 +164,7 @@ mod tests {
             let simulated_key = KeyEvent::from(key);
 
             prompt.initial(initial);
-            let submit = prompt.handle_key(simulated_key);
+            let submit = prompt.handle_key(&simulated_key);
 
             assert_eq!(prompt.get_value(), expected);
             assert!(!submit);

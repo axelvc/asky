@@ -1,31 +1,46 @@
+#[cfg(feature = "terminal")]
 use std::io;
 
+#[cfg(feature = "terminal")]
 use crossterm::{
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal,
 };
 
+#[cfg(feature = "terminal")]
 use super::renderer::{Printable, Renderer};
 
 /// Trait used for the prompts to handle key events
-pub trait Typeable {
+pub trait Typeable<Key> {
     /// Returns `true` if it should end to listen for more key events
-    fn handle_key(&mut self, key: KeyEvent) -> bool;
+    fn handle_key(&mut self, key: &Key) -> bool;
+
+    /// Returns `true` if this will handle a key. (Useful for avoiding mutable
+    /// access to allow for change detection in some cases.)
+    fn will_handle_key(&self, _key: &Key) -> bool {
+        true
+    }
 }
 
+#[cfg(feature = "terminal")]
 /// Helper function to listen for key events and draw the prompt
-pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io::Result<()> {
-    let mut renderer = Renderer::new();
+pub fn listen(
+    prompt: &mut (impl Printable + Typeable<KeyEvent>),
+    hide_cursor: bool,
+) -> io::Result<()> {
+    let mut renderer = crate::terminal::TermRenderer::new();
 
     prompt.draw(&mut renderer)?;
 
-    if hide_cursor {
+    if prompt.hide_cursor() {
         renderer.hide_cursor()?;
     }
 
+    // `submit` is almost always initialized to false except for Message
+    // sometimes.
+    let mut submit = renderer.draw_time() == crate::DrawTime::Last;
     renderer.update_draw_time();
 
-    let mut submit = false;
 
     while !submit {
         // raw mode to listen each key
@@ -35,7 +50,7 @@ pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io
 
         if let Event::Key(key) = key {
             handle_abort(key, &mut renderer);
-            submit = prompt.handle_key(key);
+            submit = prompt.handle_key(&key);
             prompt.draw(&mut renderer)?;
         }
     }
@@ -49,7 +64,8 @@ pub fn listen(prompt: &mut (impl Printable + Typeable), hide_cursor: bool) -> io
     prompt.draw(&mut renderer)
 }
 
-fn handle_abort(ev: KeyEvent, renderer: &mut Renderer) {
+#[cfg(feature = "terminal")]
+fn handle_abort<R: Renderer>(ev: KeyEvent, renderer: &mut R) {
     let is_abort = matches!(
         ev,
         KeyEvent {
