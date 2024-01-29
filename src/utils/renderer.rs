@@ -15,14 +15,14 @@ pub trait Printable {
         self.draw_with_style(renderer, &style)
     }
 
-    fn with_style<S: Style>(self, style: S) -> WithStyle<Self, S>
+    fn style<S: Style>(self, style: S) -> WithStyle<Self, S>
     where
         Self: Sized,
     {
         WithStyle(self, style)
     }
 
-    fn with_format<F: Fn(&Self, &mut dyn std::io::Write) -> io::Result<()>>(
+    fn format<F: Fn(&Self, &mut dyn Renderer) -> io::Result<()>>(
         self,
         format: F,
     ) -> WithFormat<Self, F>
@@ -35,8 +35,13 @@ pub trait Printable {
 
 impl<T, F> Printable for WithFormat<T, F>
 where
-    F: Fn(&T, &mut dyn std::io::Write) -> io::Result<()>,
+    F: Fn(&T, &mut dyn Renderer) -> io::Result<()>,
+    T: Printable,
 {
+    fn hide_cursor(&self) -> bool {
+        self.0.hide_cursor()
+    }
+
     fn draw_with_style<R: Renderer, S: Style>(
         &self,
         renderer: &mut R,
@@ -95,8 +100,8 @@ pub trait Renderer: io::Write {
     // fn print(&mut self, text: ColoredStrings) -> io::Result<()>;
     fn move_cursor(&mut self, directions: [usize; 2]) -> io::Result<()>;
     // fn move_cursor(&mut self, direction: [usize; 2]) -> io::Result<()> { Ok(()) }
-    fn save_cursor(&mut self) -> io::Result<()> { Ok(()) }
-    fn restore_cursor(&mut self) -> io::Result<()> { Ok(()) }
+    fn save_cursor(&mut self) -> io::Result<()>;
+    fn restore_cursor(&mut self) -> io::Result<()>;
     fn hide_cursor(&mut self) -> io::Result<()>;
     fn show_cursor(&mut self) -> io::Result<()>;
 }
@@ -148,6 +153,10 @@ impl Renderer for StringRenderer {
             _ => DrawTime::Last,
         }
     }
+
+    fn save_cursor(&mut self) -> io::Result<()> { Ok(()) }
+
+    fn restore_cursor(&mut self) -> io::Result<()> { Ok(()) }
 
     fn set_foreground(&mut self, _color: Color) -> io::Result<()> {
         Ok(())

@@ -86,7 +86,7 @@ impl Printable for Message<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::key_listener::Typeable, DrawTime};
+    use crate::{utils::key_listener::Typeable};
     use crossterm::event::{KeyCode, KeyEvent};
 
     // #[test]

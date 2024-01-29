@@ -28,7 +28,7 @@ use crate::{Confirm, Error, Message, MultiSelect, Number, Password, Select, Togg
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use futures_lite::future;
 use itertools::Itertools;
-use text_style::{self, bevy::TextStyleParams, AnsiColor, AnsiMode, StyledString};
+use text_style::{self, bevy::TextStyleParams, AnsiColor, StyledString};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
@@ -329,58 +329,6 @@ pub struct BevyAskySettings {
     pub style: TextStyle,
 }
 
-// #[derive(Debug, Default)]
-// pub struct BevyRendererState {
-//     pub(crate) draw_time: DrawTime,
-//     cursor_visible: bool,
-//     cursor_pos: [usize; 2],
-// }
-
-// impl BevyRendererState {
-//     pub fn clear(&mut self) {
-//         self.draw_time = DrawTime::First;
-//         self.cursor_visible = true;
-//         self.cursor_pos[0] = 0;
-//         self.cursor_pos[1] = 0;
-//     }
-// }
-
-// #[derive(Debug)]
-// struct BevyRenderer<'a, 'w, 's> {
-//     state: &'a mut BevyRendererState,
-//     settings: &'a BevyAskySettings,
-//     commands: &'a mut Commands<'w, 's>,
-//     column: Entity,
-// }
-
-// impl<'a, 'w, 's> BevyRenderer<'a, 'w, 's> {
-//     pub fn new(
-//         settings: &'a BevyAskySettings,
-//         state: &'a mut BevyRendererState,
-//         commands: &'a mut Commands<'w, 's>,
-//         column: Entity,
-//     ) -> Self {
-//         BevyRenderer {
-//             settings,
-//             state,
-//             commands,
-//             column,
-//         }
-//     }
-
-//     // pub fn build_text_bundle(s: ColoredString, mut style: TextStyle) -> TextBundle {
-//     //     if let Some(fg) = s.fgcolor() {
-//     //         style.color = convert(fg);
-//     //     }
-//     //     // return <str as fmt::Display>::fmt(&s.input, f);
-//     //     // Don't use format!("{}", s) or you could get ANSI escape sequences.
-//     //     let mut bundle = TextBundle::from_section(s.input.to_owned(), style);
-//     //     if let Some(bg) = s.bgcolor() {
-//     //         bundle.background_color = BackgroundColor(convert(bg));
-//     //     }
-//     //     bundle
-//     // }
-// }
 fn cursorify(
     cs: StyledString,
     i: usize,
@@ -431,111 +379,6 @@ fn cursorify_iter(
         a.into_iter().flatten().chain(b)
     })
 }
-
-// impl<'a, 'w, 's> Renderer for BevyRenderer<'a, 'w, 's> {
-//     // type Writer = StyledStringWriter;
-//     fn draw_time(&self) -> DrawTime {
-//         self.state.draw_time
-//     }
-
-//     fn update_draw_time(&mut self) {
-//         self.state.draw_time = match self.state.draw_time {
-//             DrawTime::First => DrawTime::Update,
-//             _ => DrawTime::Last,
-//         }
-//     }
-
-//     // fn print(&mut self, strings: ColoredStrings) -> io::Result<()> {
-//     fn print2<F>(&mut self, draw_text: F) -> io::Result<()>
-//     where
-//         F: FnOnce(&mut Self::Writer) -> io::Result<u16> {
-//         let white = text_style::Color::Ansi {
-//             color: AnsiColor::White,
-//             mode: AnsiMode::Dark,
-//         };
-//         let mut out = StyledStringWriter::default();
-//         let text_lines = draw_text(&mut out)? - 1;
-
-//         self.commands.entity(self.column).with_children(|column| {
-//             let mut next_line_count: Option<usize> = None;
-//             let mut line_count: usize = 0;
-//             let lines = out.strings.into_iter()
-//                 // .0
-//                 // .into_iter()
-//                 // .map(StyledString::from)
-//                 .flat_map(|mut s| {
-//                     let mut a = vec![];
-//                     let mut b = None;
-//                     if s.s.contains('\n') {
-//                         let str = std::mem::take(&mut s.s);
-//                         a.extend(str.split_inclusive('\n').map(move |line| StyledString {
-//                             s: line.to_string(),
-//                             ..s.clone()
-//                         }));
-//                     } else {
-//                         b = Some(s);
-//                     }
-//                     a.into_iter().chain(b.into_iter())
-//                 })
-//                 .group_by(|x| {
-//                     if let Some(x) = next_line_count.take() {
-//                         line_count = x;
-//                     }
-//                     if x.s.chars().last().map(|c| c == '\n').unwrap_or(false) {
-//                         next_line_count = Some(line_count + 1);
-//                     }
-//                     line_count
-//                 });
-
-//             let mut line_num = 0;
-//             for (_key, line) in &lines {
-//                 let style: TextStyleParams = self.settings.style.clone().into();
-//                 column
-//                     .spawn(NodeBundle {
-//                         style: Style {
-//                             flex_direction: FlexDirection::Row,
-//                             ..default()
-//                         },
-//                         ..default()
-//                     })
-//                     .with_children(|parent| {
-//                         if self.state.cursor_visible && line_num == self.state.cursor_pos[1] {
-//                             text_style::bevy::render_iter(
-//                                 parent,
-//                                 &style,
-//                                 cursorify_iter(line, self.state.cursor_pos[0], white),
-//                             );
-//                         } else {
-//                             text_style::bevy::render_iter(parent, &style, line);
-//                         }
-//                     });
-//                 line_num += 1;
-//             }
-//         });
-//         Ok(())
-//     }
-
-//     /// Utility function for line input.
-//     /// Set initial position based on the position after drawing.
-//     fn set_cursor(&mut self, [x, y]: [usize; 2]) -> io::Result<()> {
-//         if self.state.draw_time == DrawTime::Last {
-//             return Ok(());
-//         }
-//         self.state.cursor_pos[0] = x;
-//         self.state.cursor_pos[1] = y;
-//         Ok(())
-//     }
-
-//     fn hide_cursor(&mut self) -> io::Result<()> {
-//         self.state.cursor_visible = false;
-//         Ok(())
-//     }
-
-//     fn show_cursor(&mut self) -> io::Result<()> {
-//         self.state.cursor_visible = true;
-//         Ok(())
-//     }
-// }
 
 pub fn asky_system<T>(
     mut commands: Commands,
@@ -597,6 +440,8 @@ pub fn asky_system<T>(
                 // let mut renderer =
                 //     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 let draw_time = renderer.draw_time();
+                renderer.cursor_pos = None;
+                renderer.cursor_pos_save = None;
                 let _ = prompt.draw(&mut *renderer);
                 let _ = if prompt.hide_cursor() {
                     renderer.hide_cursor()
@@ -623,13 +468,13 @@ fn bevy_render(
     column: Entity,
 ) {
     // -> io::Result<()>
-    let white = text_style::Color::Ansi {
-        color: AnsiColor::White,
-        mode: AnsiMode::Dark,
+    let white = AnsiColor::White.dark();
+
+    let strings = if out.state.cursor_visible {
+        out.drain_with_styled_cursor(white)
+    } else {
+        std::mem::take(&mut out.strings)
     };
-    // let mut out = StyledStringWriter::default();
-    // let text_lines = draw_text(&mut out)? - 1;
-    let strings = out.strings.drain(..);
 
     commands.entity(column).with_children(|column| {
         let mut next_line_count: Option<usize> = None;
@@ -660,7 +505,7 @@ fn bevy_render(
                 line_count
             });
 
-        let mut line_num = 0;
+        // let mut line_num = 0;
         for (_key, line) in &lines {
             let style: TextStyleParams = settings.style.clone().into();
             column
@@ -672,20 +517,19 @@ fn bevy_render(
                     ..default()
                 })
                 .with_children(|parent| {
-                    if out.state.cursor_visible && line_num == out.state.cursor_pos[1] {
-                        text_style::bevy::render_iter(
-                            parent,
-                            &style,
-                            cursorify_iter(line, out.state.cursor_pos[0], white),
-                        );
-                    } else {
+                    // if out.state.cursor_visible && line_num == out.state.cursor_pos[1] {
+                    //     text_style::bevy::render_iter(
+                    //         parent,
+                    //         &style,
+                    //         cursorify_iter(line, out.state.cursor_pos[0], white),
+                    //     );
+                    // } else {
                         text_style::bevy::render_iter(parent, &style, line);
-                    }
+                    // }
                 });
-            line_num += 1;
+            // line_num += 1;
         }
     });
-    // Ok(())
 }
 
 fn is_abort_key(key: &KeyEvent) -> bool {

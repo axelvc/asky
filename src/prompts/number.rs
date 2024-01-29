@@ -147,12 +147,11 @@ impl<T: NumLike> Printable for Number<'_, T> {
     }
     fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
         use crate::style::Section::*;
-        // let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
 
         r.pre_prompt()?;
 
-        let line_count = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -160,7 +159,6 @@ impl<T: NumLike> Printable for Number<'_, T> {
             style.begin(r, Answer(true))?;
             write!(r, "{}", &self.input.value)?;
             style.end(r, Answer(true))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -172,6 +170,7 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 style.end(r, DefaultAnswer)?;
             }
             style.begin(r, Input)?;
+            r.save_cursor()?;
             write!(r, "{}", &self.input.value)?;
             if self.input.value.is_empty() {
                 if let Some(placeholder) = self.placeholder {
@@ -188,9 +187,8 @@ impl<T: NumLike> Printable for Number<'_, T> {
                 style.end(r, Input)?;
                 style.end(r, Validator(is_valid))?;
             }
-            2
         };
-        r.post_prompt()?;
+        r.restore_cursor()?;
         r.move_cursor([self.input.col, 0])
     }
 }

@@ -199,7 +199,7 @@ impl<T> Printable for MultiSelect<'_, T> {
         // let style = DefaultStyle { ascii: true };
 
         r.pre_prompt()?;
-        let line_count = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -215,7 +215,6 @@ impl<T> Printable for MultiSelect<'_, T> {
             }
             style.end(r, List)?;
             style.end(r, Answer(true))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -248,12 +247,10 @@ impl<T> Printable for MultiSelect<'_, T> {
 
             let page_i = self.input.get_page() as u8;
             let page_count = self.input.count_pages() as u8;
-            let page_footer = if page_count != 1 { 2 } else { 0 };
 
             style.begin(r, Page(page_i, page_count))?;
             style.end(r, Page(page_i, page_count))?;
-            (2 + page_end - page_start + page_footer) as u16
-        };
+        }
 
         r.post_prompt()
     }

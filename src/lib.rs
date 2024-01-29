@@ -50,9 +50,9 @@
 //! # fn main() -> Result<(), Error> {
 //! # #[cfg(feature = "terminal")]
 //! Confirm::new("Do you like Rust?")
-//!     .format(|prompt, _draw_time, out| {
+//!     .format(|prompt, out| {
 //!         let state = if prompt.active { "Y/n" } else { "y/N" };
-//!         out.push(format!("{} {}\n", prompt.message, state).as_str().into());
+//!         write!(out, "{} {}\n", prompt.message, state)
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -73,19 +73,18 @@
 //! #### Example
 //!
 //! ```rust, no_run
-//! # use asky::{Text, Error, Promptable};
+//! # use asky::{Text, Error, Promptable, Printable};
 //! # fn main() -> Result<(), Error> {
 //! # #[cfg(feature = "terminal")]
 //! Text::new("What is your name")
-//!     .format(|prompt, _draw_time, out| {
+//!     .format(|prompt, out| {
 //!         let cursor_col = prompt.input.col;
 //!         let prefix = "> ";
 //!
 //!         let x = (prefix.len() + cursor_col);
 //!         let y = 1;
 //!
-//!         out.push(format!("{}\n{} {}", prompt.message, prefix, prompt.input.value).as_str().into());
-//!         [x, y]
+//!         write!(out, "{}\n{} {}", prompt.message, prefix, prompt.input.value)
 //!     })
 //!     .prompt();
 //! # Ok(())
@@ -130,6 +129,7 @@ pub trait Promptable {
     fn prompt(&mut self) -> Result<Self::Output, crate::Error>;
 }
 
+
 pub use prompts::confirm::Confirm;
 pub use prompts::message::Message;
 pub use prompts::multi_select::MultiSelect;
@@ -143,7 +143,7 @@ pub use prompts::select::{SelectInput, SelectOption};
 pub use prompts::text::LineInput;
 pub use utils::key_listener::Typeable;
 pub use utils::num_like::NumLike;
-pub use utils::renderer::DrawTime;
+pub use utils::renderer::{DrawTime, Printable};
 
 pub mod prelude {
     pub use super::{utils::renderer::Printable, Error, Promptable, SelectOption, Valuable};

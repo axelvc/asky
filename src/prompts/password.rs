@@ -138,7 +138,7 @@ impl Printable for Password<'_> {
 
         r.pre_prompt()?;
 
-        let line_count = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -146,7 +146,6 @@ impl Printable for Password<'_> {
             style.begin(r, Answer(false))?;
             // write!(r, "{}", &self.input.value)?;
             style.end(r, Answer(false))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -156,6 +155,7 @@ impl Printable for Password<'_> {
                 false => "*".repeat(self.input.value.len()),
             };
             style.begin(r, Input)?;
+            r.save_cursor()?;
             write!(r, "{}", text)?;
             if self.input.value.is_empty() {
                 if let Some(placeholder) = self.placeholder {
@@ -170,9 +170,8 @@ impl Printable for Password<'_> {
                 write!(r, "{}", error)?;
                 style.end(r, Validator(false))?;
             }
-            2
-        };
-        r.post_prompt()?;
+        }
+        r.restore_cursor()?;
         r.move_cursor([self.input.col, 0])
     }
 }

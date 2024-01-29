@@ -65,8 +65,40 @@ where
     }
 }
 
+impl<T, S> Valuable for WithFormat<T, S>
+where
+    T: Valuable,
+{
+    type Output = T::Output;
+    fn value(&self) -> Result<Self::Output, crate::Error> {
+        self.0.value()
+    }
+}
+
 pub struct WithFormat<T, F>(pub(crate) T, pub(crate) F);
 
+
+#[cfg(feature = "bevy")]
+impl<T, S> Typeable<crate::bevy::KeyEvent> for WithFormat<T, S>
+where
+    T: Typeable<crate::bevy::KeyEvent>,
+{
+    fn handle_key(&mut self, key: &crate::bevy::KeyEvent) -> bool {
+        self.0.handle_key(key)
+    }
+}
+
+#[cfg(feature = "terminal")]
+impl<T, S> Typeable<crossterm::event::KeyEvent> for WithFormat<T, S>
+where
+    T: Typeable<crossterm::event::KeyEvent>,
+{
+    fn handle_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
+        self.0.handle_key(key)
+    }
+}
+
+// impl<T, S> Valuable for WithStyle<T, S>
 // impl<T,S> std::ops::Deref for WithFormat<T,S> {
 //     type Target = T;
 
@@ -84,10 +116,10 @@ pub trait Style {
 pub struct NoStyle;
 
 impl Style for NoStyle {
-    fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()> {
+    fn begin<R: Renderer>(&self, _renderer: &mut R, _section: Section) -> io::Result<()> {
         Ok(())
     }
-    fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()> {
+    fn end<R: Renderer>(&self, _renderer: &mut R, _section: Section) -> io::Result<()> {
         Ok(())
     }
 }

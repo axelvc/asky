@@ -87,20 +87,22 @@ impl Renderer for TermRenderer {
             )?;
         }
         *self.newline_count() = 0;
-
-        // let (col, row) = cursor::position()?;
-        // eprintln!("pre cursor {} {}", col, row);
         Ok(())
     }
 
     fn save_cursor(&mut self) -> io::Result<()> {
 
-        // panic!();
-        // let (col, row) = cursor::position()?;
-        // eprintln!("                 \n\n\n save cursor {} {}", col, row);
         queue!(
             self.out,
             cursor::SavePosition
+        )
+    }
+
+    fn restore_cursor(&mut self) -> io::Result<()> {
+
+        queue!(
+            self.out,
+            cursor::RestorePosition
         )
     }
 
@@ -114,7 +116,7 @@ impl Renderer for TermRenderer {
         // the bottom of the terminal. Otherwise, the saved position will be the last row
         // and when trying to restore, the next draw will be below the last row.
         if self.draw_time != DrawTime::Last {
-            let (col, row) = cursor::position()?;
+            // let (col, row) = cursor::position()?;
             // eprintln!("post cursor {} {}", col, row);
             queue!(
                 self.out,

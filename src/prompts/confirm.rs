@@ -82,7 +82,7 @@ impl Printable for Confirm<'_> {
         let options = ["No", "Yes"];
 
         r.pre_prompt()?;
-        let line_count: u16 = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -90,7 +90,6 @@ impl Printable for Confirm<'_> {
             style.begin(r, Answer(true))?;
             write!(r, "{}", options[self.active as usize])?;
             style.end(r, Answer(true))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -102,10 +101,8 @@ impl Printable for Confirm<'_> {
             style.begin(r, Toggle(self.active))?;
             write!(r, "{}", options[1])?;
             style.end(r, Toggle(self.active))?;
-            2
-        };
+        }
 
-        // assert_eq!(r.newline_count(), &line_count);
         r.post_prompt()
     }
 }

@@ -1,7 +1,7 @@
 use crate::Error;
 use std::borrow::Cow;
 
-use crate::style::{NoStyle, Style};
+use crate::style::Style;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
 use crate::Valuable;
 use std::io;
@@ -182,7 +182,7 @@ impl Printable for Text<'_> {
         let draw_time = r.draw_time();
 
         r.pre_prompt()?;
-        let line_count = if draw_time == DrawTime::Last {
+        if draw_time == DrawTime::Last {
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -190,7 +190,6 @@ impl Printable for Text<'_> {
             style.begin(r, Answer(true))?;
             write!(r, "{}", &self.input.value)?;
             style.end(r, Answer(true))?;
-            1
         } else {
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
@@ -217,12 +216,8 @@ impl Printable for Text<'_> {
                 write!(r, "{}", error)?;
                 style.end(r, Validator(false))?;
             }
-            1
-        };
-
-        // assert_eq!(r.newline_count(), &line_count);
-        // assert_eq!(r.newline_count(), &0);
-        r.post_prompt()?;
+        }
+        r.restore_cursor()?;
         r.move_cursor([self.input.col, 0])
     }
 }
@@ -231,7 +226,7 @@ impl Printable for Text<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{key_listener::Typeable, renderer::StringRenderer};
+    use crate::{style::NoStyle, utils::{key_listener::Typeable, renderer::StringRenderer}};
     use crossterm::event::{KeyCode, KeyEvent};
     use std::io::Write;
 
@@ -273,7 +268,7 @@ mod tests {
         let draw_time = DrawTime::First;
         const EXPECTED_VALUE: &str = "foo";
         let styled_prompt =
-            prompt.with_format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
+            prompt.format(|_, renderer| write!(renderer, "{}", EXPECTED_VALUE));
         let mut out = StringRenderer::default();
         let _ = styled_prompt.draw(&mut out);
         assert_eq!(out.string, EXPECTED_VALUE);
@@ -284,7 +279,7 @@ mod tests {
         const EXPECTED_VALUE: &str = "foo";
         let mut prompt: Text = Text::new(EXPECTED_VALUE);
         let draw_time = DrawTime::First;
-        let styled_prompt = prompt.with_style(NoStyle);
+        let styled_prompt = prompt.style(NoStyle);
         let mut out = StringRenderer::default();
         let _ = styled_prompt.draw(&mut out);
         assert_eq!(out.string, EXPECTED_VALUE);
