@@ -308,13 +308,13 @@ impl KeyEvent {
         mut key_evr: EventReader<KeyboardInput>,
     ) -> Self {
         Self {
-            chars: char_evr.read().map(|e| e.char).collect(),
+            chars: char_evr.read().flat_map(|e| e.char.chars()).collect(),
             // keys,
             codes: key_evr
                 .read()
                 .filter_map(|e| {
                     if e.state == bevy::input::ButtonState::Pressed {
-                        e.key_code
+                        Some(e.key_code)
                     } else {
                         None
                     }
@@ -541,11 +541,11 @@ impl Plugin for AskyPlugin {
 impl Typeable<KeyCode> for Confirm<'_> {
     fn will_handle_key(&self, key: &KeyCode) -> bool {
         match key {
-            KeyCode::Left | KeyCode::H => true,
-            KeyCode::Right | KeyCode::L => true,
-            KeyCode::Y => true,
-            KeyCode::N => true,
-            KeyCode::Return | KeyCode::Back => true,
+            KeyCode::ArrowLeft | KeyCode::KeyH => true,
+            KeyCode::ArrowRight | KeyCode::KeyL => true,
+            KeyCode::KeyY => true,
+            KeyCode::KeyN => true,
+            KeyCode::Enter | KeyCode::Backspace => true,
             _ => false,
         }
     }
@@ -555,13 +555,13 @@ impl Typeable<KeyCode> for Confirm<'_> {
 
         match key {
             // update value
-            KeyCode::Left | KeyCode::H => self.active = false,
-            KeyCode::Right | KeyCode::L => self.active = true,
+            KeyCode::ArrowLeft | KeyCode::KeyH => self.active = false,
+            KeyCode::ArrowRight | KeyCode::KeyL => self.active = true,
             // update value and submit
-            KeyCode::Y => submit = self.update_and_submit(true),
-            KeyCode::N => submit = self.update_and_submit(false),
+            KeyCode::KeyY => submit = self.update_and_submit(true),
+            KeyCode::KeyN => submit = self.update_and_submit(false),
             // submit current/initial value
-            KeyCode::Return | KeyCode::Back => submit = true,
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
             _ => (),
         }
 
@@ -587,13 +587,13 @@ impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
 
         match key {
             // submit
-            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             KeyCode::Space => self.toggle_focused(),
             // update value
-            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            KeyCode::ArrowUp | KeyCode::KeyK => self.input.move_cursor(Direction::Up),
+            KeyCode::ArrowDown | KeyCode::KeyJ => self.input.move_cursor(Direction::Down),
+            KeyCode::ArrowLeft | KeyCode::KeyH => self.input.move_cursor(Direction::Left),
+            KeyCode::ArrowRight | KeyCode::KeyL => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -622,13 +622,13 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
         for code in &key.codes {
             if match code {
                 // submit
-                KeyCode::Return => true,
+                KeyCode::Enter => true,
                 // remove delete
-                KeyCode::Back => true,
+                KeyCode::Backspace => true,
                 KeyCode::Delete => true,
                 // move cursor
-                KeyCode::Left => true,
-                KeyCode::Right => true,
+                KeyCode::ArrowLeft => true,
+                KeyCode::ArrowRight => true,
                 _ => false,
             } {
                 return true;
@@ -650,13 +650,13 @@ impl<T: NumLike> Typeable<KeyEvent> for Number<'_, T> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                KeyCode::Enter => submit = self.validate_to_submit(),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
+                KeyCode::Backspace => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                KeyCode::ArrowLeft => self.input.move_cursor(Direction::Left),
+                KeyCode::ArrowRight => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -694,15 +694,15 @@ impl Typeable<KeyEvent> for Password<'_> {
         for code in &key.codes {
             if match code {
                 // submit
-                KeyCode::Return => true,
+                KeyCode::Enter => true,
                 // type
                 // KeyCode::Char(c) => self.input.insert(c),
                 // remove delete
-                KeyCode::Back => true,
+                KeyCode::Backspace => true,
                 KeyCode::Delete => true,
                 // move cursor
-                KeyCode::Left => true,
-                KeyCode::Right => true,
+                KeyCode::ArrowLeft => true,
+                KeyCode::ArrowRight => true,
                 _ => false,
             } {
                 return true;
@@ -724,13 +724,13 @@ impl Typeable<KeyEvent> for Password<'_> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                KeyCode::Enter => submit = self.validate_to_submit(),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
+                KeyCode::Backspace => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                KeyCode::ArrowLeft => self.input.move_cursor(Direction::Left),
+                KeyCode::ArrowRight => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -758,12 +758,12 @@ impl<T> Typeable<KeyCode> for Select<'_, T> {
 
         match key {
             // submit
-            KeyCode::Return | KeyCode::Back => submit = self.validate_to_submit(),
+            KeyCode::Enter | KeyCode::Backspace => submit = self.validate_to_submit(),
             // update value
-            KeyCode::Up | KeyCode::K => self.input.move_cursor(Direction::Up),
-            KeyCode::Down | KeyCode::J => self.input.move_cursor(Direction::Down),
-            KeyCode::Left | KeyCode::H => self.input.move_cursor(Direction::Left),
-            KeyCode::Right | KeyCode::L => self.input.move_cursor(Direction::Right),
+            KeyCode::ArrowUp | KeyCode::KeyK => self.input.move_cursor(Direction::Up),
+            KeyCode::ArrowDown | KeyCode::KeyJ => self.input.move_cursor(Direction::Down),
+            KeyCode::ArrowLeft | KeyCode::KeyH => self.input.move_cursor(Direction::Left),
+            KeyCode::ArrowRight | KeyCode::KeyL => self.input.move_cursor(Direction::Right),
             _ => (),
         }
 
@@ -790,7 +790,7 @@ impl Typeable<KeyEvent> for crate::Text<'_> {
         for code in &key.codes {
             use KeyCode::*;
             match code {
-                Return | Back | Delete | Left | Right => return true,
+                Enter | Backspace | Delete | ArrowLeft | ArrowRight => return true,
                 _ => (),
             }
         }
@@ -810,13 +810,13 @@ impl Typeable<KeyEvent> for crate::Text<'_> {
         for code in &key.codes {
             match code {
                 // submit
-                KeyCode::Return => submit = self.validate_to_submit(),
+                KeyCode::Enter => submit = self.validate_to_submit(),
                 // remove delete
-                KeyCode::Back => self.input.backspace(),
+                KeyCode::Backspace => self.input.backspace(),
                 KeyCode::Delete => self.input.delete(),
                 // move cursor
-                KeyCode::Left => self.input.move_cursor(Direction::Left),
-                KeyCode::Right => self.input.move_cursor(Direction::Right),
+                KeyCode::ArrowLeft => self.input.move_cursor(Direction::Left),
+                KeyCode::ArrowRight => self.input.move_cursor(Direction::Right),
                 _ => (),
             };
         }
@@ -841,10 +841,10 @@ impl Typeable<KeyCode> for Toggle<'_> {
 
         match key {
             // update value
-            KeyCode::Left | KeyCode::H => self.active = false,
-            KeyCode::Right | KeyCode::L => self.active = true,
+            KeyCode::ArrowLeft | KeyCode::KeyH => self.active = false,
+            KeyCode::ArrowRight | KeyCode::KeyL => self.active = true,
             // submit current/initial value
-            KeyCode::Return | KeyCode::Back => submit = true,
+            KeyCode::Enter | KeyCode::Backspace => submit = true,
             _ => (),
         }
 

@@ -11,7 +11,7 @@ repository = "https://github.com/axelvc/asky/"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12.0", default-features = false, optional = true, features = [ "bevy_render", "bevy_ui", "bevy_text", "bevy_core_pipeline", "bevy_asset", "bevy_sprite", "bevy_winit", "multi-threaded" ] }
+bevy = { version = "0.13.0", default-features = false, optional = true, features = [ "bevy_render", "bevy_ui", "bevy_text", "bevy_core_pipeline", "bevy_asset", "bevy_sprite", "bevy_winit", "multi-threaded" ] }
 bitflags = "2.4.2"
 # colored = { version = "2.0.0", default-features = false }
 # colored = { path = "../colored", default-features = false }
