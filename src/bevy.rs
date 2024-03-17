@@ -32,18 +32,27 @@ use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, StyledString};
 
 #[derive(Component, Debug)]
-pub struct AskyNode<T: Typeable<KeyEvent> + Valuable>(pub T, pub AskyState<T::Output>);
+pub struct AskyNode<T: Typeable<KeyEvent> + Valuable> {
+    prompt: T,
+    promise: Option<Producer<T::Output, Error>>,
+}
 
 #[derive(Component, Debug)]
 struct AskyDelay(Timer, Option<Producer<(), Error>>);
 
-#[derive(Debug, Default)]
-pub enum AskyState<T> {
+#[derive(Debug, Default, Component)]
+pub enum AskyState {
     #[default]
-    Reading,
-    Waiting(Producer<T, Error>),
+    Waiting,
     Complete,
     Hidden,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, States)]
+pub enum AskyPrompt {
+    #[default]
+    Inactive,
+    Active,
 }
 
 fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>, time: Res<Time>) {
@@ -96,7 +105,7 @@ impl Asky {
                         ..default()
                     };
                     let id = commands
-                        .spawn((node, AskyNode(prompt, AskyState::Waiting(promise))))
+                              .spawn((node, AskyNode { prompt, promise: Some(promise) },  AskyState::Waiting))
                         .id();
                     commands.entity(entity.unwrap()).push_children(&[id]);
                     Ok(())
@@ -154,7 +163,6 @@ fn run_closures(
     mut commands: Commands,
     mut redraw: EventWriter<RequestRedraw>,
     query: Query<Option<&Children>>,
-    mut asky_prompt: ResMut<NextState<AskyPrompt>>,
 ) {
     let mut ran_closure = false;
     for (closure, id_maybe) in config
@@ -172,10 +180,21 @@ fn run_closures(
         ran_closure = true;
     }
     if ran_closure {
-        asky_prompt.set(AskyPrompt::Active);
         redraw.send(RequestRedraw);
-    } else {
-        asky_prompt.set(AskyPrompt::Inactive);
+    }
+}
+
+fn check_prompt_state(
+    query: Query<&AskyState>,
+    mut asky_prompt: Res<State<AskyPrompt>>,
+    mut next_asky_prompt: ResMut<NextState<AskyPrompt>>,
+    mut redraw: EventWriter<RequestRedraw>,
+) {
+    let was_active = matches!(**asky_prompt, AskyPrompt::Active);
+    let is_active = query.iter().filter(|x| matches!(*x, AskyState::Waiting)).next().is_some();
+    if was_active ^ is_active {
+        next_asky_prompt.set(if is_active { AskyPrompt::Active } else { AskyPrompt::Inactive });
+        redraw.send(RequestRedraw);
     }
 }
 
@@ -270,13 +289,13 @@ pub fn poll_tasks_err<T: Send + Sync + 'static>(
 impl<T: Typeable<KeyEvent> + Valuable> Deref for AskyNode<T> {
     type Target = T;
     fn deref(&self) -> &T {
-        &self.0
+        &self.prompt
     }
 }
 
 impl<T: Typeable<KeyEvent> + Valuable> DerefMut for AskyNode<T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
+        &mut self.prompt
     }
 }
 
@@ -345,14 +364,15 @@ pub fn asky_system<T>(
     asky_settings: Res<BevyAskySettings>,
     // mut render_state: Local<BevyRendererState>,
     mut renderer: Local<StyledStringWriter>,
-    mut query: Query<(Entity, &mut AskyNode<T>, Option<&Children>)>,
+    mut query: Query<(Entity, &mut AskyNode<T>, &mut AskyState, Option<&Children>)>,
 ) where
     T: Printable + Typeable<KeyEvent> + Valuable + Send + Sync + 'static,
     // AskyNode<T>: Printable,
 {
+    // eprint!("1");
     let key_event = KeyEvent::new(char_evr, key_evr);
-    for (entity, mut prompt, children) in query.iter_mut() {
-        match prompt.1 {
+    for (entity, mut node, mut state, children) in query.iter_mut() {
+        match *state {
             AskyState::Complete => {
                 continue;
             }
@@ -364,25 +384,30 @@ pub fn asky_system<T>(
                     }
                 }
             }
-            AskyState::Waiting(_) | AskyState::Reading => {
+            AskyState::Waiting => {
+                eprint!("2");
                 if !is_abort_key(&key_event)
-                    && !prompt.will_handle_key(&key_event)
+                    && !node.will_handle_key(&key_event)
                     && renderer.state.draw_time != DrawTime::First
                 {
                     continue;
                 }
                 // For the terminal it had an abort key handling happen here.
                 if is_abort_key(&key_event) {
-                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
-                    if let AskyState::Waiting(promise) = waiting_maybe {
+                    *state = AskyState::Complete;
+
+                    let waiting_maybe = node.promise.take();//std::mem::replace(&mut state, AskyState::Complete);
+                    if let Some(promise) = waiting_maybe {
                         promise.reject(Error::Cancel);
                     }
                     renderer.state.draw_time = DrawTime::Last;
-                } else if prompt.handle_key(&key_event) {
+                } else if node.handle_key(&key_event) {
                     // It's done.
-                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
-                    if let AskyState::Waiting(promise) = waiting_maybe {
-                        match prompt.0.value() {
+                    *state = AskyState::Complete;
+                    let waiting_maybe = node.promise.take();//std::mem::replace(&mut state, AskyState::Complete);
+                    // let waiting_maybe = std::mem::replace(&mut state, AskyState::Complete);
+                    if let Some(promise) = waiting_maybe {
+                        match node.prompt.value() {
                             Ok(v) => promise.resolve(v),
                             Err(e) => promise.reject(e),
                         }
@@ -395,13 +420,14 @@ pub fn asky_system<T>(
                         commands.entity(*child).despawn_recursive();
                     }
                 }
+                eprint!("3");
                 // let mut renderer =
                 //     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 // let draw_time = renderer.draw_time();
                 renderer.cursor_pos = None;
                 renderer.cursor_pos_save = None;
-                let _ = prompt.draw(&mut *renderer);
-                let _ = if prompt.hide_cursor() {
+                let _ = node.draw(&mut *renderer);
+                let _ = if node.hide_cursor() {
                     renderer.hide_cursor()
                 } else {
                     renderer.show_cursor()
@@ -414,9 +440,11 @@ pub fn asky_system<T>(
                     renderer.update_draw_time();
                 } else if draw_time == DrawTime::Last {
                     renderer.clear();
-                    let waiting_maybe = std::mem::replace(&mut prompt.1, AskyState::Complete);
-                    if let AskyState::Waiting(promise) = waiting_maybe {
-                        match prompt.0.value() {
+                    let waiting_maybe = node.promise.take();
+                    *state = AskyState::Complete;
+                    // let waiting_maybe = std::mem::replace(&mut node.1, AskyState::Complete);
+                    if let Some(promise) = waiting_maybe {
+                        match node.prompt.value() {
                             Ok(v) => promise.resolve(v),
                             Err(e) => promise.reject(e),
                         }
@@ -542,6 +570,7 @@ impl Plugin for AskyPlugin {
             .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
             .add_systems(Update, poll_tasks::<()>)
             .add_systems(Update, poll_tasks_err::<()>)
+            .add_systems(Update, check_prompt_state)
             .add_systems(Update, run_closures)
             .add_systems(Update, run_timers);
     }
