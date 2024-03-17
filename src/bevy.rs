@@ -26,6 +26,7 @@ use std::ops::{Deref, DerefMut};
 use crate::text_style_adapter::StyledStringWriter;
 use crate::{Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle, Valuable};
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
+use bevy::window::RequestRedraw;
 use futures_lite::future;
 use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, StyledString};
@@ -64,12 +65,9 @@ pub struct AskyParamConfig {
     pub(crate) state: Arc<Mutex<AskyParamState>>,
 }
 
-type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>) -> Result<(), Error>
-    + 'static
-    + Send
-    + Sync;
+type Closure = dyn FnOnce(&mut Commands, Option<Entity>, Option<&Children>)
+                          -> Result<(), Error> + 'static + Send + Sync;
 
-// #[derive(Debug)]
 pub struct AskyParamState {
     pub(crate) closures: Vec<(Box<Closure>, Option<Entity>)>,
 }
@@ -154,8 +152,11 @@ impl Asky {
 fn run_closures(
     config: ResMut<AskyParamConfig>,
     mut commands: Commands,
+    mut redraw: EventWriter<RequestRedraw>,
     query: Query<Option<&Children>>,
+    mut asky_prompt: ResMut<NextState<AskyPrompt>>,
 ) {
+    let mut ran_closure = false;
     for (closure, id_maybe) in config
         .state
         .lock()
@@ -166,7 +167,15 @@ fn run_closures(
         let children = id_maybe
             .map(|id| query.get(id).expect("Unable to get children"))
             .unwrap_or(None);
+        eprintln!("run closure");
         let _ = closure(&mut commands, id_maybe, children);
+        ran_closure = true;
+    }
+    if ran_closure {
+        asky_prompt.set(AskyPrompt::Active);
+        redraw.send(RequestRedraw);
+    } else {
+        asky_prompt.set(AskyPrompt::Inactive);
     }
 }
 
@@ -247,7 +256,7 @@ pub fn poll_tasks_err<T: Send + Sync + 'static>(
         if let Some(result) = block_on(future::poll_once(&mut task.0)) {
             // Once
             if let Err(error) = result {
-                eprintln!("Got here {:?}.", error);
+                eprintln!("Got error here {:?}.", error);
                 // FIXME: I need the right entity to make this work.
                 // let _ = asky.prompt(Message::new(format!("{:?}", error)), entity);
                 commands.entity(entity).despawn();
@@ -324,11 +333,10 @@ impl KeyEvent {
     }
 }
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Default)]
 pub struct BevyAskySettings {
     pub style: TextStyle,
 }
-
 
 pub fn asky_system<T>(
     mut commands: Commands,
@@ -503,36 +511,39 @@ pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(AskyParamConfig {
-            state: Arc::new(Mutex::new(AskyParamState {
-                closures: Vec::new(),
-            })),
-        })
-        .add_systems(Update, asky_system::<Confirm>)
-        .add_systems(Update, asky_system::<Toggle>)
-        .add_systems(Update, asky_system::<crate::Text>)
-        .add_systems(Update, asky_system::<Number<u8>>)
-        .add_systems(Update, asky_system::<Number<u16>>)
-        .add_systems(Update, asky_system::<Number<u32>>)
-        .add_systems(Update, asky_system::<Number<u64>>)
-        .add_systems(Update, asky_system::<Number<u128>>)
-        .add_systems(Update, asky_system::<Number<i8>>)
-        .add_systems(Update, asky_system::<Number<i16>>)
-        .add_systems(Update, asky_system::<Number<i32>>)
-        .add_systems(Update, asky_system::<Number<i64>>)
-        .add_systems(Update, asky_system::<Number<i128>>)
-        .add_systems(Update, asky_system::<Number<f32>>)
-        .add_systems(Update, asky_system::<Number<f64>>)
-        .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
-        .add_systems(Update, asky_system::<Select<'_, &'static str>>)
-        .add_systems(Update, asky_system::<Password>)
-        .add_systems(Update, asky_system::<Message>)
-        .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
-        .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
-        .add_systems(Update, poll_tasks::<()>)
-        .add_systems(Update, poll_tasks_err::<()>)
-        .add_systems(Update, run_closures)
-        .add_systems(Update, run_timers);
+        app
+            .insert_resource(AskyParamConfig {
+                state: Arc::new(Mutex::new(AskyParamState {
+                    closures: Vec::new(),
+                })),
+            })
+            .init_resource::<BevyAskySettings>()
+            .init_state::<AskyPrompt>()
+            .add_systems(Update, asky_system::<Confirm>)
+            .add_systems(Update, asky_system::<Toggle>)
+            .add_systems(Update, asky_system::<crate::Text>)
+            .add_systems(Update, asky_system::<Number<u8>>)
+            .add_systems(Update, asky_system::<Number<u16>>)
+            .add_systems(Update, asky_system::<Number<u32>>)
+            .add_systems(Update, asky_system::<Number<u64>>)
+            .add_systems(Update, asky_system::<Number<u128>>)
+            .add_systems(Update, asky_system::<Number<i8>>)
+            .add_systems(Update, asky_system::<Number<i16>>)
+            .add_systems(Update, asky_system::<Number<i32>>)
+            .add_systems(Update, asky_system::<Number<i64>>)
+            .add_systems(Update, asky_system::<Number<i128>>)
+            .add_systems(Update, asky_system::<Number<f32>>)
+            .add_systems(Update, asky_system::<Number<f64>>)
+            .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
+            .add_systems(Update, asky_system::<Select<'_, &'static str>>)
+            .add_systems(Update, asky_system::<Password>)
+            .add_systems(Update, asky_system::<Message>)
+            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
+            .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
+            .add_systems(Update, poll_tasks::<()>)
+            .add_systems(Update, poll_tasks_err::<()>)
+            .add_systems(Update, run_closures)
+            .add_systems(Update, run_timers);
     }
 }
 

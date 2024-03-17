@@ -2,7 +2,7 @@ use asky::bevy::*;
 
 use asky::{Confirm, Message, MultiSelect, Number, Password, Select, Toggle};
 
-use bevy::{core_pipeline::clear_color::ClearColorConfig, prelude::*, window::PresentMode};
+use bevy::{render::camera::ClearColorConfig, prelude::*, window::PresentMode};
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
@@ -33,7 +33,7 @@ fn main() {
                 resolution: (600., 400.).into(),
                 present_mode: PresentMode::AutoVsync,
                 // Tells wasm to resize the window according to the available canvas
-                fit_canvas_to_parent: true,
+                // fit_canvas_to_parent: true,
                 // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
                 prevent_default_event_handling: false,
                 // window_theme: Some(WindowTheme::Dark),
@@ -62,10 +62,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, kind: &str) {
     };
     commands.insert_resource(settings);
     commands.spawn(Camera2dBundle {
-        camera_2d: Camera2d {
+        camera: Camera {
             // disable clearing completely (pixels stay as they are)
             // (preserves output from previous frame or camera/pass)
             clear_color: ClearColorConfig::Custom(Color::BLACK),
+            ..default()
         },
         ..Default::default()
     });
