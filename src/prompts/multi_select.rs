@@ -142,7 +142,7 @@ impl<'a, T: 'a> MultiSelect<'a, T> {
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<Vec<T>> {
-        key_listener::listen(self, true)?;
+        key_listener::listen(self)?;
         Ok(self.get_value())
     }
 }

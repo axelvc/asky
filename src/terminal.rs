@@ -215,7 +215,7 @@ where
     type Output = T::Output;
 
     fn prompt(&mut self) -> Result<Self::Output, crate::Error> {
-        crate::utils::key_listener::listen(self, self.hide_cursor())?;
+        crate::utils::key_listener::listen(self)?;
         self.value()
     }
 }

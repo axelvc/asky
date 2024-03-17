@@ -76,7 +76,7 @@ impl<'a> Message<'a> {
     #[cfg(feature = "terminal")]
     /// Display the prompt and return the user answer.
     pub fn prompt(&mut self) -> io::Result<()> {
-        listen(self, true)
+        listen(self)
     }
 }
 

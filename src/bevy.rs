@@ -427,11 +427,6 @@ pub fn asky_system<T>(
                 renderer.cursor_pos = None;
                 renderer.cursor_pos_save = None;
                 let _ = node.draw(&mut *renderer);
-                let _ = if node.hide_cursor() {
-                    renderer.hide_cursor()
-                } else {
-                    renderer.show_cursor()
-                };
                 bevy_render(&mut commands, &asky_settings, &mut renderer, entity);
                 // This is just to affirm that we're not recreating the nodes unless we need to.
                 let draw_time = renderer.draw_time();

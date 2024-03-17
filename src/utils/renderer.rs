@@ -6,10 +6,6 @@ pub trait Printable {
     fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, style: &S)
         -> io::Result<()>;
 
-    fn hide_cursor(&self) -> bool {
-        true
-    }
-
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
         let style = DefaultStyle::default();
         self.draw_with_style(renderer, &style)
@@ -38,10 +34,6 @@ where
     F: Fn(&T, &mut dyn Renderer) -> io::Result<()>,
     T: Printable,
 {
-    fn hide_cursor(&self) -> bool {
-        self.0.hide_cursor()
-    }
-
     fn draw_with_style<R: Renderer, S: Style>(
         &self,
         renderer: &mut R,
@@ -57,9 +49,6 @@ where
     S: Style,
 {
 
-    fn hide_cursor(&self) -> bool {
-        self.0.hide_cursor()
-    }
     fn draw_with_style<R: Renderer, U: Style>(
         &self,
         renderer: &mut R,

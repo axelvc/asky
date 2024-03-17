@@ -26,15 +26,11 @@ pub trait Typeable<Key> {
 /// Helper function to listen for key events and draw the prompt
 pub fn listen(
     prompt: &mut (impl Printable + Typeable<KeyEvent>),
-    hide_cursor: bool,
 ) -> io::Result<()> {
     let mut renderer = crate::terminal::TermRenderer::new();
 
     prompt.draw(&mut renderer)?;
 
-    if prompt.hide_cursor() {
-        renderer.hide_cursor()?;
-    }
 
     // `submit` is almost always initialized to false except for Message
     // sometimes.
@@ -56,10 +52,6 @@ pub fn listen(
     }
 
     renderer.update_draw_time();
-
-    if hide_cursor {
-        renderer.show_cursor()?;
-    }
 
     prompt.draw(&mut renderer)
 }
