@@ -30,7 +30,7 @@ impl StyledStringWriter {
             self.strings.push(StyledString::new(String::new(), self.style));
         }
         match &self.cursor_pos {
-            None => CursorPos { index: self.strings.len() - 1, len: self.strings.last().unwrap().s.len() },
+            None => CursorPos { index: self.strings.len() - 1, len: self.strings.last().unwrap().s.chars().count() },
             Some(c) => c.clone()
         }
     }
@@ -38,7 +38,7 @@ impl StyledStringWriter {
     fn set_cursor_pos(&mut self, mut cursor_pos: CursorPos) {
         if cursor_pos.len < 0 {
             cursor_pos.index -= 1;
-            cursor_pos.len += self.strings[cursor_pos.index].s.len();
+            cursor_pos.len += self.strings[cursor_pos.index].s.chars().count();
         }
         self.cursor_pos = Some(cursor_pos);
     }
@@ -54,22 +54,32 @@ impl StyledStringWriter {
     }
 }
 
+// fn no_cursorify(
+//     cs: StyledString,
+//     i: usize,
+//     cursor_color: text_style::Color,
+// ) -> impl Iterator<Item = StyledString> {
+//     std::iter::once(cs)
+// }
+
 fn cursorify(
     cs: StyledString,
     i: usize,
     cursor_color: text_style::Color,
 ) -> impl Iterator<Item = StyledString> {
     let (string, style) = (cs.s, cs.style);
-    // eprintln!("str.len {} i {}", string.len(), i);
-    assert!(i <= string.len(), "str.len {} i {}", string.len(), i);
+    assert!(i <= string.chars().count(),
+            "i {} <= str.chars().count() {}", i, string.chars().count());
     let (mut input, right) = match string.char_indices().nth(i + 1) {
         Some((byte_index, _char)) => {
+            eprintln!("some");
             let (l, r) = string.split_at(byte_index);
             (l.to_owned(),Some(StyledString::new(r.to_owned(), style)))
         },
         None => {
+            eprintln!("none");
             let mut s = string;
-            if s.len() == i {
+            if s.chars().count() == i {
                 s.push(' ');
             }
             (s, None)
@@ -96,7 +106,6 @@ fn cursorify(
 pub struct RendererState {
     pub(crate) draw_time: DrawTime,
     pub(crate) cursor_visible: bool,
-    // pub(crate) cursor_pos: [usize; 2],
     pub(crate) newline_count: u16,
 }
 
@@ -259,10 +268,10 @@ mod test {
 
     #[test]
     fn test_cursorify5() {
-        let s = StyledString::new(" ".into(), None);
+        let s = StyledString::new("a".into(), None);
         let v: Vec<_> = cursorify(s, 1, AnsiColor::White.dark()).collect();
         assert_eq!(v.len(), 2);
-        assert_eq!(&v[0].s, " ");
+        assert_eq!(&v[0].s, "a");
         assert_eq!(v[0].style, None);
         assert_eq!(&v[1].s, " ");
         assert_ne!(v[1].style, None);
@@ -276,4 +285,61 @@ mod test {
         assert_eq!(v[0].style, None);
         assert_ne!(v[1].style, None);
     }
+
+    mod unicode {
+        use super::*;
+        use std::io::Write;
+        use text_style::{self, AnsiColor, StyledString};
+        #[test]
+        fn test_cursorify() {
+            let mut w = StyledStringWriter::default();
+            let v = w.drain_with_styled_cursor(AnsiColor::White.dark());
+            assert_eq!(v.len(), 2);
+        }
+
+        #[test]
+        fn test_cursorify2() -> std::io::Result<()> {
+            let mut w = StyledStringWriter::default();
+            write!(w, "▣what the fuck")?;
+            w.set_foreground(AnsiColor::Black.light())?;
+            write!(w, "▣huh")?;
+            let v = w.drain_with_styled_cursor(AnsiColor::White.dark());
+            assert_eq!(v.len(), 3);
+            Ok(())
+        }
+
+        #[test]
+        fn test_cursorify3() {
+            let s = StyledString::new("▣".into(), None);
+            let v: Vec<_> = cursorify(s, 0, AnsiColor::White.dark()).collect();
+            assert_eq!(v.len(), 2);
+            assert_eq!(&v[0].s, "");
+            assert_eq!(v[0].style, None);
+            assert_eq!(&v[1].s, "▣");
+            assert_ne!(v[1].style, None);
+        }
+
+        #[test]
+        fn test_unicode_cursorify5() {
+            let s = StyledString::new("▣".into(), None);
+            let v: Vec<StyledString> = cursorify(s, 1, AnsiColor::White.dark()).collect();
+            assert_eq!(v.len(), 2);
+            // assert_eq!(v[0].s.len(), 0);
+            // assert_eq!(&v[0].s, "");
+            assert_eq!(&v[0].s, "▣");
+            assert_eq!(v[0].style, None);
+            assert_eq!(&v[1].s, " ");
+            assert_ne!(v[1].style, None);
+        }
+
+        #[test]
+        fn test_cursorify4() {
+            let s = StyledString::new("".into(), None);
+            let v: Vec<_> = cursorify(s, 0, AnsiColor::White.dark()).collect();
+            assert_eq!(v.len(), 2);
+            assert_eq!(v[0].style, None);
+            assert_ne!(v[1].style, None);
+        }
+    }
 }
+
