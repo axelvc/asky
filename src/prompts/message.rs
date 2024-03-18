@@ -81,7 +81,7 @@ impl<'a> Message<'a> {
 }
 
 impl Printable for Message<'_> {
-    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+    fn draw_with_style<R: Renderer>(&self, r: &mut R, style: &dyn Style) -> io::Result<()> {
         use crate::style::Section::*;
         let draw_time = r.draw_time();
         r.pre_prompt()?;

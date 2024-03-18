@@ -3,7 +3,7 @@ use std::io;
 use text_style::Color;
 
 pub trait Printable {
-    fn draw_with_style<R: Renderer, S: Style>(&self, renderer: &mut R, style: &S)
+    fn draw_with_style<R: Renderer>(&self, renderer: &mut R, style: &dyn Style)
         -> io::Result<()>;
 
     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
@@ -34,10 +34,10 @@ where
     F: Fn(&T, &mut dyn Renderer) -> io::Result<()>,
     T: Printable,
 {
-    fn draw_with_style<R: Renderer, S: Style>(
+    fn draw_with_style<R: Renderer>(
         &self,
         renderer: &mut R,
-        _style: &S,
+        _style: &dyn Style,
     ) -> io::Result<()> {
         (self.1)(&self.0, renderer)
     }
@@ -49,10 +49,10 @@ where
     S: Style,
 {
 
-    fn draw_with_style<R: Renderer, U: Style>(
+    fn draw_with_style<R: Renderer>(
         &self,
         renderer: &mut R,
-        _style: &U,
+        _style: &dyn Style,
     ) -> io::Result<()> {
         self.0.draw_with_style(renderer, &self.1)
     }

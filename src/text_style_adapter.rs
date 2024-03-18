@@ -35,11 +35,11 @@ impl StyledStringWriter {
         }
     }
 
-    fn set_cursor_pos(&mut self, mut cursor_pos: CursorPos) {
-        if cursor_pos.len < 0 {
-            cursor_pos.index -= 1;
-            cursor_pos.len += self.strings[cursor_pos.index].s.chars().count();
-        }
+    fn set_cursor_pos(&mut self, cursor_pos: CursorPos) {
+        // if cursor_pos.len < 0 {
+        //     cursor_pos.index -= 1;
+        //     cursor_pos.len += self.strings[cursor_pos.index].s.chars().count();
+        // }
         self.cursor_pos = Some(cursor_pos);
     }
 

@@ -290,7 +290,7 @@ impl<T> Valuable for Select<'_, T> {
 }
 
 impl<T> Printable for Select<'_, T> {
-    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+    fn draw_with_style<R: Renderer>(&self, r: &mut R, style: &dyn Style) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
         // if true {

@@ -110,23 +110,23 @@ where
 // }
 
 pub trait Style {
-    fn begin<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
-    fn end<R: Renderer>(&self, renderer: &mut R, section: Section) -> io::Result<()>;
+    fn begin(&self, renderer: &mut dyn Renderer, section: Section) -> io::Result<()>;
+    fn end(&self, renderer: &mut dyn Renderer, section: Section) -> io::Result<()>;
 }
 
 pub struct NoStyle;
 
 impl Style for NoStyle {
-    fn begin<R: Renderer>(&self, _renderer: &mut R, _section: Section) -> io::Result<()> {
+    fn begin(&self, _renderer: &mut dyn Renderer, _section: Section) -> io::Result<()> {
         Ok(())
     }
-    fn end<R: Renderer>(&self, _renderer: &mut R, _section: Section) -> io::Result<()> {
+    fn end(&self, _renderer: &mut dyn Renderer, _section: Section) -> io::Result<()> {
         Ok(())
     }
 }
 
 impl Style for DefaultStyle {
-    fn begin<R: Renderer>(&self, r: &mut R, section: Section) -> io::Result<()> {
+    fn begin(&self, r: &mut dyn Renderer, section: Section) -> io::Result<()> {
         use Section::*;
         match section {
             Query(answered) => {
@@ -294,19 +294,21 @@ impl Style for DefaultStyle {
         }
         Ok(())
     }
-    fn end<R: Renderer>(&self, r: &mut R, section: Section) -> io::Result<()> {
+    fn end(&self, r: &mut dyn Renderer, section: Section) -> io::Result<()> {
         use Section::*;
         match section {
             Query(answered) => {
                 if answered {
                     write!(r, " ")?;
-                } else {
+                } else if self.newlines {
                     writeln!(r)?;
                 }
             }
             Answer(_) => {
                 r.reset_color()?;
-                writeln!(r)?;
+                if self.newlines {
+                    writeln!(r)?;
+                }
             }
             Toggle(_) => {
                 write!(r, " ")?;
@@ -326,7 +328,17 @@ impl Style for DefaultStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct DefaultStyle {
     pub ascii: bool,
+    pub newlines: bool,
+}
+
+impl Default for DefaultStyle {
+    fn default() -> Self {
+        Self {
+            ascii: true,
+            newlines: false,
+        }
+    }
 }

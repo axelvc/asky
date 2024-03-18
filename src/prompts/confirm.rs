@@ -74,7 +74,7 @@ impl Valuable for Confirm<'_> {
 }
 
 impl Printable for Confirm<'_> {
-    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+    fn draw_with_style<R: Renderer>(&self, r: &mut R, style: &dyn Style) -> io::Result<()> {
         use Section::*;
         let draw_time = r.draw_time();
         // let style = DefaultStyle { ascii: true };

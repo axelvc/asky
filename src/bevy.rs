@@ -2,6 +2,7 @@ use crate::utils::renderer::{Printable, Renderer};
 
 use crate::Typeable;
 use crate::{DrawTime, NumLike};
+use crate::style;
 use bevy::{
     ecs::{
         component::Tick,
@@ -17,9 +18,11 @@ use promise_out::{
 };
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
+// use std::rc::Rc;
 
 use bevy::prelude::*;
 use std::future::Future;
+use futures_lite::future;
 
 use std::ops::{Deref, DerefMut};
 
@@ -27,7 +30,6 @@ use crate::text_style_adapter::StyledStringWriter;
 use crate::{Confirm, Error, Message, MultiSelect, Number, Password, Select, Toggle, Valuable};
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use bevy::window::RequestRedraw;
-use futures_lite::future;
 use itertools::Itertools;
 use text_style::{self, bevy::TextStyleParams, AnsiColor, StyledString};
 
@@ -55,16 +57,22 @@ pub enum AskyPrompt {
     Active,
 }
 
-fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>, time: Res<Time>) {
+fn run_timers(mut commands: Commands, mut query: Query<(Entity, &mut AskyDelay)>, time: Res<Time>,
+    mut redraw: EventWriter<RequestRedraw>,
+) {
     for (id, mut asky_delay) in query.iter_mut() {
         asky_delay.0.tick(time.delta());
         if asky_delay.0.finished() {
             asky_delay.1.take().expect("Promise not there").resolve(());
-            commands.entity(id).despawn();
+            commands.entity(id).remove::<AskyDelay>();
         }
+        // I would RequestTick to just run the systems once, but this seems to
+        // be the way.
+        redraw.send(RequestRedraw);
     }
 }
 
+#[derive(Clone)]
 pub struct Asky {
     config: AskyParamConfig,
 }
@@ -106,7 +114,40 @@ impl Asky {
                     };
                     let id = commands
                               .spawn((node, AskyNode { prompt, promise: Some(promise) },  AskyState::Waiting))
-                        .id();
+                              .id();
+                    commands.entity(entity.unwrap()).push_children(&[id]);
+                    Ok(())
+                },
+            ),
+            Some(dest),
+        ));
+        waiter
+    }
+
+    pub fn prompt_styled<T: Typeable<KeyEvent> + Valuable + Send + Sync + 'static, S>(
+        &mut self,
+        prompt: T,
+        dest: Entity,
+        style: S
+    ) -> Consumer<T::Output, Error>
+    where S: style::Style + Send + Sync + 'static{
+        let (promise, waiter) = Producer::<T::Output, Error>::new();
+        self.config.state.lock().unwrap().closures.push((
+            Box::new(
+                move |commands: &mut Commands,
+                      entity: Option<Entity>,
+                      _children: Option<&Children>| {
+                    let node = NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Column,
+                            ..default()
+                        },
+                        ..default()
+                    };
+                    let id = commands
+                              .spawn((node, AskyNode { prompt, promise: Some(promise) },  AskyState::Waiting,
+                              AskyStyle(Box::new(style))))
+                              .id();
                     commands.entity(entity.unwrap()).push_children(&[id]);
                     Ok(())
                 },
@@ -173,9 +214,9 @@ fn run_closures(
         .drain(0..)
     {
         let children = id_maybe
-            .map(|id| query.get(id).expect("Unable to get children"))
-            .unwrap_or(None);
+            .and_then(|id| query.get(id).expect("Unable to get children"));
         eprintln!("run closure");
+        // TODO: Handle error
         let _ = closure(&mut commands, id_maybe, children);
         ran_closure = true;
     }
@@ -186,12 +227,14 @@ fn run_closures(
 
 fn check_prompt_state(
     query: Query<&AskyState>,
-    mut asky_prompt: Res<State<AskyPrompt>>,
+    delays: Query<&AskyDelay>,
+    asky_prompt: Res<State<AskyPrompt>>,
     mut next_asky_prompt: ResMut<NextState<AskyPrompt>>,
     mut redraw: EventWriter<RequestRedraw>,
 ) {
     let was_active = matches!(**asky_prompt, AskyPrompt::Active);
-    let is_active = query.iter().filter(|x| matches!(*x, AskyState::Waiting)).next().is_some();
+    let is_active = query.iter().filter(|x| matches!(*x, AskyState::Waiting)).next().is_some()
+        || delays.iter().next().is_some();
     if was_active ^ is_active {
         next_asky_prompt.set(if is_active { AskyPrompt::Active } else { AskyPrompt::Inactive });
         redraw.send(RequestRedraw);
@@ -364,14 +407,14 @@ pub fn asky_system<T>(
     asky_settings: Res<BevyAskySettings>,
     // mut render_state: Local<BevyRendererState>,
     mut renderer: Local<StyledStringWriter>,
-    mut query: Query<(Entity, &mut AskyNode<T>, &mut AskyState, Option<&Children>)>,
+    mut query: Query<(Entity, &mut AskyNode<T>, &mut AskyState, Option<&Children>, Option<&AskyStyle>)>,
 ) where
     T: Printable + Typeable<KeyEvent> + Valuable + Send + Sync + 'static,
     // AskyNode<T>: Printable,
 {
     // eprint!("1");
     let key_event = KeyEvent::new(char_evr, key_evr);
-    for (entity, mut node, mut state, children) in query.iter_mut() {
+    for (entity, mut node, mut state, children, style_maybe) in query.iter_mut() {
         match *state {
             AskyState::Complete => {
                 continue;
@@ -426,7 +469,14 @@ pub fn asky_system<T>(
                 // let draw_time = renderer.draw_time();
                 renderer.cursor_pos = None;
                 renderer.cursor_pos_save = None;
-                let _ = node.draw(&mut *renderer);
+                match style_maybe {
+                    Some(style) => {
+                        let _ = node.draw_with_style(&mut *renderer, &*style.0);
+                    }
+                    None => {
+                        let _ = node.draw(&mut *renderer);
+                    }
+                }
                 bevy_render(&mut commands, &asky_settings, &mut renderer, entity);
                 // This is just to affirm that we're not recreating the nodes unless we need to.
                 let draw_time = renderer.draw_time();
@@ -530,6 +580,9 @@ fn is_abort_key(key: &KeyEvent) -> bool {
     false
 }
 
+#[derive(Component)]
+pub struct AskyStyle(pub Box<dyn style::Style + 'static + Send + Sync>);
+
 pub struct AskyPlugin;
 
 impl Plugin for AskyPlugin {
@@ -572,7 +625,6 @@ impl Plugin for AskyPlugin {
 }
 
 // Confirm
-
 impl Typeable<KeyCode> for Confirm<'_> {
     fn will_handle_key(&self, key: &KeyCode) -> bool {
         match key {
@@ -604,15 +656,6 @@ impl Typeable<KeyCode> for Confirm<'_> {
     }
 }
 
-// impl Printable for AskyNode<Confirm<'_>> {
-//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-//         let mut out = ColoredStrings::default();
-//         (self.formatter)(self, renderer.draw_time(), &mut out);
-//         renderer.hide_cursor()?;
-//         renderer.print(out)
-//     }
-// }
-
 // MultiSelect
 
 impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
@@ -635,14 +678,6 @@ impl<T> Typeable<KeyCode> for MultiSelect<'_, T> {
         submit
     }
 }
-
-// impl<T> Printable for AskyNode<MultiSelect<'_, T>> {
-//     fn draw<R: Renderer>(&self, renderer: &mut R) -> io::Result<()> {
-//         let mut out = ColoredStrings::default();
-//         (self.formatter)(self, renderer.draw_time(), &mut out);
-//         renderer.print(out)
-//     }
-// }
 
 // Number
 

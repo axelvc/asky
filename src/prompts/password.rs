@@ -127,7 +127,7 @@ impl Password<'_> {
 }
 
 impl Printable for Password<'_> {
-    fn draw_with_style<R: Renderer, S: Style>(&self, r: &mut R, style: &S) -> io::Result<()> {
+    fn draw_with_style<R: Renderer>(&self, r: &mut R, style: &dyn Style) -> io::Result<()> {
         use crate::style::Section::*;
         // let style = DefaultStyle { ascii: true };
         let draw_time = r.draw_time();
@@ -135,7 +135,7 @@ impl Printable for Password<'_> {
         r.pre_prompt()?;
 
         if draw_time == DrawTime::Last {
-            r.hide_cursor();
+            let _ = r.hide_cursor();
             style.begin(r, Query(true))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(true))?;
@@ -144,7 +144,7 @@ impl Printable for Password<'_> {
             // write!(r, "{}", &self.input.value)?;
             style.end(r, Answer(false))?;
         } else {
-            r.show_cursor();
+            let _ = r.show_cursor();
             style.begin(r, Query(false))?;
             write!(r, "{}", self.message)?;
             style.end(r, Query(false))?;
