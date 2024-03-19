@@ -64,7 +64,7 @@ impl LineInput {
 
 // endregion: TextInput
 
-pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync;
+pub type InputValidator<'a> = dyn Fn(&str) -> Result<(), Cow<'a, str>> + 'a + Send + Sync;
 
 /// Prompt to get one-line user input.
 ///
@@ -103,7 +103,7 @@ pub struct Text<'a> {
     /// Default value to submit when the input is empty
     pub default_value: Option<&'a str>,
     /// State of the validation of the user input
-    pub validator_result: Result<(), &'a str>,
+    pub validator_result: Result<(), Cow<'a, str>>,
     validator: Option<Box<InputValidator<'a>>>,
 }
 
@@ -149,7 +149,7 @@ impl<'a> Text<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
+        F: Fn(&str) -> Result<(), Cow<'a, str>> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -210,7 +210,7 @@ impl Printable for Text<'_> {
                 }
             }
             style.end(r, Input)?;
-            if let Err(error) = self.validator_result {
+            if let Err(error) = &self.validator_result {
                 style.begin(r, Validator(false))?;
                 write!(r, "{}", error)?;
                 style.end(r, Validator(false))?;

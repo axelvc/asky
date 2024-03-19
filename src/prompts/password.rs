@@ -48,7 +48,7 @@ pub struct Password<'a> {
     /// Must hide user input or show `*` characters
     pub hidden: bool,
     /// State of the validation of the user input.
-    pub validator_result: Result<(), &'a str>,
+    pub validator_result: Result<(), Cow<'a, str>>,
     validator: Option<Box<InputValidator<'a>>>,
 }
 
@@ -102,7 +102,7 @@ impl<'a> Password<'a> {
     /// Set validator to the user input.
     pub fn validate<F>(&mut self, validator: F) -> &mut Self
     where
-        F: Fn(&str) -> Result<(), &'a str> + 'a + Send + Sync,
+        F: Fn(&str) -> Result<(), Cow<'a, str>> + 'a + Send + Sync,
     {
         self.validator = Some(Box::new(validator));
         self
@@ -163,7 +163,7 @@ impl Printable for Password<'_> {
                 }
             }
             style.end(r, Input)?;
-            if let Err(error) = self.validator_result {
+            if let Err(error) = &self.validator_result {
                 style.begin(r, Validator(false))?;
                 write!(r, "{}", error)?;
                 style.end(r, Validator(false))?;

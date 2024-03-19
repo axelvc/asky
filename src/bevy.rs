@@ -375,12 +375,10 @@ impl<T: Typeable<KeyCode>> Typeable<KeyEvent> for T {
 impl KeyEvent {
     pub fn new(
         mut char_evr: EventReader<ReceivedCharacter>,
-        // keys: &'w Res<'w, Input<KeyCode>>,
         mut key_evr: EventReader<KeyboardInput>,
     ) -> Self {
         Self {
             chars: char_evr.read().flat_map(|e| e.char.chars()).collect(),
-            // keys,
             codes: key_evr
                 .read()
                 .filter_map(|e| {
@@ -405,14 +403,11 @@ pub fn asky_system<T>(
     char_evr: EventReader<ReceivedCharacter>,
     key_evr: EventReader<KeyboardInput>,
     asky_settings: Res<BevyAskySettings>,
-    // mut render_state: Local<BevyRendererState>,
     mut renderer: Local<StyledStringWriter>,
     mut query: Query<(Entity, &mut AskyNode<T>, &mut AskyState, Option<&Children>, Option<&AskyStyle>)>,
 ) where
     T: Printable + Typeable<KeyEvent> + Valuable + Send + Sync + 'static,
-    // AskyNode<T>: Printable,
 {
-    // eprint!("1");
     let key_event = KeyEvent::new(char_evr, key_evr);
     for (entity, mut node, mut state, children, style_maybe) in query.iter_mut() {
         match *state {
@@ -428,7 +423,6 @@ pub fn asky_system<T>(
                 }
             }
             AskyState::Waiting => {
-                eprint!("2");
                 if !is_abort_key(&key_event)
                     && !node.will_handle_key(&key_event)
                     && renderer.state.draw_time != DrawTime::First
@@ -463,7 +457,6 @@ pub fn asky_system<T>(
                         commands.entity(*child).despawn_recursive();
                     }
                 }
-                eprint!("3");
                 // let mut renderer =
                 //     BevyRenderer::new(&asky_settings, &mut render_state, &mut commands, entity);
                 // let draw_time = renderer.draw_time();
