@@ -62,6 +62,10 @@ impl StyledStringWriter {
 //     std::iter::once(cs)
 // }
 
+/// Splits StyledString into possibly three pieces: (left string portion, the
+/// cursor, right string portion). The character index `i`'s range is not the
+/// usual _[0, N)_ where _N_ is the character count; it is _[0,N]_ inclusive so
+/// that a cursor may be specified essentially at the end of the strin g.
 fn cursorify(
     cs: StyledString,
     i: usize,
@@ -72,12 +76,10 @@ fn cursorify(
             "i {} <= str.chars().count() {}", i, string.chars().count());
     let (mut input, right) = match string.char_indices().nth(i + 1) {
         Some((byte_index, _char)) => {
-            eprintln!("some");
             let (l, r) = string.split_at(byte_index);
             (l.to_owned(),Some(StyledString::new(r.to_owned(), style)))
         },
         None => {
-            eprintln!("none");
             let mut s = string;
             if s.chars().count() == i {
                 s.push(' ');

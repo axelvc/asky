@@ -219,7 +219,7 @@ fn run_closures(
     {
         let children = id_maybe
             .and_then(|id| query.get(id).expect("Unable to get children"));
-        eprintln!("run closure");
+        // eprintln!("run closure");
         // TODO: Handle error
         let _ = closure(&mut commands, id_maybe, children);
         ran_closure = true;
