@@ -104,6 +104,7 @@
 #![cfg_attr(not(feature = "terminal"), allow(dead_code))]
 mod prompts;
 pub mod utils;
+use std::borrow::Cow;
 
 pub trait Valuable {
     type Output: Send;
@@ -115,6 +116,7 @@ pub enum Error {
     InvalidInput,
     InvalidCount { expected: usize, actual: usize },
     ValidationFail,
+    Message(Cow<'static, str>),
     Io(std::io::Error),
 }
 

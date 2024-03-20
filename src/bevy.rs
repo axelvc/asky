@@ -105,6 +105,7 @@ impl Asky {
                 move |commands: &mut Commands,
                       entity: Option<Entity>,
                       _children: Option<&Children>| {
+                          entity.map(|parent| {
                     let node = NodeBundle {
                         style: Style {
                             flex_direction: FlexDirection::Column,
@@ -115,8 +116,8 @@ impl Asky {
                     let id = commands
                               .spawn((node, AskyNode { prompt, promise: Some(promise) },  AskyState::Waiting))
                               .id();
-                    commands.entity(entity.unwrap()).push_children(&[id]);
-                    Ok(())
+                    commands.entity(parent).push_children(&[id]);
+                          }).ok_or(Error::Message("No entity for prompt".into()))
                 },
             ),
             Some(dest),
@@ -137,6 +138,7 @@ impl Asky {
                 move |commands: &mut Commands,
                       entity: Option<Entity>,
                       _children: Option<&Children>| {
+                    entity.map(|parent| {
                     let node = NodeBundle {
                         style: Style {
                             flex_direction: FlexDirection::Column,
@@ -148,8 +150,8 @@ impl Asky {
                               .spawn((node, AskyNode { prompt, promise: Some(promise) },  AskyState::Waiting,
                               AskyStyle(Box::new(style))))
                               .id();
-                    commands.entity(entity.unwrap()).push_children(&[id]);
-                    Ok(())
+                    commands.entity(parent).push_children(&[id]);
+                    }).ok_or(Error::Message("No entity for prompt_styled".into()))
                 },
             ),
             Some(dest),
@@ -164,14 +166,16 @@ impl Asky {
                 move |commands: &mut Commands,
                       entity: Option<Entity>,
                       children_maybe: Option<&Children>| {
-                    commands.entity(entity.unwrap()).clear_children();
+                          entity.map(|parent| {
+
+                    commands.entity(parent).clear_children();
                     if let Some(children) = children_maybe {
                         for child in children.iter() {
                             commands.entity(*child).despawn_recursive();
                         }
                     }
                     promise.resolve(());
-                    Ok(())
+                          }).ok_or(Error::Message("No entity for clear".into()))
                 },
             ),
             Some(dest),
@@ -225,6 +229,7 @@ fn run_closures(
     }
 }
 
+/// Check components to determine whether a AskyPrompt state needs to change.
 fn check_prompt_state(
     query: Query<&AskyState>,
     delays: Query<&AskyDelay>,
@@ -588,32 +593,32 @@ impl Plugin for AskyPlugin {
             })
             .init_resource::<BevyAskySettings>()
             .init_state::<AskyPrompt>()
-            .add_systems(Update, asky_system::<Confirm>)
-            .add_systems(Update, asky_system::<Toggle>)
-            .add_systems(Update, asky_system::<crate::Text>)
-            .add_systems(Update, asky_system::<Number<u8>>)
-            .add_systems(Update, asky_system::<Number<u16>>)
-            .add_systems(Update, asky_system::<Number<u32>>)
-            .add_systems(Update, asky_system::<Number<u64>>)
-            .add_systems(Update, asky_system::<Number<u128>>)
-            .add_systems(Update, asky_system::<Number<i8>>)
-            .add_systems(Update, asky_system::<Number<i16>>)
-            .add_systems(Update, asky_system::<Number<i32>>)
-            .add_systems(Update, asky_system::<Number<i64>>)
-            .add_systems(Update, asky_system::<Number<i128>>)
-            .add_systems(Update, asky_system::<Number<f32>>)
-            .add_systems(Update, asky_system::<Number<f64>>)
-            .add_systems(Update, asky_system::<Select<'_, Cow<'static, str>>>)
-            .add_systems(Update, asky_system::<Select<'_, &'static str>>)
-            .add_systems(Update, asky_system::<Password>)
-            .add_systems(Update, asky_system::<Message>)
-            .add_systems(Update, asky_system::<MultiSelect<'static, &'static str>>)
-            .add_systems(Update, asky_system::<MultiSelect<'_, Cow<'static, str>>>)
-            .add_systems(Update, poll_tasks::<()>)
-            .add_systems(Update, poll_tasks_err::<()>)
-            .add_systems(Update, check_prompt_state)
-            .add_systems(Update, run_closures)
-            .add_systems(Update, run_timers);
+            .add_systems(Update, (asky_system::<Confirm>,
+            // asky_system::<Toggle>,
+            asky_system::<crate::Text>,
+            asky_system::<Number<u8>>,
+            asky_system::<Number<u16>>,
+            asky_system::<Number<u32>>,
+            asky_system::<Number<u64>>,
+            asky_system::<Number<u128>>,
+            asky_system::<Number<i8>>,
+            asky_system::<Number<i16>>,
+            asky_system::<Number<i32>>,
+            asky_system::<Number<i64>>,
+            asky_system::<Number<i128>>,
+            asky_system::<Number<f32>>,
+            asky_system::<Number<f64>>,
+            asky_system::<Select<'_, Cow<'static, str>>>,
+            asky_system::<Select<'_, &'static str>>,
+            asky_system::<Password>,
+            asky_system::<Message>,
+            asky_system::<MultiSelect<'static, &'static str>>,
+            asky_system::<MultiSelect<'_, Cow<'static, str>>>).chain())
+            .add_systems(PostUpdate, poll_tasks::<()>)
+            .add_systems(PostUpdate, poll_tasks_err::<()>)
+            .add_systems(PostUpdate, check_prompt_state)
+            .add_systems(PostUpdate, run_closures)
+            .add_systems(PostUpdate, run_timers);
     }
 }
 
