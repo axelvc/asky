@@ -327,13 +327,13 @@ mod tests {
         let mut prompt = Text::new("");
         let err_str = "Please enter an response";
 
-        prompt.validate(|s| if s.is_empty() { Err(err_str) } else { Ok(()) });
+        prompt.validate(|s| if s.is_empty() { Err(err_str.into()) } else { Ok(()) });
 
         // invalid value
         let mut submit = prompt.handle_key(&KeyEvent::from(KeyCode::Enter));
 
         assert!(!submit);
-        assert_eq!(prompt.validator_result, Err(err_str));
+        assert_eq!(prompt.validator_result, Err(err_str.into()));
 
         // valid value
         prompt.input.set_value("foo");
