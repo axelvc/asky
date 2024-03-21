@@ -1,7 +1,7 @@
 use crate::{utils::renderer::Renderer, DrawTime};
 use std::fmt;
 use std::io;
-use text_style::{self, Color, Style, StyledString};
+use text_style::{Color, Style, StyledString};
 
 #[derive(Debug, Clone, Default)]
 pub struct StyledStringWriter {

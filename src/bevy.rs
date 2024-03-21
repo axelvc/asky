@@ -9,7 +9,7 @@ use bevy::{
         system::{SystemMeta, SystemParam},
         world::unsafe_world_cell::UnsafeWorldCell,
     },
-    input::keyboard::{KeyCode, KeyboardInput},
+    input::keyboard::KeyboardInput,
     utils::Duration,
 };
 use promise_out::{
@@ -31,7 +31,7 @@ use crate::{Confirm, Error, Message, MultiSelect, Number, Password, Select, Togg
 use bevy::tasks::{block_on, AsyncComputeTaskPool, Task};
 use bevy::window::RequestRedraw;
 use itertools::Itertools;
-use text_style::{self, bevy::TextStyleParams, AnsiColor, StyledString};
+use text_style::{bevy::TextStyleParams, AnsiColor, StyledString};
 
 #[derive(Component, Debug)]
 pub struct AskyNode<T: Typeable<KeyEvent> + Valuable> {

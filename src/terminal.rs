@@ -221,7 +221,7 @@ where
 }
 
 // Text
-impl Typeable<KeyEvent> for Text<'_> {
+impl Typeable<KeyEvent> for Text {
     fn handle_key(&mut self, key: &KeyEvent) -> bool {
         use crate::prompts::text::Direction::*;
         let mut submit = false;

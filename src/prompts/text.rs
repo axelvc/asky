@@ -107,6 +107,12 @@ pub struct Text<'a> {
     validator: Option<Box<InputValidator<'a>>>,
 }
 
+impl AsMut<String> for Text<'_> {
+    fn as_mut(&mut self) -> &mut String {
+        &mut self.input.value
+    }
+}
+
 impl<'a> Valuable for Text<'a> {
     type Output = String;
     fn value(&self) -> Result<String, Error> {
