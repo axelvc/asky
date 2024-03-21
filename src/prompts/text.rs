@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use crate::style::Style;
 use crate::utils::renderer::{DrawTime, Printable, Renderer};
-use crate::Valuable;
+use crate::{Valuable, SetValue};
 use std::io;
 
 pub enum Direction {
@@ -31,9 +31,9 @@ impl LineInput {
 }
 
 impl LineInput {
-    pub(crate) fn set_value(&mut self, value: &str) {
-        self.value = String::from(value);
-        self.col = value.len();
+    pub(crate) fn set_value(&mut self, value: impl Into<String>) {
+        self.value = value.into();
+        self.col = self.value.chars().count();
     }
 
     pub(crate) fn insert(&mut self, ch: char) {
@@ -113,12 +113,21 @@ impl AsMut<String> for Text<'_> {
     }
 }
 
-impl<'a> Valuable for Text<'a> {
+impl Valuable for Text<'_> {
     type Output = String;
     fn value(&self) -> Result<String, Error> {
         Ok(self.input.value.to_string())
     }
 }
+
+impl SetValue for Text<'_> {
+    type Output = String;
+    fn set_value(&mut self, value: Self::Output) -> Result<(), Error> {
+        self.input.set_value(value);
+        Ok(())
+    }
+}
+
 impl<'a> Text<'a> {
     /// Create a new text prompt.
     pub fn new(message: impl Into<Cow<'a, str>>) -> Self {
@@ -317,6 +326,21 @@ mod tests {
     fn update_cursor_position() {
         let mut prompt = Text::new("");
         prompt.input.set_value("foo");
+        prompt.input.col = 2;
+
+        let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];
+
+        for (key, expected) in keys {
+            prompt.handle_key(&KeyEvent::from(key));
+
+            assert_eq!(prompt.input.col, expected);
+        }
+    }
+
+    #[test]
+    fn update_cursor_position_unicode() {
+        let mut prompt = Text::new("");
+        prompt.input.set_value("fo▣");
         prompt.input.col = 2;
 
         let keys = [(KeyCode::Left, 1), (KeyCode::Right, 2)];

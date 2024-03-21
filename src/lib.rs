@@ -110,6 +110,12 @@ pub trait Valuable {
     type Output: Send;
     fn value(&self) -> Result<Self::Output, Error>;
 }
+
+pub trait SetValue {
+    type Output: Send;
+    fn set_value(&mut self, value: Self::Output) -> Result<(), Error>;
+}
+
 #[derive(Debug)]
 pub enum Error {
     Cancel,
@@ -130,7 +136,6 @@ pub trait Promptable {
     type Output;
     fn prompt(&mut self) -> Result<Self::Output, crate::Error>;
 }
-
 
 pub use prompts::confirm::Confirm;
 pub use prompts::message::Message;
